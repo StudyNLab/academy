@@ -1,0 +1,24 @@
+{
+  "name": "@aionit/storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@aionit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.14.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1161.0"
+  }
+}

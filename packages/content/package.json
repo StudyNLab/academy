@@ -1,0 +1,29 @@
+{
+  "name": "@aionit/content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@aionit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "@types/sanitize-html": "2.16.2",
+    "@types/yauzl": "3.4.0",
+    "eslint": "10.14.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "sanitize-html": "2.18.1",
+    "sharp": "0.35.5",
+    "yauzl": "3.4.0",
+    "zod": "4.6.7"
+  }
+}
