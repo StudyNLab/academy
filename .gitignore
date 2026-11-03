@@ -38,3 +38,6 @@ Thumbs.db
 
 # Next.js 가 자동으로 만드는 파일
 next-env.d.ts
+
+# Claude Code 개인 설정 (이 PC 전용: 텔레그램 알림 hook 등)
+.claude/settings.local.json
