@@ -20,6 +20,12 @@ https://localhost {
 	tls internal
 	import security_headers
 	encode zstd gzip
+	# 관리자 화면 접속 IP 제한 (docs/기술설계.md 3.2). 외부 공개 때 사무실 · VPN 대역으로 바꾸고 주석을 푼다.
+	# @admin_outside {
+	# 	path /admin* /api/v1/admin*
+	# 	not remote_ip 10.100.0.0/16
+	# }
+	# respond @admin_outside 403
 	reverse_proxy web:3000
 }
 

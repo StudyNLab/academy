@@ -3,7 +3,17 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/.next/**", "**/drizzle/**", "**/coverage/**"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/.next/**",
+      "**/.next-*/**",
+      "**/drizzle/**",
+      "**/coverage/**",
+      "**/test-results/**",
+      "**/playwright-report/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

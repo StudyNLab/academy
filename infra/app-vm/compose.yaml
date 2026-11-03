@@ -39,6 +39,20 @@ services:
     logging: *logging
     env_file: .env
 
+  # 테스트 운영용 메일 받는 곳: 밖으로 보내지 않고 모아 둔다 (인증 메일 · 비밀번호 재설정 확인용).
+  # 메일 발송 서비스가 정해지면 .env 의 SMTP_URL 만 그 서비스로 바꾸고 이 서비스는 지운다.
+  # 웹 화면은 VM 의 127.0.0.1:8025 에만 연다 (infra/README.md 의 SSH 터널로 본다).
+  mailpit:
+    image: axllent/mailpit:${MAILPIT_TAG}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      MP_MAX_MESSAGES: "1000"
+    ports:
+      - "127.0.0.1:8025:8025"
+    expose:
+      - "1025"
+
 volumes:
   caddy-data:
   caddy-config:

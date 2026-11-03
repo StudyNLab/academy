@@ -18,3 +18,11 @@
 
 - 노트북: 코드, Node.js, pnpm
 - 개발 VM(Academy-dev): PostgreSQL · Garage · Mailpit — [infra/dev-vm/README.md](infra/dev-vm/README.md)
+- 설정: 루트 `.env` (예시 `.env.example`). 터널: `pnpm dev:tunnel`
+- 실행: `pnpm dev` (web :3000 + worker. 메일은 worker 가 보내므로 함께 띄운다)
+
+| 명령 | 내용 |
+|---|---|
+| `pnpm test` | 단위 + 통합 테스트. 통합 테스트는 개발 VM 의 `aionit_test` DB 를 쓴다 (터널 필요) |
+| `pnpm --filter @aionit/web test:e2e` | 화면 흐름 (Playwright, 이 PC 의 Chrome). web · worker · 터널이 떠 있어야 한다. 다른 주소면 `E2E_BASE_URL` |
+| `pnpm db:generate` · `pnpm db:migrate` | 마이그레이션 만들기 · 적용 |

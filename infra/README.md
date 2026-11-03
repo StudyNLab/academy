@@ -9,6 +9,7 @@
 - 모두 호스트 TrainingGround(10.100.4.52)의 VirtualBox VM. VPN 이 필요하다.
 - data VM 의 PostgreSQL(5432) · Garage(3900)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
 - 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
+- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`.
 
 ## 사이트 보기 (도메인 전)
 
@@ -19,6 +20,27 @@ ssh -N -L 18443:127.0.0.1:18443 user1@10.100.4.52
 ```
 
 그다음 https://localhost:18443 . 인증서는 Caddy 내부 인증서라 브라우저 경고가 뜬다 (도메인이 생기면 Let's Encrypt 로 바뀐다).
+
+## 테스트 서버 메일 보기 (Mailpit)
+
+메일 발송 서비스를 정하기 전에는 app VM 의 Mailpit 이 메일을 받아 모아 둔다 (밖으로 나가지 않는다). 노트북에서:
+
+```bash
+ssh -N -o ProxyJump=user1@10.100.4.52 -p 22061 -L 18026:127.0.0.1:8025 user1@127.0.0.1
+```
+
+그다음 http://localhost:18026 . (개발 VM 의 Mailpit 은 `pnpm dev:tunnel` 의 http://localhost:18025)
+
+## 첫 운영자 지정
+
+가입 · 메일 인증을 마친 계정에 서버 명령으로 역할을 준다. 그 뒤의 역할 변경은 관리자 화면(회원 ➔ 역할)에서 하고 모두 기록에 남는다.
+
+```bash
+# app VM
+cd ~/aionit && docker compose run --rm --no-deps worker pnpm --filter @aionit/worker grant-role <이메일> operator "첫 운영자"
+```
+
+그 회원은 다시 로그인 ➔ 로그인 · 보안에서 2단계 인증(인증 앱)을 켜야 `/admin` 에 들어간다.
 
 ## 배포
 
