@@ -69,7 +69,7 @@ bash infra/scripts/deploy.sh
 |---|---|
 | 무엇 | PostgreSQL 전체 (`pg_dump -Fc`) + sha256, **파일 저장소(Garage 버킷 `aionit`)** — rclone 으로 바뀐 것만 |
 | 언제 | 매일 03:30 KST (data VM cron), 배포 직전 |
-| 어디 | data VM `/srv/data/backup/db/` (7일) ➔ **호스트 `G:\AIONIT-backup\db\`** (공유 폴더, 35일) |
+| 어디 | DB: data VM `/srv/data/backup/db/` (7일) ➔ **호스트 `G:\AIONIT-backup\db\`** (공유 폴더, 35일). 파일: `G:\AIONIT-backup\files\aionit\` (바뀌거나 지워진 파일은 `files\changed\<날짜>\` 에 35일) |
 | 기록 | data VM `~/aionit/backup.log` |
 
 - 공유 폴더는 systemd mount 단위 `mnt-aionit\x2dbackup.mount` 로 붙인다. 공유 폴더가 없어도 VM 부팅은 막히지 않는다 (백업 스크립트가 경고만 남김).

@@ -19,7 +19,9 @@ describe("메모리 저장소 (테스트용)", () => {
 
 describe("S3 저장소 설정", () => {
   it("값이 비면 어느 이름이 빠졌는지 알려 준다 (값은 찍지 않는다)", () => {
-    expect(() => createS3StoreFromEnv({ S3_ENDPOINT: "http://x" })).toThrow("S3_REGION 이 설정되지 않았습니다");
+    expect(() => createS3StoreFromEnv({ S3_ENDPOINT: "http://x" })).toThrow(
+      "S3_REGION 이 설정되지 않았습니다",
+    );
   });
 
   // 개발 VM 의 Garage 에 실제로 넣어 본다 (터널 · 설정이 있을 때만)
