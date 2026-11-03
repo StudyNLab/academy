@@ -7,11 +7,12 @@ import type { Env } from "@/server/env";
 
 export const ORIGIN = "http://localhost:3000";
 
-export function setupTestAuth() {
+export function setupTestAuth(extraEnv: Partial<Env> = {}) {
   const env: Env = {
     DATABASE_URL: process.env.DATABASE_URL!,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL!,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET!,
+    ...extraEnv,
   };
   const { db, close } = createDb(env.DATABASE_URL, { max: 4, quiet: true });
   const mails: MailJob[] = [];

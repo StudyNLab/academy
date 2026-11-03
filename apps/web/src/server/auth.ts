@@ -23,7 +23,6 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getOAuthState, getSessionFromCtx } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
-import { randomUUID } from "node:crypto";
 import { recordSignupConsents, signupExtrasSchema, validateSignupExtras } from "./consents";
 import type { Env } from "./env";
 import { clientIp, identifierHash, isPrivilegedUser, recentFailures, recordLogin } from "./records";
@@ -66,6 +65,8 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
             prompt: "select_account" as const,
             // 가입은 가입 화면(동의 · 닉네임을 받은 뒤)에서만. 로그인 화면에서 처음 오면 가입 화면으로 보낸다.
             disableImplicitSignUp: true,
+            // 이름 · 사진은 받지 않는다 (닉네임은 가입 화면에서, 최소 수집)
+            mapProfileToUser: () => ({ image: undefined }),
           },
         }
       : {};
@@ -79,10 +80,13 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
             // 테스트 기간(비즈 앱 전)에는 이메일을 받을 수 없어 닉네임 동의만 요청한다
             disableDefaultScope: true,
             scope: ["profile_nickname"],
-            mapProfileToUser: (profile: { kakao_account?: { email?: string } }) =>
-              profile.kakao_account?.email
+            // 이메일이 없으면 카카오 회원번호로 만든 자리표시 주소 (로그인할 때마다 같은 값)
+            mapProfileToUser: (profile: { id: number | string; kakao_account?: { email?: string } }) => ({
+              image: undefined,
+              ...(profile.kakao_account?.email
                 ? {}
-                : { email: placeholderEmail("no-email", randomUUID()), emailVerified: false },
+                : { email: placeholderEmail("no-email", `kakao-${profile.id}`), emailVerified: false }),
+            }),
           },
         }
       : {};
@@ -124,7 +128,14 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
     account: {
       modelName: "authAccounts",
       encryptOAuthTokens: true,
-      accountLinking: { enabled: true, disableImplicitLinking: true, allowDifferentEmails: false },
+      // 자동 연결은 하지 않는다 (A-05). 로그인한 상태에서 내 정보 ➔ 연결하기로만 잇는다.
+      // 이때는 이미 본인 확인(로그인)을 했으므로 이메일이 달라도(카카오는 이메일이 없다) 연결을 허용한다.
+      accountLinking: {
+        enabled: true,
+        disableImplicitLinking: true,
+        allowDifferentEmails: true,
+        trustedProviders: ["google", "kakao"],
+      },
     },
     verification: { modelName: "verifications", storeIdentifier: "hashed" },
     emailAndPassword: {
@@ -244,6 +255,24 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
               const max = new Date(Date.now() + SESSION_POLICY.privilegedMaxAgeMs);
               if (session.expiresAt > max) return { data: { ...session, expiresAt: max } };
             }
+          },
+        },
+        update: {
+          // 라이브러리는 세션을 쓰면 만료일을 30일 뒤로 늘린다. 운영자 · 강사 세션은 만든 때부터 12시간을 넘지 않게 자른다.
+          before: async (data, ctx) => {
+            if (!data.expiresAt || !ctx) return;
+            const token = await ctx.getSignedCookie(
+              ctx.context.authCookies.sessionToken.name,
+              ctx.context.secret,
+            );
+            if (!token) return;
+            const [session] = await db
+              .select({ userId: schema.sessions.userId, createdAt: schema.sessions.createdAt })
+              .from(schema.sessions)
+              .where(eq(schema.sessions.token, token));
+            if (!session || !(await isPrivilegedUser(db, session.userId))) return;
+            const max = new Date(session.createdAt.getTime() + SESSION_POLICY.privilegedMaxAgeMs);
+            if (data.expiresAt > max) return { data: { ...data, expiresAt: max } };
           },
         },
       },
