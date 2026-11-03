@@ -2,7 +2,7 @@
 import type { CourseField, Db } from "@aionit/db";
 import { and, asc, desc, eq, inArray, schema, sql } from "@aionit/db";
 import type { SlotView } from "./content-render";
-import { keepSections, renderVideoSlots } from "./content-render";
+import { keepSections, renderVideoSlots, withMainVideo } from "./content-render";
 
 export const FIELD_LABEL: Record<CourseField, string> = { infra: "인프라", security: "보안", ai: "AI" };
 
@@ -131,7 +131,13 @@ export async function previewChapter(db: Db, slug: string, chapterKey: string) {
   return {
     detail,
     chapter,
-    html: renderVideoSlots(scoped, slotMap(chapter.videos), "public"),
+    html: withMainVideo(
+      renderVideoSlots(scoped, slotMap(chapter.videos), "public"),
+      slotMap(chapter.videos.filter((v) => v.kind === "main"))
+        .values()
+        .next().value,
+      "public",
+    ),
     partial: chapter.preview.scope === "sections",
     toc:
       chapter.preview.scope === "whole"
@@ -153,7 +159,15 @@ export async function adminChapter(db: Db, versionId: string, chapterKey: string
     .select()
     .from(schema.videoSlots)
     .where(eq(schema.videoSlots.courseId, row.course.id));
-  return { ...row, html: renderVideoSlots(row.chapter.contentHtml, slotMap(slots), "admin") };
+  const main = slots.find((s) => s.kind === "main" && s.chapterKey === chapterKey);
+  return {
+    ...row,
+    html: withMainVideo(
+      renderVideoSlots(row.chapter.contentHtml, slotMap(slots), "admin"),
+      main ? slotMap([main]).get(main.key) : undefined,
+      "admin",
+    ),
+  };
 }
 
 // ---- 운영자 화면 ----

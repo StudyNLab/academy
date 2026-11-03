@@ -80,3 +80,18 @@ export function keepSections(html: string, sectionIds: string[]): string {
   if (!firstSectionSeen) return html;
   return out.join("\n");
 }
+
+/**
+ * 챕터 영상(main)은 본문 맨 위에 둔다 (Q1: 챕터 영상 ➔ 교재). 본문 안에는 자리가 없고 manifest 에만 있다.
+ * 연결 안 됐으면 수강생에게는 없음, 운영자에게는 "영상 연결 필요".
+ */
+export function withMainVideo(html: string, main: SlotView | undefined, mode: "public" | "admin"): string {
+  if (!main) return html;
+  if (main.source === "youtube" && main.youtubeVideoId) {
+    return `<figure class="video-block">${youtubeEmbed(main.youtubeVideoId, main.title)}<figcaption>${escapeHtml(main.title)} · 무료 공개</figcaption></figure>\n${html}`;
+  }
+  if (mode === "admin") {
+    return `<p class="video-missing">영상 연결 필요 · <code>${escapeHtml(main.key)}</code> ${escapeHtml(main.title)} (챕터 영상)</p>\n${html}`;
+  }
+  return html;
+}

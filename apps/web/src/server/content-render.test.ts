@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keepSections, renderVideoSlots, youtubeEmbed } from "./content-render";
+import { keepSections, renderVideoSlots, withMainVideo, youtubeEmbed } from "./content-render";
 import { parseYoutubeId } from "./courses";
 
 const html = `<header class="cover"><h1>제목</h1></header>
@@ -57,5 +57,23 @@ describe("parseYoutubeId", () => {
     ["javascript:alert(1)", null],
   ])("%s ➔ %s", (input, expected) => {
     expect(parseYoutubeId(input)).toBe(expected);
+  });
+});
+
+describe("withMainVideo (챕터 영상은 맨 위)", () => {
+  const main = {
+    key: "ch01_main",
+    title: "CHAPTER 1 강의",
+    source: "youtube" as const,
+    youtubeVideoId: "dQw4w9WgXcQ",
+  };
+  it("연결된 챕터 영상을 본문 앞에", () => {
+    const out = withMainVideo("<p>본문</p>", main, "public");
+    expect(out.indexOf("youtube-nocookie")).toBeLessThan(out.indexOf("본문"));
+  });
+  it("연결 안 됐으면 수강생에게 없음, 운영자에게 안내", () => {
+    const none = { ...main, source: "none" as const, youtubeVideoId: null };
+    expect(withMainVideo("<p>본문</p>", none, "public")).toBe("<p>본문</p>");
+    expect(withMainVideo("<p>본문</p>", none, "admin")).toContain("영상 연결 필요");
   });
 });
