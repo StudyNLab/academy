@@ -1,0 +1,4 @@
+{
+  "extends": "@aionit/config/tsconfig.base.json",
+  "include": ["src"]
+}

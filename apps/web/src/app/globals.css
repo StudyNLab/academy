@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "@aionit/ui/tokens.css";
+
+/* 공통 부품의 class 도 Tailwind 가 찾도록 */
+@source "../../../../packages/ui/src";
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+  a {
+    color: var(--link);
+  }
+  a:hover {
+    color: var(--signal);
+  }
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
