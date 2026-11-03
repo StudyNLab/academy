@@ -1,0 +1,8 @@
+# 줄바꿈은 저장소 안에서 LF 로 통일 (Windows 노트북 · Linux 서버 공용)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.zip binary
+*.mp4 binary
+*.woff2 binary

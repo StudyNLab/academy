@@ -1,0 +1,40 @@
+# AIONIT 개발용 서비스 (Academy-dev VM 에서 실행)
+# 노트북에서는 SSH 터널로 접속한다: infra/dev-vm/README.md
+# 모든 포트는 VM 의 127.0.0.1 에만 연다 (사무실망에 노출하지 않음).
+name: aionit-dev
+
+services:
+  postgres:
+    image: postgres:${POSTGRES_TAG}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aionit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: aionit
+      TZ: UTC
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - /srv/dev/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aionit"]
+      interval: 10s
+      retries: 5
+
+  garage:
+    image: dxflrs/garage:${GARAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3900:3900"   # S3 API
+      - "127.0.0.1:3903:3903"   # 관리 API
+    volumes:
+      - /srv/dev/garage/garage.toml:/etc/garage.toml:ro
+      - /srv/dev/garage/meta:/var/lib/garage/meta
+      - /srv/dev/garage/data:/var/lib/garage/data
+
+  mailpit:
+    image: axllent/mailpit:${MAILPIT_TAG}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # 웹 화면

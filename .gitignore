@@ -1,0 +1,36 @@
+# 의존성 · 빌드 결과
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# 테스트 결과
+playwright-report/
+test-results/
+
+# 비밀값 (예시 파일만 올린다)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+garage-key.txt
+
+# 로그 · 임시
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+*.swp
+
+# 편집기
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
