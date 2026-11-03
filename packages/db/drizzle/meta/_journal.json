@@ -8,6 +8,20 @@
       "when": 1793717049383,
       "tag": "0000_icy_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793733315723,
+      "tag": "0001_jazzy_nitro",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793733325293,
+      "tag": "0002_append_only_logs_and_policies",
+      "breakpoints": true
     }
   ]
 }
