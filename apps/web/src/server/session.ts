@@ -10,7 +10,9 @@ import { loadViewer, staffAccess } from "./viewer";
 
 /** 화면(서버 컴포넌트)용. 한 요청 안에서는 한 번만 조회한다. */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
-  return loadViewer(getAuth(), getDb(), await headers());
+  // headers() 를 먼저 불러야 빌드 때 이 화면을 "요청마다 그림"으로 알고 미리 그리지 않는다 (DB 연결 전에)
+  const requestHeaders = await headers();
+  return loadViewer(getAuth(), getDb(), requestHeaders);
 });
 
 /** 로그인이 필요한 화면. 로그인하지 않았으면 로그인 화면으로 보내고, 로그인 뒤 돌아온다. */
