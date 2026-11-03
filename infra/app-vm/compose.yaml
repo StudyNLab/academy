@@ -1,0 +1,44 @@
+# AIONIT 테스트 운영 · 앱 서버 (Academy-app, 172.30.0.10)
+# 이미지는 개발 VM 에서 빌드해 배포 스크립트(infra/scripts/deploy.sh)가 넣는다. 태그는 .env 의 APP_TAG.
+# 비밀값은 VM 의 ~/aionit/.env (Git 에 올리지 않음).
+name: aionit-app
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:${CADDY_TAG}
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+  web:
+    image: aionit-web:${APP_TAG}
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+    expose:
+      - "3000"
+
+  worker:
+    image: aionit-worker:${APP_TAG}
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+
+volumes:
+  caddy-data:
+  caddy-config:

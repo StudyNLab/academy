@@ -1,0 +1,28 @@
+# AIONIT 테스트 운영 Caddy 설정
+# 도메인이 정해지기 전: 내부 인증서(tls internal)로 https://localhost 를 연다.
+# 도메인이 정해지면 사이트 주소를 도메인으로 바꾸고 tls internal 을 지운다 (Let's Encrypt 자동).
+{
+	admin off
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+https://localhost {
+	tls internal
+	import security_headers
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+http://localhost {
+	redir https://{host}{uri} permanent
+}

@@ -1,0 +1,42 @@
+# AIONIT 테스트 운영 · 데이터 서버 (Academy-data, 172.30.0.20)
+# 포트는 내부망(academy-int) 주소에만 연다. app VM(172.30.0.10)만 접근한다.
+# 비밀값은 VM 의 ~/aionit/.env 와 /srv/data/garage/garage.toml (Git 에 올리지 않음).
+name: aionit-data
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:${POSTGRES_TAG}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: aionit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: aionit
+      TZ: UTC
+    ports:
+      - "172.30.0.20:5432:5432"
+    volumes:
+      - /srv/data/postgres:/var/lib/postgresql
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aionit"]
+      interval: 10s
+      retries: 5
+
+  garage:
+    image: dxflrs/garage:${GARAGE_TAG}
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "172.30.0.20:3900:3900" # S3 API (app VM 에서)
+      - "127.0.0.1:3903:3903" # 관리 API (VM 안에서만)
+    volumes:
+      - /srv/data/garage/garage.toml:/etc/garage.toml:ro
+      - /srv/data/garage/meta:/var/lib/garage/meta
+      - /srv/data/garage/data:/var/lib/garage/data
