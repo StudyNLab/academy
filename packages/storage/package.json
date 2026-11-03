@@ -14,6 +14,7 @@
   "devDependencies": {
     "@aionit/config": "workspace:*",
     "@types/node": "24.19.2",
+    "dotenv": "18.0.9",
     "eslint": "10.14.0",
     "typescript": "6.0.3",
     "vitest": "5.0.5"

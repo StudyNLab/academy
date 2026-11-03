@@ -82,7 +82,7 @@ describe("공격용 패키지 거부", () => {
   it.each([
     ["절대 경로", "/etc/passwd", "ZIP_BAD_PATH"],
     ["윈도우 드라이브", "C:/Windows/evil.dll", "ZIP_BAD_PATH"],
-    ["역슬래시 (..\ 로 탈출)", "..\\..\\evil.txt", "ZIP_PATH_TRAVERSAL"],
+    ["역슬래시 경로로 탈출", "..\\..\\evil.txt", "ZIP_PATH_TRAVERSAL"],
   ])("%s", async (_label, name, code) => {
     const entries = [...(await normalEntries()), { name, data: "x" }];
     const result = await processPackage(buildZip(entries), { imageUrl });

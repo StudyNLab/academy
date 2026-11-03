@@ -90,7 +90,9 @@ function limitFor(path: string): number | null {
 function parseJson(bytes: Buffer | undefined): unknown {
   if (!bytes) return undefined;
   try {
-    return JSON.parse(bytes.toString("utf8").replace(/^﻿/, ""));
+    // 맨 앞의 BOM(U+FEFF)은 떼고 읽는다
+    const text = bytes.toString("utf8");
+    return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
   } catch {
     return Symbol.for("invalid-json");
   }

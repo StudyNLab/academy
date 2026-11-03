@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-chrome";
 
 const menu = [
   { href: "/admin", label: "대시보드" },
+  { href: "/admin/courses", label: "과정" },
   { href: "/admin/users", label: "회원" },
   { href: "/admin/logs", label: "기록" },
 ];

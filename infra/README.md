@@ -9,7 +9,7 @@
 - 모두 호스트 TrainingGround(10.100.4.52)의 VirtualBox VM. VPN 이 필요하다.
 - data VM 의 PostgreSQL(5432) · Garage(3900)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
 - 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
-- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`.
+- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키).
 
 ## 사이트 보기 (도메인 전)
 
@@ -67,14 +67,15 @@ bash infra/scripts/deploy.sh
 
 | 항목 | 내용 |
 |---|---|
-| 무엇 | PostgreSQL 전체 (`pg_dump -Fc`) + sha256 |
+| 무엇 | PostgreSQL 전체 (`pg_dump -Fc`) + sha256, **파일 저장소(Garage 버킷 `aionit`)** — rclone 으로 바뀐 것만 |
 | 언제 | 매일 03:30 KST (data VM cron), 배포 직전 |
 | 어디 | data VM `/srv/data/backup/db/` (7일) ➔ **호스트 `G:\AIONIT-backup\db\`** (공유 폴더, 35일) |
 | 기록 | data VM `~/aionit/backup.log` |
 
 - 공유 폴더는 systemd mount 단위 `mnt-aionit\x2dbackup.mount` 로 붙인다. 공유 폴더가 없어도 VM 부팅은 막히지 않는다 (백업 스크립트가 경고만 남김).
 - 복구 시험(2026-11-04): 백업을 새 DB 에 `pg_restore` ➔ 테이블 수 원본과 같음(16) ➔ 시험 DB 삭제. **매달 한 번 반복한다.**
-- 아직 안 한 것: Garage 파일 백업(올릴 파일이 생기는 M2 에서), NAS(F:) 로 두 번째 사본(M10).
+- 파일 백업은 **읽기 전용 키**(`aionit-backup`, data VM `~/aionit/garage-backup.env`, 600)로 한다. 백업 스크립트가 지워져도 저장소를 고칠 수 없다. 이미지 `rclone/rclone:1.75.2`.
+- 아직 안 한 것: NAS(F:) 로 두 번째 사본 · 파일 복구 훈련(M10).
 
 ## 상태 확인
 

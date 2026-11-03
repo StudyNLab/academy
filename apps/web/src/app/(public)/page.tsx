@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { buttonClass, MonoLabel } from "@aionit/ui";
+import { CourseList } from "@/components/course-list";
+import { listCatalog } from "@/server/catalog";
+import { getDb } from "@/server/db";
 
-// P-01 홈 뼈대 (M0). 강의 목록 · 구독 영역은 M2 에서 실제 데이터로 채운다.
+// P-01 홈: 첫 화면 · 분야 · 강의 목록 (M2). 구독 안내 요약은 M6 에서.
 const fields = [
   {
     no: "01 · Infra",
@@ -16,7 +19,8 @@ const fields = [
   { no: "03 · AI", name: "AI", desc: "LLM API, AI Agent, 업무 자동화. 동작 원리부터 직접 만들어 본다." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const courses = (await listCatalog(getDb())).slice(0, 6);
   return (
     <>
       <section className="mx-auto flex max-w-[1296px] flex-col gap-7 px-5 pt-20 pb-20 md:px-14 md:pt-26">
@@ -56,6 +60,14 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mx-auto mt-24 max-w-[1296px] px-5 md:px-14">
+        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
+          <h2 className="m-0 text-[32px] font-semibold tracking-[-0.03em]">강의</h2>
+          <Link href="/courses">전체 보기 →</Link>
+        </div>
+        <CourseList courses={courses} />
       </section>
     </>
   );
