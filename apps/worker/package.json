@@ -1,0 +1,24 @@
+{
+  "name": "@aionit/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aionit/core": "workspace:*",
+    "@aionit/db": "workspace:*",
+    "pg-boss": "12.38.0",
+    "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@aionit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.14.0",
+    "typescript": "6.0.3"
+  }
+}

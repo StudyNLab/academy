@@ -1,0 +1,97 @@
+/* AIONIT 디자인 토큰 — docs/디자인시스템.md 2장. 값을 바꿀 때는 문서도 같이 고친다. */
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-signal: var(--signal);
+  --color-done: var(--done);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-code-bg: var(--code-bg);
+  --color-code-ink: var(--code-ink);
+
+  --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-ui: 2px;
+  --shadow-float: 0 24px 48px -24px rgb(18 26 38 / 0.35);
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --surface-sunken: #efede7;
+  --line: #dad7cf;
+  --line-strong: #121a26;
+  --ink: #121a26;
+  --ink-2: #4a5361;
+  --primary: #18304f;
+  --on-primary: #f6f5f1;
+  --link: #18304f;
+  --signal: #b4492d;
+  --done: #2e6b4a;
+  --warn: #8a5a00;
+  --danger: #a3302b;
+  --code-bg: #121a26;
+  --code-ink: #e8e6e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e131b;
+    --surface: #151c27;
+    --surface-sunken: #0a0f16;
+    --line: #273142;
+    --line-strong: #e8e6e0;
+    --ink: #e8e6e0;
+    --ink-2: #a9b1be;
+    --primary: #e8e6e0;
+    --on-primary: #0e131b;
+    --link: #9db7e8;
+    --signal: #e07a5b;
+    --done: #6fbf8e;
+    --warn: #e3b341;
+    --danger: #f08a84;
+    --code-bg: #0a0f16;
+    --code-ink: #e8e6e0;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e131b;
+  --surface: #151c27;
+  --surface-sunken: #0a0f16;
+  --line: #273142;
+  --line-strong: #e8e6e0;
+  --ink: #e8e6e0;
+  --ink-2: #a9b1be;
+  --primary: #e8e6e0;
+  --on-primary: #0e131b;
+  --link: #9db7e8;
+  --signal: #e07a5b;
+  --done: #6fbf8e;
+  --warn: #e3b341;
+  --danger: #f08a84;
+  --code-bg: #0a0f16;
+  --code-ink: #e8e6e0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}

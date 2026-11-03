@@ -1,0 +1,63 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { buttonClass, Wordmark } from "@aionit/ui";
+
+const nav = [
+  { href: "/courses", label: "강의" },
+  { href: "/subscribe", label: "구독" },
+  { href: "/login", label: "로그인" },
+];
+
+export default function PublicLayout({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <header className="border-b border-line">
+        <div className="mx-auto flex min-h-[72px] max-w-[1296px] flex-wrap items-center justify-between gap-x-10 px-5 pt-3 md:flex-nowrap md:px-14 md:pt-0">
+          <Link href="/" aria-label="AIONIT 홈" className="text-[22px] text-ink no-underline hover:text-ink">
+            <Wordmark />
+          </Link>
+          {/* 좁은 화면: 메뉴는 둘째 줄로 내려간다 */}
+          <nav
+            aria-label="주 메뉴"
+            className="order-last flex w-full gap-x-6 text-[15px] md:order-none md:w-auto md:flex-1 md:justify-end md:gap-x-8"
+          >
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="inline-flex min-h-11 items-center whitespace-nowrap text-ink no-underline"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <Link href="/signup" className={buttonClass("primary", "md")}>
+            무료로 시작하기
+          </Link>
+        </div>
+      </header>
+      <main>{children}</main>
+      <footer className="mt-24 border-t border-line py-12">
+        <div className="mx-auto flex max-w-[1296px] flex-wrap justify-between gap-7 px-5 text-[13px] leading-[1.9] text-ink-2 md:px-14">
+          <div className="flex flex-col gap-2.5">
+            <span className="text-lg text-ink">
+              <Wordmark />
+            </span>
+            <span>[상호] · 대표 [이름] · 사업자등록번호 [번호] · 통신판매업 신고 [번호]</span>
+          </div>
+          <nav aria-label="정책" className="flex flex-wrap items-start gap-x-5 gap-y-2">
+            <Link href="/policies/terms" className="text-ink-2">
+              이용약관
+            </Link>
+            <Link href="/policies/privacy" className="font-semibold text-ink">
+              개인정보처리방침
+            </Link>
+            <Link href="/policies/refund" className="text-ink-2">
+              환불 정책
+            </Link>
+          </nav>
+        </div>
+      </footer>
+    </>
+  );
+}

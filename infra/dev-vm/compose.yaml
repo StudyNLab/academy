@@ -25,8 +25,8 @@ services:
     image: dxflrs/garage:${GARAGE_TAG}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3900:3900"   # S3 API
-      - "127.0.0.1:3903:3903"   # 관리 API
+      - "127.0.0.1:3900:3900" # S3 API
+      - "127.0.0.1:3903:3903" # 관리 API
     volumes:
       - /srv/dev/garage/garage.toml:/etc/garage.toml:ro
       - /srv/dev/garage/meta:/var/lib/garage/meta
@@ -36,5 +36,5 @@ services:
     image: axllent/mailpit:${MAILPIT_TAG}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:1025:1025"   # SMTP
-      - "127.0.0.1:8025:8025"   # 웹 화면
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # 웹 화면
