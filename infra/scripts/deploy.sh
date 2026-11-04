@@ -142,4 +142,6 @@ vm $DEV "reg=http://$REG
       curl -fs -X DELETE \$reg/v2/\$repo/manifests/\$d >/dev/null || true
     done
   done
-  docker exec aionit-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1" || true
+  docker exec aionit-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1
+  # 정리 뒤에는 다시 띄운다. 보관소가 기억해 둔 '있는 층' 목록이 남아 있으면 지운 층을 있다고 답해 올리기를 건너뛴다
+  docker restart aionit-registry >/dev/null" || true
