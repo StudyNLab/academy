@@ -59,7 +59,8 @@ export default async function PreviewPage({ params }: { params: Params }) {
             <ul className="mt-3 mb-6 flex list-none flex-col p-0 text-[16px]">
               {locked.map((t) => (
                 <li key={t.id} className="border-b border-line py-3 text-ink-2">
-                  🔒 {t.title}
+                  {t.title}
+                  <span className="ml-2 font-mono text-[11px] tracking-[0.04em]">수강생 전용</span>
                 </li>
               ))}
             </ul>

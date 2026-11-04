@@ -1,5 +1,5 @@
 // 화면 흐름 (M4): 운영자가 영상 올리기(AD-05, 나눠 올리기 + 자막) ➔ worker 변환 진행 상태 ➔ 영상 자리 연결
-// ➔ 수강권 없는 사람: 미리보기에 🔒 카드, 재생 정보 · 조각 · 키 요청 실패 ➔ 수강생: 학습 화면에서 재생(키 받음),
+// ➔ 수강권 없는 사람: 미리보기에 잠금 카드, 재생 정보 · 조각 · 키 요청 실패 ➔ 수강생: 학습 화면에서 재생(키 받음),
 // 워터마크 · 자막 · 시청 기록. 먼저 띄워 둘 것: 개발 터널, web 개발 서버, worker(영상 변환, 이 PC 의 ffmpeg).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -132,14 +132,14 @@ test("운영자가 올린 영상은 수강생만 재생하고, 수강권 없는 
   await slotSelect.locator("xpath=..").getByRole("button", { name: "연결" }).click();
   await expect(row).toContainText("연결: ch01_lab01");
 
-  // 4. 수강권 없는 사람: 미리보기에는 🔒 카드, 재생 정보 · 조각 · 키는 받지 못한다
+  // 4. 수강권 없는 사람: 미리보기에는 잠금 카드, 재생 정보 · 조각 · 키는 받지 못한다
   const learnerContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const learner = await learnerContext.newPage();
   await signUpVerified(learner, learnerEmail, password, learnerNick);
   await login(learner, learnerEmail, password);
   await learner.waitForURL((url) => url.pathname === "/");
   await learner.goto(`/courses/${slug}/preview/ch01`);
-  await expect(learner.getByText("🔒 수강생 전용 영상입니다")).toBeVisible();
+  await expect(learner.getByText("수강생 전용 영상입니다")).toBeVisible();
   const denied = await learner.request.post("/api/v1/learn/videos/playback", {
     data: { courseId, videoKey: "ch01_lab01" },
     headers: { origin: new URL(learner.url()).origin },

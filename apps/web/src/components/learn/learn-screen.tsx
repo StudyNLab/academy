@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/client-api";
 import type { Playback } from "@/server/videos";
 import type { LearnResult } from "@/server/learning";
+import { MenuIcon } from "@/components/icons";
 import { HostedVideo } from "./hosted-video";
 import { QnaPanel } from "./qna-panel";
 import type { Beat, ChapterStatus } from "./learn-sync";
@@ -286,9 +287,10 @@ export function LearnScreen({
               aria-label={`Q&A, 이 챕터의 미해결 질문 ${qnaCount}개`}
               className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold text-ink"
             >
-              <span aria-hidden="true">💬</span>
-              <span className="hidden sm:inline">Q&amp;A</span>
-              <span className="tabular-nums">{qnaCount}</span>
+              <span>Q&amp;A</span>
+              <span className="min-w-5 border border-line-strong px-1 text-center font-mono text-[12px] leading-5 tabular-nums">
+                {qnaCount}
+              </span>
             </button>
             <ThemeToggle />
             <button
@@ -297,7 +299,7 @@ export function LearnScreen({
               aria-label="목차 열기"
               className="inline-flex h-11 w-11 items-center justify-center text-ink lg:hidden"
             >
-              ☰
+              <MenuIcon />
             </button>
           </div>
         </div>
@@ -398,7 +400,7 @@ export function LearnScreen({
                 {data.attachments.map((a) => (
                   <li key={a.id}>
                     <a href={`/api/v1/learn/attachments/${a.id}`} download className="text-[15px]">
-                      📎 {a.title}
+                      {a.title}
                     </a>{" "}
                     <span className="text-[13px] text-ink-2">{sizeText(a.size)}</span>
                   </li>
@@ -540,7 +542,8 @@ function Toc({
                         className="block py-1 text-ink-2 no-underline"
                         onClick={onNavigate}
                       >
-                        🎬 {main.title}
+                        <MonoLabel className="mr-1.5 text-[10px] text-signal">영상</MonoLabel>
+                        {main.title}
                       </a>
                     </li>
                   ) : null}
@@ -565,7 +568,8 @@ function Toc({
                               <span
                                 className={`text-[12px] tabular-nums ${checked === lab.items.length ? "text-done" : ""}`}
                               >
-                                {checked === lab.items.length ? "✓" : "☐"} {checked}/{lab.items.length}
+                                {checked === lab.items.length ? "✓ " : ""}
+                                {checked}/{lab.items.length}
                               </span>
                             ) : null}
                           </a>
@@ -578,7 +582,8 @@ function Toc({
                                 onClick={onNavigate}
                                 className="block py-1 pl-2 text-[13px] text-ink-2 no-underline"
                               >
-                                🎬 {v.title}
+                                <MonoLabel className="mr-1.5 text-[10px] text-signal">영상</MonoLabel>
+                                {v.title}
                               </a>
                             ))}
                         </li>
@@ -605,7 +610,7 @@ function SelfCheck({
   return (
     <div className="self-check">
       <p className="self-check-title">
-        <span>✅ 스스로 확인</span>
+        <span>스스로 확인</span>
         <span className="tabular-nums">
           {done} / {lab.items.length}
         </span>

@@ -20,7 +20,7 @@ export default async function MyQuestionsPage() {
       </PageTitle>
       {rows.length === 0 ? (
         <p className="m-0 border-t border-line-strong pt-6 text-ink-2">
-          아직 남긴 질문이 없습니다. 학습 화면 위의 💬 Q&amp;A 를 눌러 질문할 수 있습니다.{" "}
+          아직 남긴 질문이 없습니다. 학습 화면 위의 Q&amp;A 를 눌러 질문할 수 있습니다.{" "}
           <Link href="/learn">내 강의실 →</Link>
         </p>
       ) : (
@@ -34,8 +34,10 @@ export default async function MyQuestionsPage() {
                 <span className="flex min-w-0 flex-col gap-1">
                   <MonoLabel className="text-[11px] text-ink-2">{q.courseTitle}</MonoLabel>
                   <span className="text-[16px] font-semibold">
-                    {q.isSecret ? "🔒 " : ""}
                     {q.title}
+                    {q.isSecret ? (
+                      <span className="ml-2 text-[13px] font-normal text-ink-2">비밀글</span>
+                    ) : null}
                   </span>
                   <span className="text-[13px] text-ink-2">
                     답변 {q.answerCount} · {timeAgo(q.createdAt)}

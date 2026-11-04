@@ -25,7 +25,7 @@ export default async function NoticesPage() {
                 className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-4 text-ink no-underline"
               >
                 <span className="text-[16px] font-semibold">
-                  {n.pinned ? <span className="mr-2 text-[13px] text-signal">📌 고정</span> : null}
+                  {n.pinned ? <span className="mr-2 font-mono text-[12px] text-signal">고정</span> : null}
                   {n.title}
                 </span>
                 <MonoLabel className="text-[12px] text-ink-2">{formatDay(n.publishedAt!)}</MonoLabel>

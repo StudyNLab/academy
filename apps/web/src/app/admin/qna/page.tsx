@@ -99,8 +99,8 @@ export default async function AdminQna() {
           {stale.map((q) => (
             <li key={q.id} className="border-b border-line py-3">
               <Link href={questionUrl(q.slug, q.chapterKey, q.id)} className="text-ink">
-                {q.isSecret ? "🔒 " : ""}
                 {q.title}
+                {q.isSecret ? " (비밀글)" : ""}
               </Link>
               <span className="text-[13px] text-ink-2">
                 {" "}

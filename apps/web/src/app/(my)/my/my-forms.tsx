@@ -155,7 +155,8 @@ export function NotificationPrefsForm({
         수강 기간이 30일 · 7일 남으면 메일로 알림
       </Checkbox>
       <p className="m-0 text-[13px] text-ink-2">
-        꺼도 사이트 알림(머리글의 🔔)에는 남습니다. 결제 · 환불 · 구독 · 1:1 문의 답변 메일은 끌 수 없습니다.
+        꺼도 사이트 알림(머리글의 알림)에는 남습니다. 결제 · 환불 · 구독 · 1:1 문의 답변 메일은 끌 수
+        없습니다.
       </p>
       {message ? (
         <p role="status" className="m-0 text-[13px] text-ink-2">

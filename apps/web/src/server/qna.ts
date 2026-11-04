@@ -2,7 +2,7 @@
 // 권한은 packages/core (canAsk · canAnswer · questionView …) 규칙으로, 여기서는 DB 를 읽고 쓴다.
 //   보기 · 답하기: 그 강의를 볼 수 있는 사람 (수강권 있는 수강생 · 그 과정 강사 · 운영자)
 //   질문하기: 수강권 있는 수강생만
-//   비밀글: 질문자 · 그 과정 강사 · 운영자만 (다른 수강생에게는 "🔒 비밀글입니다")
+//   비밀글: 질문자 · 그 과정 강사 · 운영자만 (다른 수강생에게는 "비밀글입니다")
 import type { QnaActor, QnaDenied, QnaRole, QuestionView } from "@aionit/core";
 import {
   canAnswer,

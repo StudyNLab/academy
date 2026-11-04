@@ -27,7 +27,7 @@ export default async function AdminNotices() {
               className="flex flex-wrap items-baseline justify-between gap-3 text-ink no-underline"
             >
               <span>
-                {n.pinned ? <span className="text-[13px] text-signal">📌 </span> : null}
+                {n.pinned ? <span className="mr-2 font-mono text-[12px] text-signal">고정</span> : null}
                 <strong className="font-semibold">{n.title}</strong>
                 <span className="text-ink-2"> · {formatDay(n.publishedAt ?? n.createdAt)}</span>
               </span>

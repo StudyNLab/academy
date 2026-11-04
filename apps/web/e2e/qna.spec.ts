@@ -151,15 +151,15 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await qna(asker).getByLabel("내용").fill("제 계정 문제입니다.");
   await qna(asker).getByText("비밀글 (나 · 강사 · 운영자만 봅니다)").click();
   await qna(asker).getByRole("button", { name: "질문 올리기" }).click();
-  await expect(qna(asker).getByText("🔒 비밀글")).toBeVisible();
+  await expect(qna(asker).getByText("비밀글", { exact: true })).toBeVisible();
   await expect(asker.getByRole("button", { name: /미해결 질문 2개/ })).toBeVisible();
 
-  // 2. 다른 수강생: 비밀글은 🔒 만 ➔ 공개 질문에 답변 · 신고
+  // 2. 다른 수강생: 비밀글은 "비밀글입니다" 만 ➔ 공개 질문에 답변 · 신고
   await mate.goto(`/learn/${slug}/ch01`);
   await mate.getByRole("button", { name: /^Q&A,/ }).click();
   await expect(qna(mate).getByText("비밀글입니다")).toBeVisible();
   await expect(qna(mate).getByText("결제한 카드가 보여요")).toHaveCount(0);
-  await qna(mate).getByPlaceholder("🔍 같은 질문 찾기").fill("비어");
+  await qna(mate).getByPlaceholder("같은 질문 찾기").fill("비어");
   await qna(mate)
     .getByRole("button", { name: new RegExp(question) })
     .click();
@@ -171,14 +171,14 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await qna(mate).getByRole("button", { name: "신고하기" }).click();
   await expect(qna(mate).getByText("신고했습니다. 운영자가 확인합니다.")).toBeVisible();
 
-  // 3. 질문자: 머리글 🔔 ➔ 알림 ➔ 학습 화면에서 그 질문이 열린다 ➔ 해결됨. 메일도 왔다
+  // 3. 질문자: 머리글 알림 ➔ 알림 ➔ 학습 화면에서 그 질문이 열린다 ➔ 해결됨. 메일도 왔다
   await asker.goto("/my/notifications");
   await expect(asker.getByRole("link", { name: /알림, 읽지 않은 알림 1개/ })).toBeVisible();
   await asker.getByRole("link", { name: new RegExp(`새 답변: ${question}`) }).click();
   await expect(qna(asker).getByRole("heading", { name: question })).toBeVisible();
   await expect(qna(asker).getByText("content[0].text")).toBeVisible();
   await qna(asker).getByRole("button", { name: "해결됨" }).click();
-  await expect(qna(asker).getByText("✅ 해결됨")).toBeVisible();
+  await expect(qna(asker).getByText("해결됨", { exact: true })).toBeVisible();
   expect(await mailSent(askerEmail, "qna-answer")).toBe(true);
 
   // 4. 질문자: 알림 설정 (Q&A 답변 메일 끄기) · 1:1 문의

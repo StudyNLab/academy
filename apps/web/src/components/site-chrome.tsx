@@ -4,6 +4,7 @@ import { buttonClass, Wordmark } from "@aionit/ui";
 import { getDb } from "@/server/db";
 import { unreadCount } from "@/server/notifications";
 import { getViewer } from "@/server/session";
+import { BellIcon } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -60,14 +61,14 @@ export async function SiteHeader() {
                 aria-label={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : "알림"}
                 className="hidden min-h-11 items-center gap-1 text-[15px] whitespace-nowrap text-ink no-underline md:inline-flex"
               >
-                <span aria-hidden="true">🔔</span>
+                <BellIcon />
                 {unread > 0 ? (
                   <span className="min-w-5 bg-signal px-1 text-center text-[12px] leading-5 font-semibold text-on-primary tabular-nums">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 ) : null}
               </Link>
-              {/* 좁은 화면은 머리글 한 줄을 지키려고 🔔 대신 회원 메뉴에 알림 수를 둔다 */}
+              {/* 좁은 화면은 머리글 한 줄을 지키려고 알림 아이콘 대신 회원 메뉴에 알림 수를 둔다 */}
               <UserMenu nickname={viewer.nickname} unread={unread} />
             </>
           ) : (

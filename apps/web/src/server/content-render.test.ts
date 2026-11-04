@@ -99,11 +99,11 @@ describe("자체 서버 영상 (수강생 전용)", () => {
         },
       ],
     ]);
-  it("학습 화면은 플레이어 자리, 미리보기는 🔒 카드, 운영자는 연결됨 안내", () => {
+  it("학습 화면은 플레이어 자리, 미리보기는 잠금 카드, 운영자는 연결됨 안내", () => {
     const learn = renderVideoSlots(html, hosted(true), "public", { origin: "http://x" });
     expect(learn).toContain('<div class="hosted-video" data-hosted-key="ch01_lab01"></div>');
     const preview = renderVideoSlots(html, hosted(true), "public");
-    expect(preview).toContain("🔒 수강생 전용 영상입니다");
+    expect(preview).toContain("수강생 전용 영상입니다");
     expect(preview).not.toContain("hosted-video");
     expect(renderVideoSlots(html, hosted(true), "admin")).toContain("자체 서버 영상 연결됨");
   });

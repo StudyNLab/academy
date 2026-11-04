@@ -7,7 +7,7 @@ import type { SecretMatch } from "@aionit/core";
 import { QNA_LIMITS, REPORT_REASONS } from "@aionit/core";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useId, useState } from "react";
-import { Button, Checkbox, Field, inputClass, MonoLabel, Notice } from "@aionit/ui";
+import { Button, Checkbox, Field, inputClass, MonoLabel, Notice, StatusDot } from "@aionit/ui";
 import { timeAgo, UserText } from "@/components/user-text";
 import { api, apiDelete, apiGet } from "@/lib/client-api";
 import type { QnaFilter, QuestionDetail, QuestionListItem } from "@/server/qna";
@@ -146,7 +146,7 @@ function QuestionList({
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 같은 질문 찾기"
+            placeholder="같은 질문 찾기"
             className={inputClass}
           />
         </label>
@@ -227,22 +227,18 @@ function QuestionRow({
   onOpen: (id: string) => void;
 }) {
   const locked = item.view === "locked";
-  const icon = item.pinned ? "📌" : locked ? "🔒" : item.status === "resolved" ? "✅" : "❓";
-  const label = item.pinned ? "고정" : locked ? "비밀글" : item.status === "resolved" ? "해결됨" : "미해결";
   const body = (
     <>
-      <span className="flex items-baseline gap-2">
-        <span aria-label={label} role="img">
-          {icon}
-        </span>
-        <span className={`min-w-0 flex-1 ${locked ? "text-ink-2" : "font-medium text-ink"}`}>
-          {item.pinned ? <span className="text-[13px] text-signal">강사 고정 · </span> : null}
-          {locked ? "비밀글입니다" : item.title}
-          {item.isSecret && !locked ? <span className="text-[13px] text-ink-2"> · 🔒 비밀글</span> : null}
-          {item.hidden ? <span className="text-[13px] text-danger"> · 숨김</span> : null}
-        </span>
+      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {item.pinned ? <Tag tone="signal">고정</Tag> : null}
+        {locked || item.isSecret ? <Tag>비밀글</Tag> : null}
+        {item.hidden ? <Tag tone="danger">숨김</Tag> : null}
+        {locked ? null : <QuestionStatus status={item.status} />}
       </span>
-      <span className="mt-1 flex flex-wrap gap-x-2 pl-7 text-[12px] text-ink-2">
+      <span className={`mt-1 block ${locked ? "text-ink-2" : "font-medium text-ink"}`}>
+        {locked ? "비밀글입니다" : item.title}
+      </span>
+      <span className="mt-1 flex flex-wrap gap-x-2 text-[12px] text-ink-2">
         {item.staffAnswered ? <span className="font-semibold text-signal">강사 답변</span> : null}
         <span>답변 {item.answerCount}</span>
         <span>{timeAgo(item.createdAt)}</span>
@@ -466,12 +462,10 @@ function QuestionView({ id, onChanged, onGone }: { id: string; onChanged: () => 
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {notice ? <Notice tone="done">{notice}</Notice> : null}
       <header className="flex flex-col gap-2">
-        <p className="m-0 flex flex-wrap gap-x-2 text-[12px] text-ink-2">
-          {question.pinned ? <span className="text-signal">📌 강사 고정</span> : null}
-          <span className={question.status === "resolved" ? "font-semibold text-done" : ""}>
-            {question.status === "resolved" ? "✅ 해결됨" : "❓ 미해결"}
-          </span>
-          {question.isSecret ? <span>🔒 비밀글</span> : null}
+        <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-2">
+          {question.pinned ? <Tag tone="signal">고정</Tag> : null}
+          {question.isSecret ? <Tag>비밀글</Tag> : null}
+          <QuestionStatus status={question.status} />
           <span>{question.chapterName ?? "이전 버전의 질문"}</span>
         </p>
         <h2 className="m-0 text-[19px] leading-[1.4] font-semibold tracking-[-0.02em]">{question.title}</h2>
@@ -581,6 +575,31 @@ function QuestionView({ id, onChanged, onGone }: { id: string; onChanged: () => 
         ) : null}
       </section>
     </article>
+  );
+}
+
+/** 해결됨 · 미해결 (색 + 글자) */
+function QuestionStatus({ status }: { status: "open" | "resolved" }) {
+  return (
+    <StatusDot tone={status === "resolved" ? "done" : "warn"}>
+      {status === "resolved" ? "해결됨" : "미해결"}
+    </StatusDot>
+  );
+}
+
+/** 고정 · 비밀글 · 숨김 같은 작은 글자 표 (Mono) */
+function Tag({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "signal" | "danger" }) {
+  const color = {
+    muted: "border-line-strong text-ink-2",
+    signal: "border-signal text-signal",
+    danger: "border-danger text-danger",
+  }[tone];
+  return (
+    <span
+      className={`inline-flex items-center border px-1.5 font-mono text-[11px] leading-[18px] tracking-[0.04em] ${color}`}
+    >
+      {children}
+    </span>
   );
 }
 
