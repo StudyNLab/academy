@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { Button, Checkbox, Field, inputClass, Notice } from "@aionit/ui";
-import { api } from "@/lib/client-api";
+import { api, apiDelete } from "@/lib/client-api";
 
 const FIELDS = [
   { value: "ai", label: "AI" },
@@ -234,5 +234,23 @@ export function EditCourseForm({
         저장
       </Button>
     </form>
+  );
+}
+
+export function InstructorRemove({ instructorId, name }: { instructorId: string; name: string }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      className="min-h-11 border-0 bg-transparent p-0 text-[14px] text-danger underline"
+      onClick={async () => {
+        if (!window.confirm(`강사 "${name}" 을(를) 지울까요?`)) return;
+        const result = await apiDelete(`/admin/instructors/${instructorId}`);
+        if (result.ok) router.refresh();
+        else window.alert(result.error.message);
+      }}
+    >
+      지우기
+    </button>
   );
 }

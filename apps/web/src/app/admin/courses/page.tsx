@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { asc, schema } from "@aionit/db";
+import { asc, count, eq, schema } from "@aionit/db";
 import { StatusDot } from "@aionit/ui";
 import { PageTitle } from "@/components/page-title";
 import { adminCourseList, FIELD_LABEL } from "@/server/catalog";
 import { getDb } from "@/server/db";
 import { requireStaff } from "@/server/session";
-import { NewCourseForm } from "./course-forms";
+import { InstructorRemove, NewCourseForm } from "./course-forms";
 
 export const metadata: Metadata = { title: "과정 관리" };
 
@@ -22,8 +22,14 @@ export default async function AdminCourses() {
   const db = getDb();
   const courses = await adminCourseList(db);
   const instructors = await db
-    .select({ id: schema.instructors.id, name: schema.instructors.displayName })
+    .select({
+      id: schema.instructors.id,
+      name: schema.instructors.displayName,
+      courses: count(schema.courses.id),
+    })
     .from(schema.instructors)
+    .leftJoin(schema.courses, eq(schema.courses.ownerInstructorId, schema.instructors.id))
+    .groupBy(schema.instructors.id)
     .orderBy(asc(schema.instructors.displayName));
 
   return (
@@ -68,6 +74,24 @@ export default async function AdminCourses() {
       <section className="mt-12 max-w-[640px] border-t border-line-strong pt-6">
         <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">새 과정 등록</h2>
         <NewCourseForm instructors={instructors} />
+      </section>
+      <section className="mt-12 max-w-[640px] border-t border-line-strong pt-6">
+        <h2 className="m-0 mb-2 text-[21px] font-semibold tracking-[-0.02em]">강사</h2>
+        <p className="m-0 mb-4 text-[13px] text-ink-2">
+          맡은 과정이 없는 강사만 지울 수 있습니다. 과정이 있으면 과정의 강사를 먼저 바꾸세요.
+        </p>
+        <ul className="m-0 list-none p-0 text-[14px]">
+          {instructors.map((i) => (
+            <li key={i.id} className="flex items-center justify-between gap-3 border-b border-line py-1">
+              <span>
+                {i.name}
+                <span className="ml-2 text-ink-2">{i.courses ? `과정 ${i.courses}개` : "맡은 과정 없음"}</span>
+              </span>
+              {i.courses === 0 ? <InstructorRemove instructorId={i.id} name={i.name} /> : null}
+            </li>
+          ))}
+          {instructors.length === 0 ? <li className="py-2.5 text-ink-2">없음</li> : null}
+        </ul>
       </section>
     </>
   );
