@@ -1,4 +1,4 @@
-// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리.
+// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계.
 import { CONTENT_QUEUE } from "@aionit/content";
 import { createDb, eq, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
@@ -6,6 +6,7 @@ import { createSmtpMailer, MAIL_QUEUE } from "@aionit/mail";
 import { createS3StoreFromEnv } from "@aionit/storage";
 import { PgBoss } from "pg-boss";
 import { processCourseVersion } from "./content";
+import { aggregateRecentDays } from "./learning";
 import { sendMailJob } from "./mail";
 import { purgeExpiredRecords } from "./retention";
 
@@ -72,6 +73,15 @@ await boss.work<{ versionId: string }>(CONTENT_QUEUE, async (jobs) => {
         .where(eq(schema.courseVersions.id, job.data.versionId));
     }
   }
+});
+
+// 하루 유효 학습 시간 집계: 매일 00:20 KST (어제 · 그제)
+const LEARNING_DAILY = "learning.daily-time";
+await boss.createQueue(LEARNING_DAILY);
+await boss.schedule(LEARNING_DAILY, "20 0 * * *", {}, { tz: "Asia/Seoul" });
+await boss.work(LEARNING_DAILY, async () => {
+  const result = await aggregateRecentDays(db);
+  console.warn(`[worker] 학습 시간 집계 ${JSON.stringify(result)}`);
 });
 
 // 보관 기간 정리: 매일 04:10 KST (DB 백업 03:30 뒤)

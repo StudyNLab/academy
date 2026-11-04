@@ -29,6 +29,13 @@
       "when": 1793742425727,
       "tag": "0003_furry_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793747564432,
+      "tag": "0004_faithful_crystal",
+      "breakpoints": true
     }
   ]
 }

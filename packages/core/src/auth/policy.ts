@@ -36,6 +36,8 @@ export const RETENTION = {
   loginLogsPrivilegedMs: 730 * DAY,
   auditLogsMs: 730 * DAY,
   piiAccessLogsMs: 730 * DAY,
+  /** 학습 신호 원자료 (하루 집계는 learning_time_daily 에 남는다) */
+  learningHeartbeatsMs: 90 * DAY,
 } as const;
 
 export interface LockoutPolicy {

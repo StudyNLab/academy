@@ -22,6 +22,10 @@ export async function purgeExpiredRecords(db: Db, now = new Date()) {
     const nowIso = now.toISOString();
     const sessions = await tx.execute(sql`delete from sessions where expires_at < ${nowIso}`);
     const verifications = await tx.execute(sql`delete from verifications where expires_at < ${nowIso}`);
+    // 학습 신호 원자료 (하루 집계는 learning_time_daily 에 남는다)
+    const heartbeats = await tx.execute(
+      sql`delete from learning_heartbeats where at < ${ago(RETENTION.learningHeartbeatsMs, now)}`,
+    );
     // 횟수 제한 카운터는 하루 지나면 의미가 없다
     const rateLimits = await tx.execute(
       sql`delete from rate_limits where last_request < ${now.getTime() - 86_400_000}`,
@@ -33,6 +37,7 @@ export async function purgeExpiredRecords(db: Db, now = new Date()) {
       sessions: sessions.count,
       verifications: verifications.count,
       rateLimits: rateLimits.count,
+      learningHeartbeats: heartbeats.count,
     };
   });
 }

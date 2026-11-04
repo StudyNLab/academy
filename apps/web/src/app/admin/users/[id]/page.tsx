@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { StatusDot } from "@aionit/ui";
 import { PageTitle } from "@/components/page-title";
 import { userDetail } from "@/server/admin-queries";
+import { adminCourseList } from "@/server/catalog";
 import { getDb } from "@/server/db";
+import { entitlementsForAdmin } from "@/server/entitlements";
 import { recordPiiAccess } from "@/server/records";
 import { requireStaff } from "@/server/session";
 import { LOGIN_RESULT_LABEL, ROLE_LABEL, STATUS_LABEL, STATUS_TONE } from "../../labels";
-import { RoleForm, StatusForm } from "./admin-user-forms";
+import { EntitlementActions, GrantEntitlementForm, RoleForm, StatusForm } from "./admin-user-forms";
 
 export const metadata: Metadata = { title: "회원 상세" };
 
@@ -17,6 +19,16 @@ const time = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
   timeStyle: "short",
 });
+const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium" });
+/** 끝나는 시각(다음 날 0시 KST) ➔ 마지막 이용일 YYYY-MM-DD */
+const lastDay = (endsAt: Date) => new Date(endsAt.getTime() + 9 * 3600_000 - 1).toISOString().slice(0, 10);
+const SOURCE_LABEL: Record<string, string> = {
+  purchase: "구매",
+  subscription: "구독",
+  admin_grant: "운영자 발급",
+  free: "무료",
+  extension: "연장권",
+};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function AdminUserDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +39,8 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
   const detail = await userDetail(db, id);
   if (!detail) notFound();
   const { user, accounts, logins, roleHistory } = detail;
+  const [entitlements, courses] = await Promise.all([entitlementsForAdmin(db, id), adminCourseList(db)]);
+  const now = new Date();
   // 운영자가 회원 개인정보를 봤다는 기록 (개인정보 안전성 확보조치 기준)
   await recordPiiAccess(db, {
     actorId: viewer.userId,
@@ -67,6 +81,45 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
         <div className="mt-10 grid gap-10 md:grid-cols-2">
           <RoleForm userId={user.id} roles={user.roles} self={user.id === viewer.userId} />
           <StatusForm userId={user.id} status={user.status} self={user.id === viewer.userId} />
+        </div>
+      ) : null}
+
+      <h2 className="mt-12 mb-3 text-[19px] font-semibold">수강권</h2>
+      <ul className="m-0 flex list-none flex-col p-0 text-[14px]">
+        {entitlements.map(({ entitlement: e, courseTitle }) => {
+          const state = e.revokedAt
+            ? `회수 (${e.revokeReason ?? ""})`
+            : e.endsAt && e.endsAt <= now
+              ? "끝남"
+              : e.startsAt > now
+                ? "시작 전"
+                : "이용 중";
+          return (
+            <li key={e.id} className="border-b border-line py-3">
+              <strong className="font-semibold">
+                {e.scope === "course" ? courseTitle : "구독 포함 과정 전체"}
+              </strong>
+              <span className="text-ink-2">
+                {" "}
+                · {SOURCE_LABEL[e.sourceType]} · {day.format(e.startsAt)} ~{" "}
+                {e.endsAt ? day.format(new Date(e.endsAt.getTime() - 1)) : "무제한"} · {state}
+                {e.firstUsedAt ? ` · 첫 이용 ${day.format(e.firstUsedAt)}` : " · 아직 이용 안 함"}
+                {e.note ? ` — ${e.note}` : ""}
+              </span>
+              {!e.revokedAt && user.status !== "withdrawn" ? (
+                <EntitlementActions id={e.id} endsOn={e.endsAt ? lastDay(e.endsAt) : null} />
+              ) : null}
+            </li>
+          );
+        })}
+        {entitlements.length === 0 ? <li className="py-2.5 text-ink-2">없음</li> : null}
+      </ul>
+      {user.status !== "withdrawn" && courses.length > 0 ? (
+        <div className="mt-6 max-w-[640px]">
+          <GrantEntitlementForm
+            userId={user.id}
+            courses={courses.map((c) => ({ id: c.id, title: c.title }))}
+          />
         </div>
       ) : null}
 

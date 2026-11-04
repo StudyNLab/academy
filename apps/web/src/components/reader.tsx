@@ -5,10 +5,15 @@ import { useEffect, useRef, useState } from "react";
 /**
  * 교재 본문 표시 + 동작 (교재 도구 academy.js 를 옮김): 코드 복사, 그림 크게 보기.
  * html 은 서버에서 허용 목록으로 정리한 본문이다 (packages/content sanitize).
+ * onMount: 학습 화면이 본문 안 자리(스스로 확인 · 영상)를 찾아 쓰도록 본문 요소를 넘긴다.
  */
-export function Reader({ html }: { html: string }) {
+export function Reader({ html, onMount }: { html: string; onMount?: (root: HTMLDivElement) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState<{ src: string; alt: string } | null>(null);
+
+  useEffect(() => {
+    if (ref.current) onMount?.(ref.current);
+  }, [onMount]);
 
   useEffect(() => {
     const root = ref.current;

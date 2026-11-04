@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MonoLabel, Notice } from "@aionit/ui";
+import { buttonClass, MonoLabel, Notice } from "@aionit/ui";
 import { Reader } from "@/components/reader";
 import { previewChapter } from "@/server/catalog";
 import { getDb } from "@/server/db";
@@ -20,6 +20,8 @@ export default async function PreviewPage({ params }: { params: Params }) {
   const data = await previewChapter(getDb(), slug, key);
   if (!data) notFound();
   const { detail, chapter, html, partial, toc } = data;
+  const shown = new Set(toc.map((t) => t.id));
+  const locked = partial ? chapter.toc.filter((t) => t.level === 1 && !shown.has(t.id)) : [];
   return (
     <div className="mx-auto grid max-w-[1296px] gap-12 px-5 pt-12 md:px-14 lg:grid-cols-[240px_1fr]">
       <nav aria-label="목차" className="hidden lg:block">
@@ -48,6 +50,25 @@ export default async function PreviewPage({ params }: { params: Params }) {
         <div className="mt-6">
           <Reader html={html} />
         </div>
+        {locked.length > 0 ? (
+          <section
+            aria-label="수강하면 볼 수 있는 Section"
+            className="mx-auto mt-12 max-w-[720px] border-t border-line-strong pt-6"
+          >
+            <MonoLabel className="text-xs text-ink-2">이 챕터의 나머지</MonoLabel>
+            <ul className="mt-3 mb-6 flex list-none flex-col p-0 text-[16px]">
+              {locked.map((t) => (
+                <li key={t.id} className="border-b border-line py-3 text-ink-2">
+                  🔒 {t.title}
+                </li>
+              ))}
+            </ul>
+            <p className="m-0 mb-4 text-[15px]">수강하면 볼 수 있습니다.</p>
+            <Link href={`/courses/${detail.course.slug}`} className={buttonClass("primary", "md")}>
+              수강 안내 보기
+            </Link>
+          </section>
+        ) : null}
       </article>
     </div>
   );

@@ -2,3 +2,4 @@
 export * from "./system";
 export * from "./auth";
 export * from "./content";
+export * from "./learning";

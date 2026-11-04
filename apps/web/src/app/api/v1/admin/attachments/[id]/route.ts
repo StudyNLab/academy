@@ -5,7 +5,7 @@ import { removeAttachment } from "@/server/courses";
 import { getDb } from "@/server/db";
 import { getStore } from "@/server/storage";
 
-// 첨부 자료 받기 (지금은 운영자만. 수강생 받기는 수강권 판단과 함께 M3) · 지우기
+// 운영자: 첨부 자료 받기 (기록 없이) · 지우기. 수강생은 /api/v1/learn/attachments/[id]
 export const GET = route<{ params: Promise<{ id: string }> }>(async (request, { params }) => {
   await requireApiStaff(request, "operator");
   const [row] = await getDb()
