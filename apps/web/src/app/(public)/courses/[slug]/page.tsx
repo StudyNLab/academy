@@ -6,6 +6,8 @@ import { SimpleMarkdown } from "@/components/simple-markdown";
 import { youtubeEmbed } from "@/server/content-render";
 import { courseDetail, FIELD_LABEL } from "@/server/catalog";
 import { getDb } from "@/server/db";
+import { canLearn, viewAccess } from "@/server/entitlements";
+import { getViewer } from "@/server/session";
 
 type Params = Promise<{ slug: string }>;
 
@@ -31,6 +33,8 @@ export default async function CoursePage({ params }: { params: Params }) {
   const detail = await courseDetail(getDb(), (await params).slug);
   if (!detail) notFound();
   const { course, instructor, chapters } = detail;
+  const access = await viewAccess(getDb(), await getViewer(), course);
+  const learning = canLearn(access);
   const videos = chapters.flatMap((c) => c.videos);
   const freeVideos = videos.filter((v) => v.source === "youtube");
   const labs = chapters.reduce((n, c) => n + c.labs.length, 0);
@@ -167,21 +171,41 @@ export default async function CoursePage({ params }: { params: Params }) {
 
       {/* 구매 카드 자리. 가격 · 구매(M5), 구독(M6), 수강 중 상태(M3)를 이 자리에 넣는다 */}
       <aside className="lg:sticky lg:top-6 lg:self-start">
-        <div className="flex flex-col gap-4 border-t-2 border-line-strong bg-surface p-6 shadow-float">
-          <MonoLabel className="text-xs text-ink-2">수강 안내</MonoLabel>
-          <p className="m-0 text-[22px] font-semibold">곧 판매를 시작합니다</p>
-          <p className="m-0 text-[14px] leading-[1.7] text-ink-2">
-            {course.inSubscription ? "구독하면 이 강의를 들을 수 있습니다." : "프리미엄 강의 (구독자 할인)"}
-          </p>
-          {firstPreview ? (
-            <Link
-              href={`/courses/${course.slug}/preview/${firstPreview.key}`}
-              className={buttonClass("primary", "lg", "w-full")}
-            >
-              무료 미리보기
+        {learning ? (
+          <div className="flex flex-col gap-4 border-t-2 border-done bg-surface p-6 shadow-float">
+            <MonoLabel className="text-xs text-done">수강 중</MonoLabel>
+            <p className="m-0 text-[22px] font-semibold">
+              {access.kind === "staff" ? "운영자 · 강사 보기" : "이 강의를 수강하고 있습니다"}
+            </p>
+            {access.kind === "learner" && access.access.ok && access.access.entitlement.endsAt ? (
+              <p className="m-0 text-[14px] text-ink-2">
+                {new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "long" }).format(
+                  new Date(access.access.entitlement.endsAt.getTime() - 1),
+                )}
+                까지
+              </p>
+            ) : null}
+            <Link href={`/learn/${course.slug}`} className={buttonClass("primary", "lg", "w-full")}>
+              학습하기
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 border-t-2 border-line-strong bg-surface p-6 shadow-float">
+            <MonoLabel className="text-xs text-ink-2">수강 안내</MonoLabel>
+            <p className="m-0 text-[22px] font-semibold">곧 판매를 시작합니다</p>
+            <p className="m-0 text-[14px] leading-[1.7] text-ink-2">
+              {course.inSubscription ? "구독하면 이 강의를 들을 수 있습니다." : "프리미엄 강의 (구독자 할인)"}
+            </p>
+            {firstPreview ? (
+              <Link
+                href={`/courses/${course.slug}/preview/${firstPreview.key}`}
+                className={buttonClass("primary", "lg", "w-full")}
+              >
+                무료 미리보기
+              </Link>
+            ) : null}
+          </div>
+        )}
       </aside>
     </div>
   );

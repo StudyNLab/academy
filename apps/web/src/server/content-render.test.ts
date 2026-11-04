@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { keepSections, renderVideoSlots, withMainVideo, youtubeEmbed } from "./content-render";
+import {
+  insertSelfCheckSlots,
+  keepSections,
+  renderVideoSlots,
+  textLength,
+  withMainVideo,
+  youtubeEmbed,
+} from "./content-render";
 import { parseYoutubeId } from "./courses";
 
 const html = `<header class="cover"><h1>제목</h1></header>
@@ -75,5 +82,30 @@ describe("withMainVideo (챕터 영상은 맨 위)", () => {
     const none = { ...main, source: "none" as const, youtubeVideoId: null };
     expect(withMainVideo("<p>본문</p>", none, "public")).toBe("<p>본문</p>");
     expect(withMainVideo("<p>본문</p>", none, "admin")).toContain("영상 연결 필요");
+  });
+});
+
+describe("학습 화면용", () => {
+  it("실습 Section 끝(안쪽 section 이 있어도)에 스스로 확인 자리를 넣는다", () => {
+    const body = `<section id="sec-1"><p>a</p></section><section id="sec-2"><section id="sec-2-1"><p>b</p></section><p>c</p></section>`;
+    expect(insertSelfCheckSlots(body, ["sec-2"])).toBe(
+      `<section id="sec-1"><p>a</p></section><section id="sec-2"><section id="sec-2-1"><p>b</p></section><p>c</p><div class="self-check-slot" data-section="sec-2"></div></section>`,
+    );
+    expect(insertSelfCheckSlots(body, [])).toBe(body);
+  });
+
+  it("영상에 시청 기록 API · 이어 보기 위치를 붙인다", () => {
+    const embed = youtubeEmbed("abc", "제목", {
+      origin: "https://aionit.kr",
+      key: "ch01_main",
+      startAt: { ch01_main: 75.6 },
+    });
+    expect(embed).toContain('data-video-key="ch01_main"');
+    expect(embed).toContain("enablejsapi=1&origin=https%3A%2F%2Faionit.kr&start=75");
+    expect(youtubeEmbed("abc", "제목")).not.toContain("enablejsapi");
+  });
+
+  it("글 분량은 태그 · 줄번호 · 공백을 뺀다", () => {
+    expect(textLength('<p>가 나</p><pre><span class="ln">12</span>code</pre>')).toBe(6);
   });
 });

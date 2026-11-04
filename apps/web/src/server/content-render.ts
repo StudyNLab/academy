@@ -10,9 +10,21 @@ export interface SlotView {
 const escapeHtml = (value: string) =>
   value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
+/** 학습 화면: 시청 기록을 남기도록 플레이어 API 를 켠다 (enablejsapi, origin = 우리 사이트) */
+export interface TrackOptions {
+  origin: string;
+  /** 영상 key ➔ 이어서 볼 위치(초) */
+  startAt?: Record<string, number>;
+}
+
 /** 유튜브 플레이어 (쿠키를 덜 쓰는 youtube-nocookie 주소) */
-export function youtubeEmbed(videoId: string, title: string): string {
-  return `<div class="video-embed"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+export function youtubeEmbed(videoId: string, title: string, track?: TrackOptions & { key: string }): string {
+  const start = track?.startAt?.[track.key];
+  const query = track
+    ? `rel=0&enablejsapi=1&origin=${encodeURIComponent(track.origin)}${start ? `&start=${Math.floor(start)}` : ""}`
+    : "rel=0";
+  const data = track ? ` data-video-key="${escapeHtml(track.key)}"` : "";
+  return `<div class="video-embed"><iframe${data} src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${query}" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
 }
 
 const SLOT = /<div class="video-slot"([^>]*)>([\s\S]*?)<\/div>/g;
@@ -25,13 +37,14 @@ export function renderVideoSlots(
   html: string,
   slots: Map<string, SlotView>,
   mode: "public" | "admin",
+  track?: TrackOptions,
 ): string {
   return html.replace(SLOT, (_whole, attrs: string) => {
     const key = attrs.match(/data-video="([a-z0-9_]+)"/)?.[1] ?? "";
     const slot = slots.get(key);
     const title = slot?.title ?? key;
     if (slot?.source === "youtube" && slot.youtubeVideoId) {
-      return `<figure class="video-block">${youtubeEmbed(slot.youtubeVideoId, title)}<figcaption>${escapeHtml(title)} · 무료 공개</figcaption></figure>`;
+      return `<figure class="video-block" id="video-${escapeHtml(key)}">${youtubeEmbed(slot.youtubeVideoId, title, track && { ...track, key })}<figcaption>${escapeHtml(title)} · 무료 공개</figcaption></figure>`;
     }
     if (mode === "admin") {
       return `<p class="video-missing">영상 연결 필요 · <code>${escapeHtml(key)}</code> ${escapeHtml(title)}</p>`;
@@ -85,13 +98,53 @@ export function keepSections(html: string, sectionIds: string[]): string {
  * 챕터 영상(main)은 본문 맨 위에 둔다 (Q1: 챕터 영상 ➔ 교재). 본문 안에는 자리가 없고 manifest 에만 있다.
  * 연결 안 됐으면 수강생에게는 없음, 운영자에게는 "영상 연결 필요".
  */
-export function withMainVideo(html: string, main: SlotView | undefined, mode: "public" | "admin"): string {
+export function withMainVideo(
+  html: string,
+  main: SlotView | undefined,
+  mode: "public" | "admin",
+  track?: TrackOptions,
+): string {
   if (!main) return html;
   if (main.source === "youtube" && main.youtubeVideoId) {
-    return `<figure class="video-block">${youtubeEmbed(main.youtubeVideoId, main.title)}<figcaption>${escapeHtml(main.title)} · 무료 공개</figcaption></figure>\n${html}`;
+    return `<figure class="video-block" id="video-${escapeHtml(main.key)}">${youtubeEmbed(main.youtubeVideoId, main.title, track && { ...track, key: main.key })}<figcaption>${escapeHtml(main.title)} · 무료 공개</figcaption></figure>\n${html}`;
   }
   if (mode === "admin") {
     return `<p class="video-missing">영상 연결 필요 · <code>${escapeHtml(main.key)}</code> ${escapeHtml(main.title)} (챕터 영상)</p>\n${html}`;
   }
   return html;
+}
+
+/**
+ * 실습 Section 끝에 "스스로 확인" 자리를 넣는다. 화면(Reader)이 이 자리에 체크 목록을 그린다.
+ * 정리된 HTML 이라 section 열고 닫기가 짝이 맞는다.
+ */
+export function insertSelfCheckSlots(html: string, sectionIds: readonly string[]): string {
+  if (sectionIds.length === 0) return html;
+  const wanted = new Set(sectionIds);
+  const tag = /<(\/?)section\b([^>]*)>/g;
+  const stack: (string | null)[] = [];
+  const inserts: { at: number; id: string }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = tag.exec(html))) {
+    if (match[1] !== "/") {
+      stack.push(match[2]!.match(/\bid="([^"]+)"/)?.[1] ?? null);
+    } else {
+      const id = stack.pop();
+      if (id && wanted.has(id)) inserts.push({ at: match.index, id });
+    }
+  }
+  let out = html;
+  for (const { at, id } of inserts.sort((a, b) => b.at - a.at)) {
+    out = `${out.slice(0, at)}<div class="self-check-slot" data-section="${escapeHtml(id)}"></div>${out.slice(at)}`;
+  }
+  return out;
+}
+
+/** 글 분량 (교재 완료 최소 시간 계산용): 태그 · 코드 줄번호를 뺀 글자 수 */
+export function textLength(html: string): number {
+  return html
+    .replace(/<span class="ln"[^>]*>[^<]*<\/span>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&[a-z#0-9]+;/gi, " ")
+    .replace(/\s+/g, "").length;
 }
