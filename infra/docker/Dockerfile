@@ -24,6 +24,8 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY --from=web-build --chown=node:node /repo/apps/web/.next/standalone ./
 COPY --from=web-build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
+# public (사진 · 아이콘) 은 standalone 에 들어가지 않으므로 따로 복사한다
+COPY --from=web-build --chown=node:node /repo/apps/web/public ./apps/web/public
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --retries=4 \
