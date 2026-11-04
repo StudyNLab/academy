@@ -31,7 +31,8 @@ function useSubmit() {
 
 export function NewProductForm({ courses }: { courses: { id: string; title: string }[] }) {
   const { error, busy, send } = useSubmit();
-  const [type, setType] = useState<"course" | "extension">("course");
+  const [type, setType] = useState<"course" | "extension" | "subscription">("course");
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [name, setName] = useState("");
   const [days, setDays] = useState("365");
@@ -41,7 +42,9 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
     event.preventDefault();
     void send(
       "/admin/products",
-      { type, courseId, name, accessDays: days ? Number(days) : null, amount: Number(amount) },
+      type === "subscription"
+        ? { type, courseId: null, billingInterval, name, accessDays: null, amount: Number(amount) }
+        : { type, courseId, name, accessDays: days ? Number(days) : null, amount: Number(amount) },
       () => {
         setName("");
         setAmount("");
@@ -59,7 +62,7 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
           <select
             value={type}
             onChange={(e) => {
-              const next = e.target.value as "course" | "extension";
+              const next = e.target.value as "course" | "extension" | "subscription";
               setType(next);
               setDays(next === "extension" ? "90" : "365");
             }}
@@ -67,18 +70,33 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
           >
             <option value="course">단건 강의</option>
             <option value="extension">연장권</option>
+            <option value="subscription">구독 요금제</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-semibold">
-          과정
-          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={select}>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        {type === "subscription" ? (
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
+            결제 주기
+            <select
+              value={billingInterval}
+              onChange={(e) => setBillingInterval(e.target.value as "month" | "year")}
+              className={select}
+            >
+              <option value="month">월간</option>
+              <option value="year">연간</option>
+            </select>
+          </label>
+        ) : (
+          <label className="flex flex-col gap-1.5 text-sm font-semibold">
+            과정
+            <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={select}>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <Field
         label="상품 이름"
@@ -88,13 +106,17 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
         required
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label={type === "extension" ? "늘리는 날수" : "수강 기간 (일, 비우면 무제한)"}
-          inputMode="numeric"
-          value={days}
-          onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
-          required={type === "extension"}
-        />
+        {type === "subscription" ? (
+          <p className="m-0 self-end text-[13px] text-ink-2">구독 포함 강의 전체 · 결제일마다 자동결제</p>
+        ) : (
+          <Field
+            label={type === "extension" ? "늘리는 날수" : "수강 기간 (일, 비우면 무제한)"}
+            inputMode="numeric"
+            value={days}
+            onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
+            required={type === "extension"}
+          />
+        )}
         <Field
           label="가격 (원, 부가세 포함)"
           inputMode="numeric"
@@ -106,7 +128,7 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
       <Button
         type="submit"
         variant="outline"
-        disabled={busy || !courseId || !name.trim() || !amount}
+        disabled={busy || (type !== "subscription" && !courseId) || !name.trim() || !amount}
         className="self-start"
       >
         상품 만들기

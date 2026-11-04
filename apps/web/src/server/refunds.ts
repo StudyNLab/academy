@@ -1,14 +1,18 @@
 // 환불 (docs/기술설계.md 6.3): 수강생 요청(M-04) ➔ 운영자 승인 · 거절(AD-10) ➔ 토스 취소(부분 취소) ➔ 수강권 끝 ➔ 메일.
 // 계산은 packages/core calculateRefund 하나만 쓰고, 근거를 refunds.calculation 에 그대로 남긴다.
-import type { RefundCalculation, RefundInput } from "@aionit/core";
-import { calculateRefund, revertedEnd } from "@aionit/core";
+import type {
+  RefundCalculation as CourseRefundCalculation,
+  RefundInput,
+  SubscriptionRefundCalculation,
+} from "@aionit/core";
+import { calculateRefund, calculateSubscriptionRefund, revertedEnd } from "@aionit/core";
 import type { Db } from "@aionit/db";
-import { and, asc, desc, eq, inArray, isNotNull, schema } from "@aionit/db";
+import { and, asc, desc, eq, gte, inArray, isNotNull, schema } from "@aionit/db";
 import type { CommerceDeps } from "./commerce";
 import { CommerceError, finishPaid } from "./commerce";
 import { writeAudit } from "./records";
-import type { PaymentGateway, TossPayment } from "./toss";
-import { GatewayError, trimPayment } from "./toss";
+import type { PaymentGateway, TossPayment } from "@aionit/payments";
+import { endByRefund, GatewayError, LIVE_STATUSES, trimPayment } from "@aionit/payments";
 import type { Viewer } from "./viewer";
 
 export const REFUND_REASONS = [
@@ -21,6 +25,70 @@ export const REFUND_REASONS = [
 
 type Item = typeof schema.orderItems.$inferSelect;
 type Order = typeof schema.orders.$inferSelect;
+
+/** 강의 · 연장권(calculateRefund) 과 구독 중도 해지(calculateSubscriptionRefund) */
+export type RefundCalculation = CourseRefundCalculation | SubscriptionRefundCalculation;
+
+/** 구독 회차: 지금 이용 중인 구독의 마지막으로 결제한 회차만 즉시 해지 · 환불할 수 있다 */
+async function subscriptionRefund(db: Pick<Db, "select">, order: Order, now: Date) {
+  const [row] = await db
+    .select({ cycle: schema.subscriptionCycles, sub: schema.subscriptions })
+    .from(schema.subscriptionCycles)
+    .innerJoin(schema.subscriptions, eq(schema.subscriptions.id, schema.subscriptionCycles.subscriptionId))
+    .where(eq(schema.subscriptionCycles.orderId, order.id));
+  if (
+    !row ||
+    !order.paidAt ||
+    row.cycle.status !== "paid" ||
+    row.cycle.cycleNo !== row.sub.currentCycle ||
+    !(LIVE_STATUSES as readonly string[]).includes(row.sub.status)
+  )
+    return null;
+  // 이번 회차에 학습했나 (영상 · 교재 학습 신호, 첨부 받기)
+  const [beat] = await db
+    .select({ id: schema.learningHeartbeats.id })
+    .from(schema.learningHeartbeats)
+    .where(
+      and(
+        eq(schema.learningHeartbeats.userId, order.userId),
+        gte(schema.learningHeartbeats.at, row.cycle.periodStart),
+      ),
+    )
+    .limit(1);
+  const [download] = beat
+    ? []
+    : await db
+        .select({ id: schema.attachmentDownloads.id })
+        .from(schema.attachmentDownloads)
+        .where(
+          and(
+            eq(schema.attachmentDownloads.userId, order.userId),
+            gte(schema.attachmentDownloads.at, row.cycle.periodStart),
+          ),
+        )
+        .limit(1);
+  return calculateSubscriptionRefund(
+    {
+      paidAmount: row.cycle.amount,
+      paidAt: order.paidAt,
+      periodStart: row.cycle.periodStart,
+      periodEnd: row.cycle.periodEnd,
+      usedInCycle: !!beat || !!download,
+    },
+    now,
+  );
+}
+
+/** 이 주문 항목의 지금 환불 계산. 구독 회차가 지난 회차면 null (환불 대상 아님) */
+async function computeRefund(
+  db: Pick<Db, "select">,
+  order: Order,
+  item: Item,
+  now: Date,
+): Promise<RefundCalculation | null> {
+  if (item.productType === "subscription") return subscriptionRefund(db, order, now);
+  return calculateRefund(await refundInput(db, order, item), now);
+}
 
 /** 이 주문 항목의 환불 계산에 필요한 값 (진도 · 첫 이용 · 연장 기간) */
 async function refundInput(db: Pick<Db, "select">, order: Order, item: Item): Promise<RefundInput> {
@@ -42,7 +110,7 @@ async function refundInput(db: Pick<Db, "select">, order: Order, item: Item): Pr
   const [course] = await db
     .select({ versionId: schema.courses.publishedVersionId })
     .from(schema.courses)
-    .where(eq(schema.courses.id, item.courseId));
+    .where(eq(schema.courses.id, item.courseId!));
   const keys = course?.versionId
     ? (
         await db
@@ -58,7 +126,7 @@ async function refundInput(db: Pick<Db, "select">, order: Order, item: Item): Pr
         .where(
           and(
             eq(schema.chapterProgress.userId, order.userId),
-            eq(schema.chapterProgress.courseId, item.courseId),
+            eq(schema.chapterProgress.courseId, item.courseId!),
             inArray(schema.chapterProgress.chapterKey, keys),
             isNotNull(schema.chapterProgress.completedAt),
           ),
@@ -80,7 +148,7 @@ async function loadItem(db: Pick<Db, "select">, itemId: string) {
     .select({ item: schema.orderItems, order: schema.orders, course: schema.courses })
     .from(schema.orderItems)
     .innerJoin(schema.orders, eq(schema.orders.id, schema.orderItems.orderId))
-    .innerJoin(schema.courses, eq(schema.courses.id, schema.orderItems.courseId))
+    .leftJoin(schema.courses, eq(schema.courses.id, schema.orderItems.courseId))
     .where(eq(schema.orderItems.id, itemId));
   return row ?? null;
 }
@@ -109,17 +177,24 @@ export async function refundQuote(db: Db, userId: string, itemId: string, now = 
       message: "이미 환불을 요청했습니다. 처리되면 메일로 알려 드립니다.",
     };
   } else {
-    const calculation = calculateRefund(await refundInput(db, row.order, row.item), now);
-    quote =
-      calculation.amount > 0
+    const calculation = await computeRefund(db, row.order, row.item, now);
+    quote = !calculation
+      ? {
+          ok: false,
+          code: "NOT_REFUNDABLE",
+          message: "지난 구독 회차는 환불할 수 없습니다. 지금 회차에서 요청해 주세요.",
+        }
+      : calculation.amount > 0
         ? { ok: true, calculation }
         : {
             ok: false,
             code: "NO_REFUND",
             message:
-              calculation.basis === "progress"
-                ? `진도율 ${calculation.progressPercent}% 로 1/2 이상이라 환불 규정상 환불되지 않습니다.`
-                : `수강 기간의 ${calculation.elapsedPercent}% 가 지나 환불 규정상 환불되지 않습니다.`,
+              calculation.kind === "subscription"
+                ? `남은 기간 일할 금액이 위약금(10%)보다 적어 환불 규정상 환불되지 않습니다. 해지 예약을 하면 이번 회차 끝까지 이용할 수 있습니다.`
+                : calculation.basis === "progress"
+                  ? `진도율 ${calculation.progressPercent}% 로 1/2 이상이라 환불 규정상 환불되지 않습니다.`
+                  : `수강 기간의 ${calculation.elapsedPercent}% 가 지나 환불 규정상 환불되지 않습니다.`,
             calculation,
           };
   }
@@ -167,6 +242,17 @@ export async function withdrawRefundRequest(db: Db, viewer: Viewer, refundId: st
   if (!row) throw new CommerceError(404, "NOT_FOUND", "거둘 수 있는 환불 요청이 없습니다.");
 }
 
+/** 결제한 키 묶음의 어댑터 (토스는 그 키 묶음으로만 조회 · 취소된다) */
+function gatewayFor(
+  deps: Pick<CommerceDeps, "gateway" | "billingGateway">,
+  keySet: "widget" | "billing",
+): PaymentGateway {
+  if (keySet === "widget") return deps.gateway;
+  if (!deps.billingGateway)
+    throw new CommerceError(503, "BILLING_DISABLED", "자동결제 키가 설정되지 않았습니다.");
+  return deps.billingGateway;
+}
+
 // ---- 운영자 (AD-10) ----
 
 export async function adminRefunds(db: Db, status: "open" | "all" = "open") {
@@ -204,8 +290,7 @@ export async function adminRefundDetail(db: Db, refundId: string, now = new Date
     .select({ nickname: schema.users.nickname, id: schema.users.id })
     .from(schema.users)
     .where(eq(schema.users.id, refund.userId));
-  const current =
-    refund.status === "requested" ? calculateRefund(await refundInput(db, row.order, row.item), now) : null;
+  const current = refund.status === "requested" ? await computeRefund(db, row.order, row.item, now) : null;
   return { refund, ...row, payment: payment ?? null, user: user ?? null, current };
 }
 
@@ -224,15 +309,17 @@ export async function approveRefund(
   },
   now = new Date(),
 ): Promise<void> {
-  const { db, gateway } = deps;
+  const { db } = deps;
   const detail = await adminRefundDetail(db, input.refundId, now);
   if (!detail) throw new CommerceError(404, "NOT_FOUND", "환불 요청을 찾을 수 없습니다.");
   if (detail.refund.status !== "requested")
     throw new CommerceError(409, "ALREADY_DECIDED", "이미 처리한 환불 요청입니다.");
   if (!detail.payment) throw new CommerceError(400, "NO_PAYMENT", "결제 기록이 없습니다.");
+  const gateway = gatewayFor(deps, detail.payment.keySet);
   // 금액 기준은 요청한 날의 계산 (처리가 늦어져 수강생이 손해 보지 않게). 지금 다시 계산한 값은 근거로 함께 남긴다
   const requested = detail.refund.calculation as RefundCalculation;
-  const calc = detail.current!;
+  // 지금 다시 계산할 수 없으면(구독이 그 사이 다음 회차로 넘어감 등) 요청 때 계산을 근거로 남긴다
+  const calc = detail.current ?? requested;
   const balance = detail.payment.amount - detail.payment.canceledAmount;
   const amount = input.amount ?? detail.refund.requestedAmount;
   if (!Number.isSafeInteger(amount) || amount < 1 || amount > Math.min(balance, detail.item.paidAmount))
@@ -342,6 +429,11 @@ async function applyCancel(
       .select()
       .from(schema.orderItems)
       .where(eq(schema.orderItems.id, refund!.orderItemId));
+    if (item?.productType === "subscription") {
+      // 구독 즉시 해지 · 환불: 구독을 바로 끝내고 자동결제를 멈춘다
+      await endByRefund(tx, item.orderId, now);
+      return;
+    }
     if (!item?.entitlementId) return;
     if (item.productType === "extension") {
       const [ent] = await tx
@@ -411,12 +503,12 @@ export async function rejectRefund(
  *   - 결제창에서 끝나지 않음 (ABORTED · EXPIRED) ➔ 실패
  */
 export async function handleTossWebhook(
-  deps: Pick<CommerceDeps, "db" | "gateway">,
+  deps: Pick<CommerceDeps, "db" | "gateway" | "billingGateway">,
   body: { eventType: string; paymentKey: string | null },
   now = new Date(),
 ): Promise<string> {
-  const { db, gateway } = deps;
-  const result = await reconcile(db, gateway, body, now).catch((error: unknown) => {
+  const { db } = deps;
+  const result = await reconcile(db, deps, body, now).catch((error: unknown) => {
     console.error("[webhook] 처리 실패", error);
     return `error: ${error instanceof Error ? error.message : String(error)}`.slice(0, 300);
   });
@@ -428,7 +520,7 @@ export async function handleTossWebhook(
 
 async function reconcile(
   db: Db,
-  gateway: PaymentGateway,
+  deps: Pick<CommerceDeps, "gateway" | "billingGateway">,
   body: { eventType: string; paymentKey: string | null },
   now: Date,
 ): Promise<string> {
@@ -438,7 +530,7 @@ async function reconcile(
     .from(schema.payments)
     .where(eq(schema.payments.providerPaymentKey, body.paymentKey));
   if (!ours) return "unknown payment";
-  const payment = await gateway.get(body.paymentKey);
+  const payment = await gatewayFor(deps, ours.keySet).get(body.paymentKey);
   if (payment.orderId !== ours.orderId) return "order mismatch";
 
   if (ours.status === "ready") {

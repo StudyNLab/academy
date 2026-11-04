@@ -37,13 +37,30 @@ export default async function RefundPage({ params }: { params: Promise<{ itemId:
 
   return (
     <>
-      <PageTitle label="Refund" title={`환불 요청 · ${item.productName}`} />
+      <PageTitle
+        label="Refund"
+        title={`${item.productType === "subscription" ? "즉시 해지 · 환불" : "환불 요청"} · ${item.productName}`}
+      >
+        {item.productType === "subscription"
+          ? "환불되면 구독이 바로 끝나고 자동결제가 멈춥니다. 이번 회차 끝까지 이용하려면 구독 관리에서 해지 예약을 하세요."
+          : null}
+      </PageTitle>
       <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-2.5 border-t-2 border-line-strong pt-5 text-[15px]">
         <dt className="text-ink-2">결제일</dt>
         <dd className="m-0">{order.paidAt ? formatDay(order.paidAt) : "-"}</dd>
         <dt className="text-ink-2">결제 금액</dt>
         <dd className="m-0 tabular-nums">{won(item.paidAmount)}</dd>
-        {calc ? (
+        {calc?.kind === "subscription" ? (
+          <>
+            <dt className="text-ink-2">이번 회차</dt>
+            <dd className="m-0">
+              {calc.usedDays}일 지남 · {calc.remainingDays}일 남음 (전체 {calc.periodDays}일)
+              {calc.used ? "" : " · 이번 회차 학습 전"}
+            </dd>
+            <dt className="text-ink-2">계산</dt>
+            <dd className="m-0">{calc.explanation}</dd>
+          </>
+        ) : calc ? (
           <>
             <dt className="text-ink-2">지난 기간</dt>
             <dd className="m-0">
@@ -81,7 +98,13 @@ export default async function RefundPage({ params }: { params: Promise<{ itemId:
             <p className="m-0 mt-1 text-[30px] font-semibold tabular-nums tracking-[-0.03em]">
               {won(quote.calculation.amount)}{" "}
               <span className="text-[16px] font-normal text-ink-2">
-                ({REFUND_TIER_LABEL[quote.calculation.tier]})
+                (
+                {quote.calculation.kind === "subscription"
+                  ? quote.calculation.tier === "full"
+                    ? "전액"
+                    : "남은 기간 일할 − 위약금 10%"
+                  : REFUND_TIER_LABEL[quote.calculation.tier]}
+                )
               </span>
             </p>
           </div>

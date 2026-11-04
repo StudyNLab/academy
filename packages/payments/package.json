@@ -1,0 +1,25 @@
+{
+  "name": "@aionit/payments",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aionit/core": "workspace:*",
+    "@aionit/db": "workspace:*",
+    "@aionit/mail": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@aionit/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "eslint": "10.14.0",
+    "typescript": "6.0.3"
+  }
+}

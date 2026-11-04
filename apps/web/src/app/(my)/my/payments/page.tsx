@@ -40,7 +40,7 @@ export default async function PaymentsPage() {
                       {order.paidAt ? formatDay(order.paidAt) : ""}
                     </MonoLabel>
                     <Link
-                      href={`/courses/${course.slug}`}
+                      href={course ? `/courses/${course.slug}` : "/my/subscription"}
                       className="text-[17px] font-semibold text-ink no-underline"
                     >
                       {item.productName}

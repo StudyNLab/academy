@@ -189,3 +189,29 @@ export function planRenditions(sourceHeight: number): Rendition[] {
 export function memberTag(userId: string): string {
   return userId.replaceAll("-", "").slice(-6).toUpperCase();
 }
+
+// ---- 자동결제 키(빌링키) 보관 (docs/기술설계.md 3.3: 자동결제 키는 AES-256-GCM 앱 암호화, 키 번호를 함께) ----
+
+export const BILLING_KEY_VERSION = 1;
+
+/** 빌링키 ➔ "v1.<iv>.<tag>.<암호문>" (base64url). DB 가 유출돼도 결제에 쓸 수 없다 */
+export function sealBillingKey(secret: string, billingKey: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", deriveKey(secret, `billing-key/v${BILLING_KEY_VERSION}`), iv);
+  const body = Buffer.concat([cipher.update(billingKey, "utf8"), cipher.final()]);
+  return [`v${BILLING_KEY_VERSION}`, iv, cipher.getAuthTag(), body]
+    .map((p) => (typeof p === "string" ? p : p.toString("base64url")))
+    .join(".");
+}
+
+export function openBillingKey(secret: string, sealed: string): string {
+  const [version, iv, tag, body] = sealed.split(".");
+  if (version !== `v${BILLING_KEY_VERSION}` || !iv || !tag || !body) throw new Error("모르는 빌링키 형식");
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    deriveKey(secret, `billing-key/v${BILLING_KEY_VERSION}`),
+    Buffer.from(iv, "base64url"),
+  );
+  decipher.setAuthTag(Buffer.from(tag, "base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");
+}

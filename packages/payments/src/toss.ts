@@ -1,5 +1,6 @@
-// 토스페이먼츠 어댑터 (테스트 모드, docs/기술설계.md 6장). 결제 승인 · 조회 · 취소만 쓴다.
-// 비밀 키는 서버에서만 쓰고, 토스 응답은 zod 로 검사한다. 테스트는 같은 모양의 가짜 어댑터(test/fake-toss.ts)를 쓴다.
+// 토스페이먼츠 어댑터 (테스트 모드, docs/기술설계.md 6장). 결제 승인 · 조회 · 취소 + 자동결제(빌링키 발급 · 빌링 결제).
+// 비밀 키는 서버에서만 쓰고, 토스 응답은 zod 로 검사한다. 테스트는 같은 모양의 가짜 어댑터(toss-fake.ts)를 쓴다.
+// 키 묶음이 둘이다: 단건은 결제위젯 연동 키, 자동결제는 API 개별 연동 키 (토스는 결제한 키 묶음으로만 취소된다)
 import { z } from "zod";
 
 export const TOSS_STATUSES = [
@@ -78,6 +79,16 @@ export class GatewayError extends Error {
   }
 }
 
+const billingAuthSchema = z.object({
+  billingKey: z.string(),
+  customerKey: z.string(),
+  cardCompany: z.string().nullish(),
+  cardNumber: z.string().nullish(),
+  card: z.object({ issuerCode: z.string().nullish(), number: z.string().nullish() }).nullish(),
+});
+
+export type TossBillingAuth = z.infer<typeof billingAuthSchema>;
+
 export interface PaymentGateway {
   /** 결제 승인: 결제창에서 돌아온 paymentKey · orderId · amount 를 토스에 다시 확인하고 돈을 받는다 */
   confirm(input: { paymentKey: string; orderId: string; amount: number }): Promise<TossPayment>;
@@ -87,6 +98,17 @@ export interface PaymentGateway {
     paymentKey: string;
     amount: number;
     reason: string;
+    idempotencyKey: string;
+  }): Promise<TossPayment>;
+  /** 카드 등록창에서 돌아온 authKey 로 빌링키를 받는다 (자동결제) */
+  issueBillingKey(input: { authKey: string; customerKey: string }): Promise<TossBillingAuth>;
+  /** 빌링키로 결제 (자동결제). 같은 idempotencyKey 는 한 번만 결제된다 */
+  chargeBilling(input: {
+    billingKey: string;
+    customerKey: string;
+    amount: number;
+    orderId: string;
+    orderName: string;
     idempotencyKey: string;
   }): Promise<TossPayment>;
 }
@@ -102,7 +124,7 @@ export function createTossGateway(options: {
   const doFetch = options.fetch ?? fetch;
   const auth = `Basic ${Buffer.from(`${options.secretKey}:`).toString("base64")}`;
 
-  async function call(method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string) {
+  async function request(method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string) {
     const response = await doFetch(`${base}${path}`, {
       method,
       headers: {
@@ -122,8 +144,10 @@ export function createTossGateway(options: {
         response.status,
       );
     }
-    return paymentSchema.parse(data);
+    return data;
   }
+  const call = async (method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string) =>
+    paymentSchema.parse(await request(method, path, body, idempotencyKey));
 
   return {
     confirm: (input) =>
@@ -134,6 +158,20 @@ export function createTossGateway(options: {
         "POST",
         `/v1/payments/${encodeURIComponent(input.paymentKey)}/cancel`,
         { cancelReason: input.reason.slice(0, 200), cancelAmount: input.amount },
+        input.idempotencyKey,
+      ),
+    issueBillingKey: async (input) =>
+      billingAuthSchema.parse(await request("POST", "/v1/billing/authorizations/issue", input)),
+    chargeBilling: (input) =>
+      call(
+        "POST",
+        `/v1/billing/${encodeURIComponent(input.billingKey)}`,
+        {
+          customerKey: input.customerKey,
+          amount: input.amount,
+          orderId: input.orderId,
+          orderName: input.orderName.slice(0, 100),
+        },
         input.idempotencyKey,
       ),
   };

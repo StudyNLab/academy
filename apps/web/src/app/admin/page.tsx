@@ -7,7 +7,7 @@ import { requireStaff } from "@/server/session";
 
 export const metadata: Metadata = { title: "관리자" };
 
-// AD-01 대시보드 (M1 회원, M5 매출 · 환불 요청. 문의 · 검수는 해당 단계에서)
+// AD-01 대시보드 (M1 회원, M5 매출 · 환불 요청, M6 구독. 문의 · 검수는 해당 단계에서)
 export default async function AdminHome() {
   await requireStaff("operator", "/admin");
   const counts = await dashboardCounts(getDb());
@@ -17,6 +17,7 @@ export default async function AdminHome() {
     { label: "운영자 · 강사", value: counts.staff },
     { label: "로그인 실패 (24시간)", value: counts.failures },
     { label: "오늘 결제 (원)", value: counts.sales.toLocaleString("ko-KR") },
+    { label: "구독 중", value: counts.subscribers, href: "/admin/subscriptions" },
     { label: "환불 요청 대기", value: counts.refunds, href: "/admin/refunds" },
   ];
   return (

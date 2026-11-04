@@ -96,6 +96,44 @@ describe("결제 · 환불 · 만료 알림 메일 (M5)", () => {
   });
 });
 
+describe("구독 안내 메일 (M6)", () => {
+  it.each(["renewal", "price_change", "payment_failed", "cancel_scheduled", "ended"] as const)(
+    "%s",
+    (kind) => {
+      const mail = renderMail({
+        template: "subscription-notice",
+        to: "a@example.com",
+        userId: null,
+        kind,
+        planName: "연간 구독",
+        amount: 199_000,
+        date: "2027-11-03T15:00:00.000Z",
+        reason: "카드 한도 초과",
+        url: "https://x.test/my/subscription",
+      });
+      expect(mail.subject).toMatch(/^\[AIONIT\] /);
+      expect(mail.text).toContain("https://x.test/my/subscription");
+      expect(mail.html).toContain("발신 전용");
+    },
+  );
+
+  it("갱신 안내에 결제일 · 금액 · 해지 방법", () => {
+    const mail = renderMail({
+      template: "subscription-notice",
+      to: "a@example.com",
+      userId: null,
+      kind: "renewal",
+      planName: "연간 구독",
+      amount: 199_000,
+      date: "2027-11-03T00:00:00+09:00",
+      reason: null,
+      url: "https://x.test/my/subscription",
+    });
+    expect(mail.text).toContain("2027년 11월 3일 에 199,000원 자동으로 결제됩니다");
+    expect(mail.text).toContain("해지를 예약");
+  });
+});
+
 describe("createMemoryMailer", () => {
   it("보낸 메일을 모아 둔다", async () => {
     const mailer = createMemoryMailer();

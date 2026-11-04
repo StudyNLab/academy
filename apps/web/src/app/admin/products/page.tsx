@@ -44,7 +44,9 @@ export default async function AdminProducts() {
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div className="flex flex-col gap-1">
                 <span className="text-[13px] text-ink-2">
-                  {courseTitle} · {TYPE_LABEL[product.type]}
+                  {product.type === "subscription"
+                    ? `구독 요금제 · ${product.billingInterval === "year" ? "연간" : "월간"}`
+                    : `${courseTitle} · ${TYPE_LABEL[product.type]}`}
                 </span>
                 <strong className="text-[17px] font-semibold">{product.name}</strong>
               </div>
@@ -58,7 +60,9 @@ export default async function AdminProducts() {
               </div>
             </div>
             <p className="m-0 text-[14px] text-ink-2">
-              {product.type === "extension" ? "늘리는 기간" : "수강 기간"} {periodLabel(product.accessDays)}
+              {product.type === "subscription"
+                ? "구독 포함 강의 전체 (가격을 바꾸면 구독자에게 알림 · 올림은 동의 후)"
+                : `${product.type === "extension" ? "늘리는 기간" : "수강 기간"} ${periodLabel(product.accessDays)}`}
               {upcoming.length > 0
                 ? ` · 예약된 가격 ${upcoming.map((p) => `${won(p.amount)} (${formatDayTime(p.effectiveFrom)}부터)`).join(", ")}`
                 : ""}

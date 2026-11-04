@@ -16,7 +16,15 @@ interface FakePayment {
 
 export function createFakeToss() {
   const payments = new Map<string, FakePayment>();
-  const calls = { confirm: 0, cancel: 0, get: 0 };
+  const calls = { confirm: 0, cancel: 0, get: 0, issue: 0, charge: 0 };
+  /** 카드 등록창을 마쳐 생긴 authKey ➔ 고객 키 · 카드 이름 */
+  const billingAuths = new Map<string, { customerKey: string; card: string }>();
+  /** 발급한 빌링키 ➔ 고객 키 · 카드 이름 */
+  const billingKeys = new Map<string, { customerKey: string; card: string }>();
+  /** 결제를 거절할 빌링키 (한도 초과 · 정지 카드 흉내) */
+  const declined = new Set<string>();
+  /** 빌링 결제의 멱등 키 ➔ paymentKey (같은 키는 한 번만 결제) */
+  const chargedByKey = new Map<string, string>();
   let seq = 0;
   /** 다음 승인 요청을 응답 없이 실패시킨다 (네트워크 끊김 · 시간 초과) */
   let dropNextConfirmResponse = false;
@@ -84,6 +92,43 @@ export function createFakeToss() {
       p.status = input.amount === balance ? "CANCELED" : "PARTIAL_CANCELED";
       return view(p);
     },
+    async issueBillingKey(input) {
+      calls.issue += 1;
+      const auth = billingAuths.get(input.authKey);
+      if (!auth || auth.customerKey !== input.customerKey)
+        throw new GatewayError("INVALID_AUTH_KEY", "유효하지 않은 인증 키입니다.", 400);
+      billingAuths.delete(input.authKey); // 한 번만 쓸 수 있다
+      const billingKey = `bk_fake_${(seq += 1)}`;
+      billingKeys.set(billingKey, auth);
+      return {
+        billingKey,
+        customerKey: input.customerKey,
+        cardCompany: auth.card,
+        cardNumber: "43301234****123*",
+        card: { issuerCode: "4V", number: "43301234****123*" },
+      };
+    },
+    async chargeBilling(input) {
+      calls.charge += 1;
+      const done = chargedByKey.get(input.idempotencyKey);
+      if (done) return view(find(done));
+      const key = billingKeys.get(input.billingKey);
+      if (!key || key.customerKey !== input.customerKey)
+        throw new GatewayError("NOT_FOUND_BILLING", "존재하지 않는 빌링키입니다.", 404);
+      if (declined.has(input.billingKey))
+        throw new GatewayError("REJECT_CARD_COMPANY", "카드사에서 결제를 거절했습니다. (한도 초과)", 400);
+      const paymentKey = `tpk_bill_${(seq += 1)}`;
+      payments.set(paymentKey, {
+        paymentKey,
+        orderId: input.orderId,
+        amount: input.amount,
+        status: "DONE",
+        cancels: [],
+        approvedAt: new Date().toISOString(),
+      });
+      chargedByKey.set(input.idempotencyKey, paymentKey);
+      return view(find(paymentKey));
+    },
   };
 
   return {
@@ -117,5 +162,17 @@ export function createFakeToss() {
     dropNextConfirmResponse() {
       dropNextConfirmResponse = true;
     },
+    /** 사용자가 카드 등록창을 마쳤다 ➔ authKey */
+    authorizeBilling(customerKey: string, card = "신한카드"): string {
+      const authKey = `bln_fake_${(seq += 1)}`;
+      billingAuths.set(authKey, { customerKey, card });
+      return authKey;
+    },
+    /** 이 빌링키의 결제를 거절하게 / 다시 되게 */
+    setDeclined(billingKey: string, value: boolean) {
+      if (value) declined.add(billingKey);
+      else declined.delete(billingKey);
+    },
+    billingKeys,
   };
 }

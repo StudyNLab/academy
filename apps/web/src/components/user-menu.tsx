@@ -55,6 +55,9 @@ export function UserMenu({ nickname }: { nickname: string }) {
           <Link role="menuitem" href="/my" className={item} onClick={() => setOpen(false)}>
             내 정보
           </Link>
+          <Link role="menuitem" href="/my/subscription" className={item} onClick={() => setOpen(false)}>
+            구독 관리
+          </Link>
           <Link role="menuitem" href="/my/payments" className={item} onClick={() => setOpen(false)}>
             결제 내역
           </Link>

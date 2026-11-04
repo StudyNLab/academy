@@ -1,6 +1,5 @@
 // 단건 결제 (docs/기술설계.md 6.1): 상품 · 가격(AD-07) ➔ 주문서(C-01) ➔ 토스 결제창 ➔ 서버 승인 ➔ 수강권 ➔ 영수증 메일.
 // 돈 계산은 packages/core 만 한다. 브라우저가 보낸 금액은 믿지 않고 주문 스냅샷과 토스 응답으로만 판단한다.
-import { createHmac } from "node:crypto";
 import type { Quote } from "@aionit/core";
 import {
   courseAccess,
@@ -17,8 +16,8 @@ import type { MailJob } from "@aionit/mail";
 import { currentPolicies } from "./consents";
 import { userEntitlements } from "./entitlements";
 import { writeAudit } from "./records";
-import type { PaymentGateway, TossPayment } from "./toss";
-import { GatewayError, trimPayment } from "./toss";
+import type { PaymentGateway, TossPayment } from "@aionit/payments";
+import { GatewayError, trimPayment } from "@aionit/payments";
 import type { Viewer } from "./viewer";
 
 export class CommerceError extends Error {
@@ -33,7 +32,10 @@ export class CommerceError extends Error {
 
 export interface CommerceDeps {
   db: Db;
+  /** 단건 (결제위젯 키) */
   gateway: PaymentGateway;
+  /** 구독 자동결제 (API 개별 연동 키). 구독 결제의 환불 · 웹훅 조회에 쓴다 */
+  billingGateway?: PaymentGateway | null;
   enqueueMail: (job: MailJob) => Promise<void>;
   /** 메일 · 돌아올 주소의 기준 (BETTER_AUTH_URL) */
   baseUrl: string;
@@ -73,9 +75,12 @@ export async function createProduct(
   db: Db,
   input: {
     actorId: string;
-    /** M5 는 단건 강의 · 연장권만 판다 (패키지 · 구독은 나중) */
-    type: "course" | "extension";
-    courseId: string;
+    /** 단건 강의 · 연장권 (M5), 구독 요금제 (M6). 패키지는 나중 */
+    type: "course" | "extension" | "subscription";
+    /** 구독 요금제는 없다 (구독 포함 강의 전체) */
+    courseId: string | null;
+    /** 구독만 */
+    billingInterval?: "month" | "year" | null;
     name: string;
     accessDays: number | null;
     amount: number;
@@ -85,18 +90,33 @@ export async function createProduct(
 ): Promise<string> {
   if (input.type === "extension" && !input.accessDays)
     throw new CommerceError(400, "INVALID_DAYS", "연장권은 늘릴 날수가 있어야 합니다.");
+  if (input.type === "subscription" && !input.billingInterval)
+    throw new CommerceError(400, "INVALID_INTERVAL", "구독은 월간 · 연간을 골라야 합니다.");
+  if (input.type !== "subscription" && !input.courseId)
+    throw new CommerceError(400, "COURSE_REQUIRED", "과정을 골라 주세요.");
   return db.transaction(async (tx) => {
-    const [course] = await tx
-      .select({ id: schema.courses.id })
-      .from(schema.courses)
-      .where(eq(schema.courses.id, input.courseId));
-    if (!course) throw new CommerceError(404, "COURSE_NOT_FOUND", "과정을 찾을 수 없습니다.");
-    await assertSingleOnSale(tx, input.courseId, input.type);
+    if (input.type === "subscription") {
+      await assertSinglePlan(tx, input.billingInterval!);
+    } else {
+      const [course] = await tx
+        .select({ id: schema.courses.id })
+        .from(schema.courses)
+        .where(eq(schema.courses.id, input.courseId!));
+      if (!course) throw new CommerceError(404, "COURSE_NOT_FOUND", "과정을 찾을 수 없습니다.");
+      await assertSingleOnSale(tx, input.courseId!, input.type);
+    }
     const [product] = await tx
       .insert(schema.products)
-      .values({ type: input.type, name: input.name, accessDays: input.accessDays, createdBy: input.actorId })
+      .values({
+        type: input.type,
+        name: input.name,
+        accessDays: input.type === "subscription" ? null : input.accessDays,
+        billingInterval: input.type === "subscription" ? input.billingInterval : null,
+        createdBy: input.actorId,
+      })
       .returning();
-    await tx.insert(schema.productItems).values({ productId: product!.id, courseId: input.courseId });
+    if (input.type !== "subscription")
+      await tx.insert(schema.productItems).values({ productId: product!.id, courseId: input.courseId! });
     const [price] = await tx
       .insert(schema.prices)
       .values({ productId: product!.id, amount: input.amount, effectiveFrom: now, createdBy: input.actorId })
@@ -111,6 +131,26 @@ export async function createProduct(
     });
     return product!.id;
   });
+}
+
+/** 판매 중인 구독 요금제는 월간 · 연간 하나씩 */
+async function assertSinglePlan(tx: Pick<Db, "select">, interval: "month" | "year", except?: string) {
+  const rows = await tx
+    .select({ id: schema.products.id })
+    .from(schema.products)
+    .where(
+      and(
+        eq(schema.products.type, "subscription"),
+        eq(schema.products.billingInterval, interval),
+        eq(schema.products.status, "on_sale"),
+      ),
+    );
+  if (rows.some((r) => r.id !== except))
+    throw new CommerceError(
+      400,
+      "ALREADY_ON_SALE",
+      `이미 판매 중인 ${interval === "month" ? "월간" : "연간"} 요금제가 있습니다. 그 요금제의 가격을 바꾸거나 판매를 멈춘 뒤 만드세요.`,
+    );
 }
 
 export async function updateProduct(
@@ -128,11 +168,14 @@ export async function updateProduct(
     const [row] = await tx
       .select({ product: schema.products, courseId: schema.productItems.courseId })
       .from(schema.products)
-      .innerJoin(schema.productItems, eq(schema.productItems.productId, schema.products.id))
+      .leftJoin(schema.productItems, eq(schema.productItems.productId, schema.products.id))
       .where(eq(schema.products.id, input.productId));
     if (!row) throw new CommerceError(404, "NOT_FOUND", "상품을 찾을 수 없습니다.");
-    if (input.status === "on_sale" && row.product.status !== "on_sale")
-      await assertSingleOnSale(tx, row.courseId, row.product.type, row.product.id);
+    if (input.status === "on_sale" && row.product.status !== "on_sale") {
+      if (row.product.type === "subscription")
+        await assertSinglePlan(tx, row.product.billingInterval!, row.product.id);
+      else await assertSingleOnSale(tx, row.courseId!, row.product.type, row.product.id);
+    }
     if (row.product.type === "extension" && input.accessDays === null)
       throw new CommerceError(400, "INVALID_DAYS", "연장권은 늘릴 날수가 있어야 합니다.");
     const change = {
@@ -220,8 +263,8 @@ export async function adminProducts(db: Db, now = new Date()) {
   const rows = await db
     .select({ product: schema.products, courseId: schema.courses.id, courseTitle: schema.courses.title })
     .from(schema.products)
-    .innerJoin(schema.productItems, eq(schema.productItems.productId, schema.products.id))
-    .innerJoin(schema.courses, eq(schema.courses.id, schema.productItems.courseId))
+    .leftJoin(schema.productItems, eq(schema.productItems.productId, schema.products.id))
+    .leftJoin(schema.courses, eq(schema.courses.id, schema.productItems.courseId))
     .orderBy(schema.courses.title, schema.products.type, desc(schema.products.createdAt));
   const priceRows = rows.length
     ? await db
@@ -497,7 +540,7 @@ export async function checkoutView(db: Db, viewer: Viewer, orderId: string, now 
     : undefined;
   let accessUntil: Date | null = null;
   if (row.item.productType === "extension") {
-    const base = await extensionBase(db, viewer.userId, row.item.courseId);
+    const base = await extensionBase(db, viewer.userId, row.item.courseId!);
     accessUntil =
       base.kind === "found" ? extendedEnd(base.entitlement.endsAt, now, row.item.accessDays!) : null;
   } else if (row.item.accessDays) {
@@ -511,10 +554,8 @@ export async function checkoutView(db: Db, viewer: Viewer, orderId: string, now 
   };
 }
 
-/** 토스 결제위젯 고객 키: 회원 id 를 그대로 주지 않고 앱 비밀값으로 만든 값 (유추할 수 없게) */
-export function tossCustomerKey(secret: string, userId: string): string {
-  return `c_${createHmac("sha256", secret).update(`toss-customer:${userId}`).digest("hex").slice(0, 40)}`;
-}
+/** 토스 고객 키 (결제위젯 · 자동결제 공통) */
+export { tossCustomerKey } from "@aionit/payments";
 
 /**
  * 결제 동의 (주문 내용 + 환불 규정). 동의를 기록하고 결제창에 넘길 값을 돌려준다.
@@ -785,7 +826,7 @@ async function assertFulfillable(
       "이미 수강 중인 강의입니다. 이 주문은 결제하지 않았습니다.",
     );
   if (item.productType === "extension") {
-    const base = await extensionBase(db, userId, item.courseId);
+    const base = await extensionBase(db, userId, item.courseId!);
     if (base.kind !== "found")
       throw new CommerceError(
         400,
@@ -845,7 +886,7 @@ export async function finishPaid(
 
 async function fulfill(tx: Tx, userId: string, item: typeof schema.orderItems.$inferSelect, now: Date) {
   if (item.productType === "extension") {
-    const base = await extensionBase(tx, userId, item.courseId, true);
+    const base = await extensionBase(tx, userId, item.courseId!, true);
     if (base.kind !== "found")
       throw new CommerceError(400, "NO_BASE_ENTITLEMENT", "연장할 수강권이 없습니다.");
     const before = base.entitlement.endsAt!;
@@ -870,7 +911,7 @@ async function fulfill(tx: Tx, userId: string, item: typeof schema.orderItems.$i
   const [course] = await tx
     .select({ id: schema.courses.id, inSubscription: schema.courses.inSubscription })
     .from(schema.courses)
-    .where(eq(schema.courses.id, item.courseId));
+    .where(eq(schema.courses.id, item.courseId!));
   // 같은 사람의 동시 결제가 겹쳐도 수강권이 두 개 생기지 않게 회원 단위로 잠근다
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`purchase:${userId}:${item.courseId}`}))`);
   if (await ownsCourse(tx, userId, course!, now))
@@ -880,7 +921,7 @@ async function fulfill(tx: Tx, userId: string, item: typeof schema.orderItems.$i
     .values({
       userId,
       scope: "course",
-      courseId: item.courseId,
+      courseId: item.courseId!,
       sourceType: "purchase",
       sourceId: item.id,
       startsAt: now,
@@ -897,7 +938,7 @@ export async function myOrders(db: Db, userId: string) {
     .select({ order: schema.orders, item: schema.orderItems, course: schema.courses })
     .from(schema.orders)
     .innerJoin(schema.orderItems, eq(schema.orderItems.orderId, schema.orders.id))
-    .innerJoin(schema.courses, eq(schema.courses.id, schema.orderItems.courseId))
+    .leftJoin(schema.courses, eq(schema.courses.id, schema.orderItems.courseId))
     .where(
       and(
         eq(schema.orders.userId, userId),

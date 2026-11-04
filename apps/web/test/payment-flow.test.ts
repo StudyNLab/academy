@@ -31,9 +31,9 @@ import {
   requestRefund,
   withdrawRefundRequest,
 } from "@/server/refunds";
-import { GatewayError } from "@/server/toss";
+import { GatewayError } from "@aionit/payments";
 import type { Viewer } from "@/server/viewer";
-import { createFakeToss } from "@/server/toss-fake";
+import { createFakeToss } from "@aionit/payments";
 import { resetDb, setupTestAuth } from "./helpers";
 
 const t = setupTestAuth();
@@ -275,7 +275,7 @@ describe("주문서 ➔ 토스 승인 ➔ 수강권 (C-01 ~ C-03)", () => {
       .select()
       .from(schema.policyDocuments)
       .where(eq(schema.policyDocuments.id, item!.refundPolicyDocumentId!));
-    expect(refundDoc).toMatchObject({ kind: "refund", version: "2026-11-04-draft" });
+    expect(refundDoc).toMatchObject({ kind: "refund", version: "2026-11-04-draft.2" });
     expect(mails).toEqual([
       expect.objectContaining({ template: "payment-receipt", to: buyer.email, paidAmount: 59_000 }),
     ]);
