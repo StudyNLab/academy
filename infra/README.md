@@ -10,7 +10,7 @@
 - data VM 의 PostgreSQL(5432) · Garage(3900 S3 API · 3902 웹 주소)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
 - Garage 웹 주소(3902, `garage.toml` 의 `[s3_web]`, root_domain `.web.garage`)는 **영상 버킷 `aionit-media` 만** 웹 공개 설정(`garage bucket website --allow aionit-media`)이다. app VM Caddy 가 `/media/*` 요청마다 web 에 재생 토큰을 확인한 뒤 Host `aionit-media.web.garage` 로 프록시한다. 다른 버킷은 웹 공개하지 않는다.
 - 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
-- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4).
+- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4). 토스페이먼츠 결제위젯 연동 키 `TOSS_CLIENT_KEY` `TOSS_SECRET_KEY`(M5: 토스 문서용 공개 테스트 키 `test_gck_docs_…` / `test_gsk_docs_…`, 실오픈 때 운영자 상점 키). `TOSS_FAKE` 는 개발 서버 전용이라 서버에 두지 않는다.
 
 ## 사이트 보기 (도메인 전)
 

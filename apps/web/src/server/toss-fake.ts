@@ -1,0 +1,121 @@
+// 가짜 토스 (통합 테스트 · 개발 서버 화면 흐름 테스트용, 운영 빌드에서는 쓰지 않는다 — payments.ts fakeMode).
+// 진짜 토스처럼: 결제창에서 결제를 마치면 paymentKey 가 생기고, 승인은 결제창에서 요청한 금액 · 주문 번호와 같아야 하며
+// 한 번만 된다. 취소는 남은 금액 안에서만. (토스 테스트 모드도 카드 결제는 카드사 본인 인증을 거쳐서 자동화할 수 없다)
+import type { PaymentGateway, TossPayment } from "./toss";
+import { GatewayError } from "./toss";
+
+interface FakePayment {
+  paymentKey: string;
+  orderId: string;
+  /** 결제창에서 실제로 요청된 금액 */
+  amount: number;
+  status: TossPayment["status"];
+  cancels: { transactionKey: string; cancelAmount: number; canceledAt: string; key: string }[];
+  approvedAt: string | null;
+}
+
+export function createFakeToss() {
+  const payments = new Map<string, FakePayment>();
+  const calls = { confirm: 0, cancel: 0, get: 0 };
+  let seq = 0;
+  /** 다음 승인 요청을 응답 없이 실패시킨다 (네트워크 끊김 · 시간 초과) */
+  let dropNextConfirmResponse = false;
+
+  const view = (p: FakePayment): TossPayment => {
+    const canceled = p.cancels.reduce((n, c) => n + c.cancelAmount, 0);
+    return {
+      paymentKey: p.paymentKey,
+      orderId: p.orderId,
+      status: p.status,
+      totalAmount: p.amount,
+      balanceAmount: p.amount - canceled,
+      method: "카드",
+      approvedAt: p.approvedAt,
+      requestedAt: "2026-11-04T10:00:00+09:00",
+      card: { issuerCode: "61", number: "12345678****000*", cardType: "신용" },
+      easyPay: null,
+      receipt: { url: `https://dashboard.tosspayments.com/receipt/${p.paymentKey}` },
+      cancels: p.cancels.map(({ key: _key, ...c }) => c),
+    };
+  };
+
+  const find = (paymentKey: string) => {
+    const p = payments.get(paymentKey);
+    if (!p) throw new GatewayError("NOT_FOUND_PAYMENT", "존재하지 않는 결제 정보 입니다.", 404);
+    return p;
+  };
+
+  const gateway: PaymentGateway = {
+    async confirm(input) {
+      calls.confirm += 1;
+      const p = find(input.paymentKey);
+      if (p.orderId !== input.orderId || p.amount !== input.amount)
+        throw new GatewayError("FORBIDDEN_REQUEST", "결제 요청 정보와 승인 정보가 다릅니다.", 403);
+      if (p.status !== "READY" && p.status !== "IN_PROGRESS")
+        throw new GatewayError("ALREADY_PROCESSED_PAYMENT", "이미 처리된 결제 입니다.", 400);
+      p.status = "DONE";
+      p.approvedAt = new Date().toISOString();
+      if (dropNextConfirmResponse) {
+        dropNextConfirmResponse = false;
+        throw new TypeError("fetch failed");
+      }
+      return view(p);
+    },
+    async get(paymentKey) {
+      calls.get += 1;
+      return view(find(paymentKey));
+    },
+    async cancel(input) {
+      calls.cancel += 1;
+      const p = find(input.paymentKey);
+      const same = p.cancels.find((c) => c.key === input.idempotencyKey);
+      if (same) return view(p); // 같은 멱등 키 ➔ 한 번만 취소
+      const balance = view(p).balanceAmount;
+      if (p.status !== "DONE" && p.status !== "PARTIAL_CANCELED")
+        throw new GatewayError("NOT_CANCELABLE_PAYMENT", "취소할 수 없는 결제입니다.", 400);
+      if (input.amount > balance)
+        throw new GatewayError("NOT_CANCELABLE_AMOUNT", "취소할 수 없는 금액입니다.", 400);
+      p.cancels.push({
+        transactionKey: `tx-${(seq += 1)}`,
+        cancelAmount: input.amount,
+        canceledAt: new Date().toISOString(),
+        key: input.idempotencyKey,
+      });
+      p.status = input.amount === balance ? "CANCELED" : "PARTIAL_CANCELED";
+      return view(p);
+    },
+  };
+
+  return {
+    gateway,
+    calls,
+    payments,
+    /** 사용자가 결제창에서 결제를 마쳤다 (금액은 결제창에 실제로 넘어간 값) */
+    authorize(orderId: string, amount: number): string {
+      const paymentKey = `tpk_fake_${(seq += 1)}`;
+      payments.set(paymentKey, {
+        paymentKey,
+        orderId,
+        amount,
+        status: "READY",
+        cancels: [],
+        approvedAt: null,
+      });
+      return paymentKey;
+    },
+    /** 토스 상점 관리자에서 직접 취소 (우리 서버를 거치지 않음) */
+    cancelOutside(paymentKey: string, amount: number) {
+      const p = find(paymentKey);
+      p.cancels.push({
+        transactionKey: `tx-${(seq += 1)}`,
+        cancelAmount: amount,
+        canceledAt: new Date().toISOString(),
+        key: `outside-${seq}`,
+      });
+      p.status = view(p).balanceAmount === 0 ? "CANCELED" : "PARTIAL_CANCELED";
+    },
+    dropNextConfirmResponse() {
+      dropNextConfirmResponse = true;
+    },
+  };
+}

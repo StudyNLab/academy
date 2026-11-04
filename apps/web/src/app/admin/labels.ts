@@ -22,3 +22,12 @@ export const ACTION_LABEL: Record<string, string> = {
   "user.unsuspend": "정지 풀기",
   "user.withdraw": "회원 탈퇴",
 };
+
+/** 환불 상태 (AD-10) */
+export const REFUND_STATUS = {
+  requested: ["요청됨", "warn"],
+  approved: ["취소 중", "warn"],
+  rejected: ["거절", "muted"],
+  done: ["환불 완료", "done"],
+  failed: ["실패", "danger"],
+} as const;

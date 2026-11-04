@@ -6,3 +6,6 @@ export * from "./auth/policy";
 export * from "./learning/entitlement";
 export * from "./learning/learning-time";
 export * from "./learning/progress";
+export * from "./commerce/pricing";
+export * from "./commerce/period";
+export * from "./commerce/refund";

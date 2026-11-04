@@ -45,6 +45,11 @@ export async function withdrawUser(db: Db, userId: string, headers?: Headers | n
       .update(schema.learningTimeDaily)
       .set({ userId: null })
       .where(eq(schema.learningTimeDaily.userId, userId));
+    // 결제 기록(주문 · 결제 · 환불)은 5년 보관이라 남긴다. 결제하지 않은 주문서만 닫는다
+    await tx
+      .update(schema.orders)
+      .set({ status: "canceled", canceledAt: now })
+      .where(and(eq(schema.orders.userId, userId), eq(schema.orders.status, "pending")));
     await tx
       .update(schema.entitlements)
       .set({ revokedAt: now, revokeReason: "회원 탈퇴" })

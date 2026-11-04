@@ -12,6 +12,11 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   KAKAO_CLIENT_ID: z.string().optional(),
   KAKAO_CLIENT_SECRET: z.string().optional(),
+  /** 토스페이먼츠 (테스트 모드). 없으면 결제를 열지 않는다 */
+  TOSS_CLIENT_KEY: z.string().optional(),
+  TOSS_SECRET_KEY: z.string().optional(),
+  /** "1" 이면 개발 서버에서 가짜 결제 (화면 흐름 테스트용, 운영 빌드에서는 무시) */
+  TOSS_FAKE: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;
