@@ -15,6 +15,22 @@ describe("메모리 저장소 (테스트용)", () => {
     await store.delete("a/b.txt");
     expect(await store.get("a/b.txt")).toBeNull();
   });
+
+  it("나눠 올리기: 조각을 번호 차례로 잇고, 폴더째 지운다", async () => {
+    const store = createMemoryStore();
+    const id = await store.multipart.start("v/big.mp4", "video/mp4");
+    await store.multipart.uploadPart("v/big.mp4", id, 2, Buffer.from("world"));
+    await store.multipart.uploadPart("v/big.mp4", id, 1, Buffer.from("hello "));
+    expect(await store.multipart.listParts("v/big.mp4", id)).toEqual([
+      { partNumber: 1, size: 6 },
+      { partNumber: 2, size: 5 },
+    ]);
+    await store.multipart.complete("v/big.mp4", id);
+    expect((await store.getBuffer("v/big.mp4"))?.toString()).toBe("hello world");
+    await store.put("v/x/1.ts", Buffer.from("1"), { contentType: "video/mp2t" });
+    expect(await store.deletePrefix("v/")).toBe(2);
+    await expect(store.deletePrefix("")).rejects.toThrow();
+  });
 });
 
 describe("S3 저장소 설정", () => {
@@ -34,4 +50,22 @@ describe("S3 저장소 설정", () => {
     expect(await store.exists(key)).toBe(false);
     expect(await store.get(key)).toBeNull();
   });
+
+  it.skipIf(!process.env.S3_ACCESS_KEY_ID)(
+    "개발 Garage 에 나눠 올리고 (5MB + 끝 조각) 폴더째 지운다",
+    async () => {
+      const store = createS3StoreFromEnv();
+      const prefix = `test/multipart-${Date.now()}/`;
+      const key = `${prefix}big.bin`;
+      const first = Buffer.alloc(5 * 1024 * 1024, 1);
+      const id = await store.multipart.start(key, "application/octet-stream");
+      await store.multipart.uploadPart(key, id, 1, first);
+      await store.multipart.uploadPart(key, id, 2, Buffer.from("tail"));
+      expect((await store.multipart.listParts(key, id)).map((p) => p.size)).toEqual([first.length, 4]);
+      await store.multipart.complete(key, id);
+      expect((await store.getBuffer(key))?.length).toBe(first.length + 4);
+      expect(await store.deletePrefix(prefix)).toBe(1);
+      expect(await store.exists(key)).toBe(false);
+    },
+  );
 });

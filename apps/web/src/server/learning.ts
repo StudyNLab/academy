@@ -15,7 +15,7 @@ import {
 import type { Db } from "@aionit/db";
 import { and, asc, desc, eq, inArray, isNull, or, schema, sql } from "@aionit/db";
 import type { LabItem, TocItem } from "./catalog";
-import type { SlotView } from "./content-render";
+import { courseSlots, playableSlot, slotView } from "./catalog";
 import { insertSelfCheckSlots, renderVideoSlots, textLength, withMainVideo } from "./content-render";
 import type { CourseViewAccess } from "./entitlements";
 import { canLearn, markFirstUse, userEntitlements, viewAccess } from "./entitlements";
@@ -72,12 +72,6 @@ async function courseRecords(db: Db, userId: string, courseId: string) {
     videos: new Map(videos.map((v) => [v.videoKey, v])),
     checks: new Set(checks.map((c) => checkKey(c.chapterKey, c.sectionId, c.itemId))),
   };
-}
-
-const playable = (s: typeof schema.videoSlots.$inferSelect) => s.source === "youtube" && !!s.youtubeVideoId;
-
-function slotView(s: typeof schema.videoSlots.$inferSelect): SlotView {
-  return { key: s.key, title: s.title, source: s.source, youtubeVideoId: s.youtubeVideoId };
 }
 
 // ---- L-02 학습 화면 ----
@@ -146,7 +140,7 @@ async function buildChapter(
           eq(schema.chapters.chapterKey, chapterKey),
         ),
       ),
-    db.select().from(schema.videoSlots).where(eq(schema.videoSlots.courseId, course.id)),
+    courseSlots(db, course.id),
     db
       .select({ id: schema.attachments.id, title: schema.attachments.title, size: schema.files.size })
       .from(schema.attachments)
@@ -180,13 +174,14 @@ async function buildChapter(
     labs.map((l) => l.section_id),
   );
   const videos = slots
-    .filter((s) => s.chapterKey === chapterKey && playable(s))
+    .filter((s) => s.chapterKey === chapterKey && playableSlot(s))
     .map((s) => {
       const watch = records.videos.get(s.key);
       return {
         key: s.key,
         title: s.title,
         kind: s.kind,
+        hosted: s.source === "hosted",
         sectionId: s.sectionId,
         lastPositionSec: watch?.lastPositionSec ?? 0,
         done: !!watch?.completedAt,
@@ -214,6 +209,8 @@ async function buildChapter(
     next: chapters[index + 1] ? { key: chapters[index + 1]!.key, title: chapters[index + 1]!.title } : null,
     html,
     videos,
+    /** 영상 key ➔ 이어서 볼 위치(초). 자체 서버 영상은 화면이 이 위치에서 시작한다 */
+    startAt,
     labs: labs.map((l) => ({
       sectionId: l.section_id,
       title: l.title,
@@ -447,10 +444,7 @@ export async function recordHeartbeats(
   beats: readonly HeartbeatInput[],
   now = new Date(),
 ): Promise<{ accepted: number; chapters: ChapterStatus[] }> {
-  const slots = await db
-    .select()
-    .from(schema.videoSlots)
-    .where(eq(schema.videoSlots.courseId, ctx.course.id));
+  const slots = await courseSlots(db, ctx.course.id);
   const accepted: (typeof schema.learningHeartbeats.$inferInsert)[] = [];
   const textBuckets = new Map<string, Map<number, number>>();
   const videoUpdates = new Map<
@@ -486,7 +480,7 @@ export async function recordHeartbeats(
       textBuckets.set(beat.chapterKey, perChapter);
     } else {
       const slot = slots.find(
-        (s) => s.key === beat.videoKey && s.chapterKey === beat.chapterKey && playable(s),
+        (s) => s.key === beat.videoKey && s.chapterKey === beat.chapterKey && playableSlot(s),
       );
       if (!slot) continue;
       const duration = Math.min(6 * 3600, Math.max(0, beat.durationSec));
@@ -603,15 +597,10 @@ export async function recomputeChapter(
           eq(schema.chapters.chapterKey, chapterKey),
         ),
       ),
-    db
-      .select()
-      .from(schema.videoSlots)
-      .where(
-        and(eq(schema.videoSlots.courseId, ctx.course.id), eq(schema.videoSlots.chapterKey, chapterKey)),
-      ),
+    courseSlots(db, ctx.course.id),
     courseRecords(db, userId, ctx.course.id),
   ]);
-  const videos = slots.filter(playable).map((s) => s.key);
+  const videos = slots.filter((s) => s.chapterKey === chapterKey && playableSlot(s)).map((s) => s.key);
   const videosDone = videos.filter((k) => records.videos.get(k)?.completedAt);
   if (!progress) return { chapterKey, textDone: false, completed: false, videosDone };
   const textDone =

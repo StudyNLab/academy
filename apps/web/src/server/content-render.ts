@@ -5,6 +5,8 @@ export interface SlotView {
   title: string;
   source: "none" | "youtube" | "hosted";
   youtubeVideoId: string | null;
+  /** 자체 서버 영상의 변환이 끝났나 (끝나지 않았으면 연결 안 된 자리처럼 다룬다) */
+  hostedReady?: boolean;
 }
 
 const escapeHtml = (value: string) =>
@@ -27,6 +29,33 @@ export function youtubeEmbed(videoId: string, title: string, track?: TrackOption
   return `<div class="video-embed"><iframe${data} src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${query}" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
 }
 
+/**
+ * 연결된 영상 하나. 없거나 아직 볼 수 없으면 null.
+ *   유튜브: 누구나 재생 (학습 화면이면 시청 기록용 API 를 켠다)
+ *   자체 서버(수강생 전용): 학습 화면(track 있음)은 플레이어 자리 ➔ 화면(HostedVideo)이 토큰을 받아 재생,
+ *     미리보기(track 없음)는 🔒 카드, 운영자 미리보기는 "연결됨" 안내
+ */
+function videoFigure(
+  slot: SlotView,
+  mode: "public" | "admin",
+  track?: TrackOptions,
+  label = "",
+): string | null {
+  const key = escapeHtml(slot.key);
+  const title = escapeHtml(slot.title);
+  if (slot.source === "youtube" && slot.youtubeVideoId) {
+    return `<figure class="video-block" id="video-${key}">${youtubeEmbed(slot.youtubeVideoId, slot.title, track && { ...track, key: slot.key })}<figcaption>${title} · 무료 공개</figcaption></figure>`;
+  }
+  if (slot.source === "hosted" && slot.hostedReady) {
+    if (mode === "admin")
+      return `<p class="video-hosted-note">자체 서버 영상 연결됨 · <code>${key}</code> ${title}${label} — 수강생 학습 화면에서 재생됩니다</p>`;
+    if (!track)
+      return `<figure class="video-block" id="video-${key}"><div class="video-locked"><p>🔒 수강생 전용 영상입니다</p></div><figcaption>${title}</figcaption></figure>`;
+    return `<figure class="video-block" id="video-${key}"><div class="hosted-video" data-hosted-key="${key}"></div><figcaption>${title} · 수강생 전용</figcaption></figure>`;
+  }
+  return null;
+}
+
 const SLOT = /<div class="video-slot"([^>]*)>([\s\S]*?)<\/div>/g;
 
 /**
@@ -43,9 +72,8 @@ export function renderVideoSlots(
     const key = attrs.match(/data-video="([a-z0-9_]+)"/)?.[1] ?? "";
     const slot = slots.get(key);
     const title = slot?.title ?? key;
-    if (slot?.source === "youtube" && slot.youtubeVideoId) {
-      return `<figure class="video-block" id="video-${escapeHtml(key)}">${youtubeEmbed(slot.youtubeVideoId, title, track && { ...track, key })}<figcaption>${escapeHtml(title)} · 무료 공개</figcaption></figure>`;
-    }
+    const figure = slot ? videoFigure(slot, mode, track) : null;
+    if (figure) return figure;
     if (mode === "admin") {
       return `<p class="video-missing">영상 연결 필요 · <code>${escapeHtml(key)}</code> ${escapeHtml(title)}</p>`;
     }
@@ -105,9 +133,8 @@ export function withMainVideo(
   track?: TrackOptions,
 ): string {
   if (!main) return html;
-  if (main.source === "youtube" && main.youtubeVideoId) {
-    return `<figure class="video-block" id="video-${escapeHtml(main.key)}">${youtubeEmbed(main.youtubeVideoId, main.title, track && { ...track, key: main.key })}<figcaption>${escapeHtml(main.title)} · 무료 공개</figcaption></figure>\n${html}`;
-  }
+  const figure = videoFigure(main, mode, track, " (챕터 영상)");
+  if (figure) return `${figure}\n${html}`;
   if (mode === "admin") {
     return `<p class="video-missing">영상 연결 필요 · <code>${escapeHtml(main.key)}</code> ${escapeHtml(main.title)} (챕터 영상)</p>\n${html}`;
   }

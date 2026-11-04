@@ -35,6 +35,7 @@ services:
     logging: *logging
     ports:
       - "172.30.0.20:3900:3900" # S3 API (app VM 에서)
+      - "172.30.0.20:3902:3902" # 웹 주소: 영상 버킷(aionit-media)만 웹 공개 설정. app VM Caddy 가 토큰 확인 후 프록시
       - "127.0.0.1:3903:3903" # 관리 API (VM 안에서만)
     volumes:
       - /srv/data/garage/garage.toml:/etc/garage.toml:ro

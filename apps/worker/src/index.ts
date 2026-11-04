@@ -1,5 +1,6 @@
-// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계.
+// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계. M4: 영상 변환.
 import { CONTENT_QUEUE } from "@aionit/content";
+import { VIDEO_QUEUE, VIDEO_QUEUE_OPTIONS } from "@aionit/core/media";
 import { createDb, eq, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
 import { createSmtpMailer, MAIL_QUEUE } from "@aionit/mail";
@@ -9,6 +10,7 @@ import { processCourseVersion } from "./content";
 import { aggregateRecentDays } from "./learning";
 import { sendMailJob } from "./mail";
 import { purgeExpiredRecords } from "./retention";
+import { transcodeVideo } from "./video";
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL 이 설정되지 않았습니다");
@@ -75,6 +77,18 @@ await boss.work<{ versionId: string }>(CONTENT_QUEUE, async (jobs) => {
   }
 });
 
+// 영상 변환 (HLS · AES-128). 한 번에 하나만 (CPU 를 많이 쓴다). worker 를 내리면 변환을 멈추고 다시 대기열로
+const media = createS3StoreFromEnv(process.env, "S3_MEDIA_BUCKET");
+const secret = process.env.BETTER_AUTH_SECRET;
+if (!secret) throw new Error("BETTER_AUTH_SECRET 이 설정되지 않았습니다 (HLS 키 보관에 쓴다)");
+const stopping = new AbortController();
+await boss.createQueue(VIDEO_QUEUE, VIDEO_QUEUE_OPTIONS);
+await boss.work<{ assetId: string }>(VIDEO_QUEUE, { pollingIntervalSeconds: 5 }, async (jobs) => {
+  for (const job of jobs) {
+    await transcodeVideo({ db, store, media, secret }, job.data.assetId, stopping.signal);
+  }
+});
+
 // 하루 유효 학습 시간 집계: 매일 00:20 KST (어제 · 그제)
 const LEARNING_DAILY = "learning.daily-time";
 await boss.createQueue(LEARNING_DAILY);
@@ -97,6 +111,7 @@ console.warn("[worker] 시작됨");
 
 async function shutdown(signal: string) {
   console.warn(`[worker] ${signal} 받음, 종료 중`);
+  stopping.abort();
   await boss.stop({ graceful: true, timeout: 30_000 });
   await close();
   process.exit(0);

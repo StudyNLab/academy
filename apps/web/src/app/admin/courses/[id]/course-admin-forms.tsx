@@ -7,8 +7,12 @@ import { useEffect, useState } from "react";
 import { Button, Checkbox, Field, inputClass, Notice } from "@aionit/ui";
 import { api, apiDelete } from "@/lib/client-api";
 
-/** 교재가 처리되는 동안 3초마다 화면을 새로 그린다 */
-export function AutoRefresh() {
+/** 교재 · 영상이 처리되는 동안 3초마다 화면을 새로 그린다 */
+export function AutoRefresh({
+  message = "교재를 검사하고 있습니다. 끝나면 이 화면이 저절로 바뀝니다.",
+}: {
+  message?: string;
+}) {
   const router = useRouter();
   useEffect(() => {
     const timer = setInterval(() => router.refresh(), 3000);
@@ -16,7 +20,7 @@ export function AutoRefresh() {
   }, [router]);
   return (
     <p role="status" className="mt-0 text-[14px] text-ink-2">
-      교재를 검사하고 있습니다. 끝나면 이 화면이 저절로 바뀝니다.
+      {message}
     </p>
   );
 }

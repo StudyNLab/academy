@@ -43,6 +43,14 @@ export async function parseBody<T extends z.ZodType>(request: Request, schema: T
   return parsed.data;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 주소 안의 id 확인 (잘못된 값으로 DB 오류가 나지 않게) */
+export function uuidParam(value: string): string {
+  if (!UUID.test(value)) throw new ApiError(404, "NOT_FOUND", "찾을 수 없습니다.");
+  return value;
+}
+
 export async function requireApiViewer(request: Request): Promise<Viewer> {
   const viewer = await loadViewer(getAuth(), getDb(), request.headers);
   if (!viewer) throw new ApiError(401, "UNAUTHORIZED", "로그인이 필요합니다.");

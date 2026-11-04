@@ -85,6 +85,36 @@ describe("withMainVideo (챕터 영상은 맨 위)", () => {
   });
 });
 
+describe("자체 서버 영상 (수강생 전용)", () => {
+  const hosted = (ready: boolean) =>
+    new Map([
+      [
+        "ch01_lab01",
+        {
+          key: "ch01_lab01",
+          title: "실습 시연",
+          source: "hosted" as const,
+          youtubeVideoId: null,
+          hostedReady: ready,
+        },
+      ],
+    ]);
+  it("학습 화면은 플레이어 자리, 미리보기는 🔒 카드, 운영자는 연결됨 안내", () => {
+    const learn = renderVideoSlots(html, hosted(true), "public", { origin: "http://x" });
+    expect(learn).toContain('<div class="hosted-video" data-hosted-key="ch01_lab01"></div>');
+    const preview = renderVideoSlots(html, hosted(true), "public");
+    expect(preview).toContain("🔒 수강생 전용 영상입니다");
+    expect(preview).not.toContain("hosted-video");
+    expect(renderVideoSlots(html, hosted(true), "admin")).toContain("자체 서버 영상 연결됨");
+  });
+  it("변환이 안 끝났으면 연결 안 된 자리처럼", () => {
+    expect(renderVideoSlots(html, hosted(false), "public", { origin: "http://x" })).not.toMatch(
+      /video|실습 시연/,
+    );
+    expect(renderVideoSlots(html, hosted(false), "admin")).toContain("영상 연결 필요");
+  });
+});
+
 describe("학습 화면용", () => {
   it("실습 Section 끝(안쪽 section 이 있어도)에 스스로 확인 자리를 넣는다", () => {
     const body = `<section id="sec-1"><p>a</p></section><section id="sec-2"><section id="sec-2-1"><p>b</p></section><p>c</p></section>`;

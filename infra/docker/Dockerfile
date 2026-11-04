@@ -31,7 +31,9 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=4 \
 CMD ["node", "apps/web/server.js"]
 
 # ---- worker: 작업 처리 + 마이그레이션 실행 (worker 와 그 의존 패키지만 설치) ----
+# 영상 변환용 ffmpeg 는 Debian 공식 저장소에서 (docs/기술설계.md 5.2)
 FROM base AS worker
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN pnpm install --frozen-lockfile --filter "@aionit/worker..." && chown -R node:node /repo
 ENV NODE_ENV=production

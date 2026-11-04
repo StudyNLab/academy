@@ -26,7 +26,27 @@ https://localhost {
 	# 	not remote_ip 10.100.0.0/16
 	# }
 	# respond @admin_outside 403
-	reverse_proxy web:3000
+
+	# 자체 서버 영상 (docs/기술설계.md 5.2 재생 3단계): 재생 목록 · 조각 · 자막 요청마다 web 에 토큰을 물어본 뒤(forward_auth)
+	# data VM Garage 의 웹 주소(영상 버킷 aionit-media, 내부망에만 열림)에서 바로 내준다. 조각은 암호화돼 있고 키는 web 이 준다.
+	# route: 적은 차례대로 (Caddy 기본 순서로는 uri 가 forward_auth 보다 먼저 돌아 확인할 주소가 바뀐다)
+	handle /media/* {
+		route {
+			forward_auth web:3000 {
+				uri /api/v1/media/check
+			}
+			header Cache-Control "private, no-store"
+			uri strip_prefix /media
+			reverse_proxy 172.30.0.20:3902 {
+				header_up Host aionit-media.web.garage
+				header_down -Server
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
 }
 
 http://localhost {

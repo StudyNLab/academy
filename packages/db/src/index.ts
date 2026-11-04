@@ -44,5 +44,7 @@ export type {
   Role,
   UserStatus,
   VersionStatus,
+  VideoAssetStatus,
+  VideoRendition,
 } from "./schema/index";
 export { COURSE_FIELDS, POLICY_KINDS, ROLES, VERSION_STATUSES } from "./schema/index";

@@ -457,6 +457,28 @@
   border-bottom: 3px solid var(--signal);
   padding-bottom: 8px;
 }
+/* 자체 서버 영상: 플레이어 자리 (학습 화면이 HostedVideo 를 그린다) · 수강생 전용 잠금 카드 */
+.reader .hosted-video,
+.reader .video-locked {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #1b2534;
+}
+.reader .video-locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e8ecf2;
+}
+.reader .video-locked p {
+  margin: 0;
+  font-size: 15px;
+}
+.reader .video-hosted-note {
+  border: 1px solid var(--line-strong);
+  padding: 12px 14px;
+  font-size: 14px;
+}
 .reader .video-missing {
   border: 1px dashed var(--warn);
   color: var(--warn);

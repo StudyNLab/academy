@@ -1,9 +1,10 @@
-// 콘텐츠: 강사 · 과정 · 교재 버전 · 챕터 · 그림 · 영상 자리 · 무료 미리보기 · 첨부 (docs/데이터모델.md 3.2 ~ 3.4, 3.11)
+// 콘텐츠: 강사 · 과정 · 교재 버전 · 챕터 · 그림 · 영상 자리 · 자체 서버 영상 · 무료 미리보기 · 첨부 (docs/데이터모델.md 3.2 ~ 3.4, 3.11)
 import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -170,6 +171,87 @@ export const chapterAssets = pgTable(
 export const VIDEO_KINDS = ["main", "lab", "extra"] as const;
 export const VIDEO_SOURCES = ["none", "youtube", "hosted"] as const;
 
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** 암호화 HLS 키 (영상마다 하나). 키는 앱 비밀값에서 뽑은 키로 감싸 둔다 (packages/core/media sealHlsKey) */
+export const hlsKeys = pgTable("hls_keys", {
+  id: id(),
+  keySealed: bytea().notNull(),
+  keyVersion: integer().notNull(),
+  createdAt: createdAt(),
+});
+
+export const VIDEO_ASSET_STATUSES = ["uploading", "uploaded", "transcoding", "ready", "failed"] as const;
+export type VideoAssetStatus = (typeof VIDEO_ASSET_STATUSES)[number];
+
+export interface VideoRendition {
+  name: string;
+  width: number;
+  height: number;
+  /** 실제 평균 (영상 + 소리, kbps) */
+  avgKbps: number;
+  maxrateKbps: number;
+}
+
+/**
+ * 자체 서버 영상 (M4, docs/기술설계.md 5.2). 원본은 파일 저장소(S3_BUCKET)의 original_key,
+ * 변환한 HLS 는 영상 전용 버킷(S3_MEDIA_BUCKET)의 hls_prefix 아래. 과정마다 올린다.
+ */
+export const videoAssets = pgTable(
+  "video_assets",
+  {
+    id: id(),
+    courseId: uuid()
+      .notNull()
+      .references(() => courses.id),
+    title: text().notNull(),
+    status: text({ enum: VIDEO_ASSET_STATUSES }).notNull().default("uploading"),
+    originalName: text().notNull(),
+    sizeBytes: bigint({ mode: "number" }).notNull(),
+    originalKey: text().notNull().unique(),
+    /** 나눠 올리는 중일 때만 (S3 multipart upload id) */
+    uploadId: text(),
+    originalFileId: uuid().references(() => files.id),
+    /** 변환 진행 (0 ~ 100) */
+    progress: integer().notNull().default(0),
+    error: text(),
+    durationSec: integer(),
+    width: integer(),
+    height: integer(),
+    renditions: jsonb().$type<VideoRendition[]>().notNull().default([]),
+    hlsPrefix: text(),
+    keyId: uuid().references(() => hlsKeys.id),
+    createdBy: uuid().references(() => users.id),
+    transcodeStartedAt: tz(),
+    readyAt: tz(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("video_assets_course_idx").on(t.courseId, t.createdAt)],
+);
+
+/** 자막 (srt 를 올리면 WebVTT 로 바꿔 영상 폴더에 둔다) */
+export const videoSubtitles = pgTable(
+  "video_subtitles",
+  {
+    id: id(),
+    videoAssetId: uuid()
+      .notNull()
+      .references(() => videoAssets.id, { onDelete: "cascade" }),
+    lang: text().notNull().default("ko"),
+    label: text().notNull().default("한국어"),
+    /** 올린 srt 원본 */
+    sourceFileId: uuid()
+      .notNull()
+      .references(() => files.id),
+    /** 영상 버킷 안 WebVTT 경로 */
+    vttPath: text().notNull(),
+    cues: integer().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("video_subtitles_asset_lang").on(t.videoAssetId, t.lang)],
+);
+
 /** 영상 자리 (패키지 manifest 의 videos). 과정 단위라 새 버전이 같은 key 를 쓰면 연결이 그대로 이어진다 */
 export const videoSlots = pgTable(
   "video_slots",
@@ -185,8 +267,8 @@ export const videoSlots = pgTable(
     sectionId: text(),
     source: text({ enum: VIDEO_SOURCES }).notNull().default("none"),
     youtubeVideoId: text(),
-    /** 자체 서버 영상 (M4) */
-    videoAssetId: uuid(),
+    /** 자체 서버 영상 (M4). 같은 과정의 영상만 */
+    videoAssetId: uuid().references(() => videoAssets.id),
     durationSec: integer(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -194,6 +276,7 @@ export const videoSlots = pgTable(
   (t) => [
     uniqueIndex("video_slots_course_key").on(t.courseId, t.key),
     check("video_slots_youtube_check", sql`${t.source} <> 'youtube' or ${t.youtubeVideoId} is not null`),
+    check("video_slots_hosted_check", sql`${t.source} <> 'hosted' or ${t.videoAssetId} is not null`),
   ],
 );
 

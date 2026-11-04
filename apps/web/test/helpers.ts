@@ -29,7 +29,8 @@ export async function resetDb(db: TestAuth["db"]) {
     await tx.execute(
       sql`truncate users, sessions, auth_accounts, verifications, two_factors, rate_limits, user_roles,
           user_consents, login_logs, audit_logs, pii_access_logs, email_logs, files, instructors, courses,
-          course_versions, chapters, chapter_assets, video_slots, preview_rules, attachments, entitlements,
+          course_versions, chapters, chapter_assets, video_slots, video_assets, video_subtitles, hls_keys,
+          preview_rules, attachments, entitlements,
           chapter_progress, video_watch, self_checks, learning_heartbeats, learning_time_daily,
           attachment_downloads cascade`,
     );

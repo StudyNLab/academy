@@ -11,8 +11,21 @@
       "name": "web-3100",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@aionit/web", "exec", "next", "dev", "--port", "3100"],
-      "env": { "BETTER_AUTH_URL": "http://localhost:3100", "NEXT_DIST_DIR": ".next-3100" },
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3100",
+        "NEXT_DIST_DIR": ".next-3100"
+      },
       "port": 3100
+    },
+    {
+      "name": "web-3200",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aionit/web", "exec", "next", "dev", "--port", "3200"],
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3200",
+        "NEXT_DIST_DIR": ".next-3200"
+      },
+      "port": 3200
     }
   ]
 }
