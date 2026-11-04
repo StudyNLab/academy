@@ -69,8 +69,10 @@ step "1/6 빌드 맥락 보내기"
 pack | vm $DEV "rm -rf ~/build/aionit && mkdir -p ~/build/aionit && tar -xf - -C ~/build/aionit"
 
 step "2/6 이미지 빌드 (개발 VM)"
-vm $DEV "cd ~/build/aionit && docker build -q -f infra/docker/Dockerfile --target web -t aionit-web:$TAG . >/dev/null \
-  && docker build -q -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null"
+# 패키지 내려받기가 멈추는 일이 있어(2026-11-05, 17분 멈춤) 이미지마다 20분을 넘기면 끊는다
+vm $DEV "cd ~/build/aionit && timeout 20m docker build -q -f infra/docker/Dockerfile --target web -t aionit-web:$TAG . >/dev/null \
+  && timeout 20m docker build -q -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null" \
+  || { echo "이미지 빌드 실패 (또는 20분 넘김). 서버는 그대로입니다." >&2; exit 1; }
 
 step "3/6 이미지 옮기기 (개발 VM ➔ 보관소 ➔ 앱 VM, 바뀐 층만)"
 vm $DEV "docker ps -q -f name=^aionit-registry\$ | grep -q . || docker run -d --restart=always --name aionit-registry \
