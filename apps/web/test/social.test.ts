@@ -187,3 +187,52 @@ describe("운영자가 소셜로 로그인하면", () => {
     expect(staffAccess(await loadViewer(t.auth, t.db, social.headers()), "operator")).toBe("ok");
   });
 });
+
+describe("구글 · 카카오로만 가입한 운영자의 2단계 인증 (비밀번호 없음)", () => {
+  it("방금 로그인했으면 비밀번호 없이 켜고, 로그인한 지 15분이 지나면 다시 로그인하게 한다", async () => {
+    const browser = new Browser(t.auth);
+    expect(await kakao(browser, noEmail, signup("카카오운영"))).toBe("/");
+    const [row] = await t.db.select().from(schema.users);
+    await setRole(t.db, { actorId: null, userId: row!.id, role: "operator", grant: true, reason: "시험" });
+    // 역할이 바뀌면 다시 로그인해야 한다
+    const op = new Browser(t.auth);
+    expect(await kakao(op, noEmail)).toBe("/");
+    expect(staffAccess(await loadViewer(t.auth, t.db, op.headers()), "operator")).toBe("setup_2fa");
+
+    // 로그인한 지 오래된 세션: 거부
+    const [session] = await t.db.select().from(schema.sessions).where(eq(schema.sessions.userId, row!.id));
+    await t.db
+      .update(schema.sessions)
+      .set({ createdAt: new Date(Date.now() - 16 * 60_000) })
+      .where(eq(schema.sessions.id, session!.id));
+    const stale = await op.call("POST", "/two-factor/enable", { issuer: "AIONIT" });
+    expect(stale.status).toBe(403);
+    expect(stale.body.code).toBe("RELOGIN_REQUIRED");
+
+    // 다시 로그인 ➔ 비밀번호 없이 켜기 ➔ 코드 확인 ➔ 관리 화면
+    const fresh = new Browser(t.auth);
+    expect(await kakao(fresh, noEmail)).toBe("/");
+    const enabled = await fresh.call("POST", "/two-factor/enable", { issuer: "AIONIT" });
+    expect(enabled.status, JSON.stringify(enabled.body)).toBe(200);
+    const uri = enabled.body.totpURI as string;
+    expect((await fresh.call("POST", "/two-factor/verify-totp", { code: totpFromUri(uri) })).status).toBe(
+      200,
+    );
+    const viewer = await loadViewer(t.auth, t.db, fresh.headers());
+    expect(viewer?.twoFactorEnabled).toBe(true);
+    expect(staffAccess(viewer, "operator")).toBe("ok");
+
+    // 다음 로그인부터는 구글 · 카카오로 들어와도 관리 화면 전에 OTP 를 다시 받는다
+    const next = new Browser(t.auth);
+    expect(await kakao(next, noEmail)).toBe("/");
+    expect(staffAccess(await loadViewer(t.auth, t.db, next.headers()), "operator")).toBe("verify_2fa");
+  });
+
+  it("비밀번호가 있는 계정은 지금처럼 비밀번호를 받아야 켠다", async () => {
+    const user = await createVerifiedUser(t);
+    const browser = new Browser(t.auth);
+    await browser.call("POST", "/sign-in/email", user);
+    expect((await browser.call("POST", "/two-factor/enable", { issuer: "AIONIT" })).status).toBe(400);
+    expect((await browser.call("POST", "/two-factor/enable", { password: user.password })).status).toBe(200);
+  });
+});
