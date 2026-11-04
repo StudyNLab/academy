@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@aionit/ui/tokens.css";
+@import "@aionit/ui/motion.css";
 
 /* 공통 부품의 class 도 Tailwind 가 찾도록 */
 @source "../../../../packages/ui/src";

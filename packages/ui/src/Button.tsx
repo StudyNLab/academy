@@ -40,10 +40,13 @@ export function LinkButton({ variant, size, className = "", ...rest }: LinkButto
 export function TextLink({ className = "", children, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement>) {
   return (
     <a
-      className={`inline-flex min-h-11 items-center gap-2.5 border-b border-ink font-semibold text-ink no-underline hover:text-signal ${className}`}
+      className={`group inline-flex min-h-11 items-center gap-2.5 border-b border-ink font-semibold text-ink no-underline hover:text-signal ${className}`}
       {...rest}
     >
-      {children} <span aria-hidden="true">→</span>
+      {children}{" "}
+      <span aria-hidden="true" className="transition-transform duration-150 group-hover:translate-x-1">
+        →
+      </span>
     </a>
   );
 }

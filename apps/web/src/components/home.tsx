@@ -1,4 +1,4 @@
-// P-01 홈의 그림 구역들 (캔버스 "AIONIT 디자인" › P-01 홈 · 그림 보강 시안)
+// P-01 홈의 그림 구역들 (캔버스 "AIONIT 디자인" › P-01 홈 · 연출 시안). 움직임 class(aio-*) 는 packages/ui/src/motion.css
 import Image from "next/image";
 import Link from "next/link";
 import { MonoLabel } from "@aionit/ui";
@@ -9,7 +9,7 @@ const wrap = "mx-auto max-w-[1296px] px-5 md:px-14";
 export function TextbookStrip() {
   return (
     <section className="border-y border-line bg-surface py-16 md:py-22">
-      <div className={`${wrap} flex flex-col gap-9`}>
+      <div className={`${wrap} aio-reveal flex flex-col gap-9`}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-3.5">
             <MonoLabel className="text-xs text-signal">From the textbook</MonoLabel>
@@ -116,7 +116,7 @@ export function HowItWorks() {
   ];
   return (
     <section className="border-y border-line bg-surface">
-      <div className={`${wrap} flex flex-wrap items-center gap-x-16 gap-y-12 py-16 md:py-24`}>
+      <div className={`${wrap} aio-reveal flex flex-wrap items-center gap-x-16 gap-y-12 py-16 md:py-24`}>
         <div className="flex min-w-0 flex-[5_1_380px] flex-col gap-5">
           <MonoLabel className="text-xs text-signal">How it works</MonoLabel>
           <h2 className="m-0 text-[32px] leading-[1.2] font-semibold tracking-[-0.035em] md:text-[40px]">
@@ -147,10 +147,11 @@ export function HowItWorks() {
 }
 
 function LearnPreview() {
-  const checks: [boolean, string][] = [
-    [true, "API 키를 환경 변수로 두고 코드에 적지 않았다"],
-    [true, "응답에서 본문 텍스트만 꺼내 출력했다"],
-    [false, "오류 응답(401 · 429)을 구분해 메시지를 냈다"],
+  // done · live(코드 실행 결과가 나온 뒤 체크됨) · todo
+  const checks: ["done" | "live" | "todo", string][] = [
+    ["done", "API 키를 환경 변수로 두고 코드에 적지 않았다"],
+    ["live", "요청을 보내 상태 코드 200 을 받았다"],
+    ["todo", "오류 응답(401 · 429)을 구분해 메시지를 냈다"],
   ];
   return (
     <figure className="m-0 flex min-w-0 flex-[6_1_480px] flex-col gap-2.5">
@@ -178,35 +179,34 @@ function LearnPreview() {
           <p className="m-0 text-[14px] leading-[1.8] text-ink">
             LLM API 요청은 엔드포인트, 헤더, 본문으로 나뉜다. 어느 모델을 쓰든 이 세 부분은 같다.
           </p>
-          <Image
-            src="/home/fig2-01.png"
-            alt=""
-            width={2100}
-            height={1068}
-            className="block h-auto w-full border border-[#ECEAE4] bg-white"
-          />
+          <CodeRun />
         </div>
         <div className="mx-5.5 mt-4 mb-5 border border-line-strong bg-surface px-4 pt-3.5 pb-1.5">
           <div className="flex items-baseline justify-between pb-2">
             <strong className="text-[14px] font-semibold">실습 2-1 · 평가 기준</strong>
-            <span className="font-mono text-[11px] tracking-[0.08em] text-done">2 / 3 확인</span>
+            <span className="grid font-mono text-[11px] tracking-[0.08em] text-done">
+              <span className="aio-chk-off [grid-area:1/1]">1 / 3 확인</span>
+              <span className="aio-chk-on [grid-area:1/1]">2 / 3 확인</span>
+            </span>
           </div>
-          {checks.map(([done, text]) => (
+          {checks.map(([state, text]) => (
             <div
               key={text}
               className="grid grid-cols-[18px_1fr] items-center gap-3 border-t border-line py-2 text-[14px]"
             >
-              <span
-                aria-hidden="true"
-                className={`flex h-4 w-4 items-center justify-center border-[1.5px] ${done ? "border-done bg-done" : "border-ink"}`}
-              >
-                {done ? (
-                  <svg viewBox="0 0 12 12" className="h-2.5 w-2.5">
-                    <path d="M2 6.5 L5 9 L10 3" fill="none" stroke="#F6F5F1" strokeWidth="1.8" />
-                  </svg>
-                ) : null}
+              <span aria-hidden="true" className="grid h-4 w-4">
+                <span className="border-[1.5px] border-ink [grid-area:1/1]" />
+                {state === "todo" ? null : (
+                  <span
+                    className={`flex items-center justify-center border-[1.5px] border-done bg-done [grid-area:1/1] ${state === "live" ? "aio-chk-on" : ""}`}
+                  >
+                    <svg viewBox="0 0 12 12" className="h-2.5 w-2.5">
+                      <path d="M2 6.5 L5 9 L10 3" fill="none" stroke="#F6F5F1" strokeWidth="1.8" />
+                    </svg>
+                  </span>
+                )}
               </span>
-              <span className={done ? "" : "text-ink-2"}>{text}</span>
+              <span className={state === "todo" ? "text-ink-2" : ""}>{text}</span>
             </div>
           ))}
         </div>
@@ -218,6 +218,37 @@ function LearnPreview() {
   );
 }
 
+/** 학습 모형 안의 실습 코드: 한 줄씩 쳐지고 실행 결과가 나온다 (10초 반복) */
+function CodeRun() {
+  return (
+    <div className="bg-code-bg font-mono text-[12.5px] leading-[1.9] text-code-ink">
+      <div className="flex justify-between border-b border-[#2A3444] px-3.5 py-2 text-[11px] tracking-[0.08em] text-[#9AA3B2] uppercase">
+        <span>python · first_request.py</span>
+        <span>▶ 실행</span>
+      </div>
+      <div aria-hidden="true" className="overflow-x-auto px-3.5 pt-3 pb-1">
+        <span className="aio-code-line aio-c0">
+          <span className="text-[#9DB7E8]">import</span> os, requests
+        </span>
+        <span className="aio-code-line aio-c1">
+          KEY = os.environ[<span className="text-[#E3B58C]">&quot;API_KEY&quot;</span>]
+        </span>
+        <span className="aio-code-line aio-c2">r = requests.post(URL, headers=h, json=body)</span>
+        <span className="aio-code-line aio-c3">
+          <span className="text-[#9DB7E8]">print</span>(r.status_code, r.json()[
+          <span className="text-[#E3B58C]">&quot;text&quot;</span>])
+        </span>
+      </div>
+      <div
+        aria-hidden="true"
+        className="aio-cout border-t border-[#2A3444] px-3.5 pt-1.5 pb-2.5 text-[#6FBF8E]"
+      >
+        200 <span className="text-code-ink">안녕하세요. 무엇을 도와드릴까요?</span>
+      </div>
+    </div>
+  );
+}
+
 /** 구독 안내. 요금은 M6 에서 넣는다 — 그 전까지는 설명과 타일 벽만. */
 export function SubscribeBand() {
   // 0 포함 · 1 프리미엄(구독자 할인) · 2 준비 중
@@ -226,8 +257,28 @@ export function SubscribeBand() {
   ];
   const tile = ["bg-[#F6F5F1]", "border-[1.5px] border-[#F0A88C]", "border border-[#4A6285]"];
   return (
-    <section className="bg-[#18304F] text-[#F6F5F1]">
-      <div className={`${wrap} flex flex-wrap items-center gap-x-16 gap-y-12 py-16 md:py-22`}>
+    <section className="relative overflow-hidden bg-[#132741] text-[#F6F5F1]">
+      {/* 질감: 옅은 격자(서버 랙의 칸) + 강조색 등고선 몇 줄 */}
+      <svg
+        viewBox="0 0 1440 560"
+        preserveAspectRatio="xMidYMid slice"
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full"
+      >
+        <g stroke="#F6F5F1" strokeWidth="1" opacity="0.06">
+          <path d="M0 56H1440M0 112H1440M0 168H1440M0 224H1440M0 280H1440M0 336H1440M0 392H1440M0 448H1440M0 504H1440" />
+          <path d="M96 0V560M192 0V560M288 0V560M384 0V560M480 0V560M576 0V560M672 0V560M768 0V560M864 0V560M960 0V560M1056 0V560M1152 0V560M1248 0V560M1344 0V560" />
+        </g>
+        <g fill="none" stroke="#F0A88C" strokeWidth="1.2" opacity="0.2">
+          <path d="M760 560 C860 420 1060 360 1440 380" />
+          <path d="M700 560 C820 380 1040 300 1440 310" />
+          <path d="M640 560 C780 340 1020 240 1440 240" />
+          <path d="M580 560 C740 300 1000 180 1440 170" />
+        </g>
+      </svg>
+      <div
+        className={`${wrap} aio-reveal relative flex flex-wrap items-center gap-x-16 gap-y-12 py-16 md:py-22`}
+      >
         <div className="flex min-w-0 flex-[6_1_440px] flex-col gap-5">
           <MonoLabel className="text-xs text-[#F0A88C]">Subscription</MonoLabel>
           <h2 className="m-0 text-[34px] leading-[1.18] font-semibold tracking-[-0.035em] md:text-[44px]">
@@ -240,7 +291,7 @@ export function SubscribeBand() {
           </p>
           <Link
             href="/subscribe"
-            className="mt-2 inline-flex min-h-[54px] items-center self-start bg-[#F6F5F1] px-7 text-[16px] font-semibold text-[#18304F] no-underline hover:text-[#18304F]"
+            className="mt-2 inline-flex min-h-[54px] items-center self-start rounded-ui bg-[#F6F5F1] px-7 text-[16px] font-semibold text-[#18304F] no-underline transition-colors duration-150 hover:bg-[#F0A88C] hover:text-[#121A26]"
           >
             구독 알아보기
           </Link>
@@ -281,7 +332,7 @@ export function InstructorFlow() {
   ];
   return (
     <section
-      className={`${wrap} flex flex-wrap items-center justify-between gap-x-12 gap-y-9 border-b border-line py-16 md:py-22`}
+      className={`${wrap} aio-reveal flex flex-wrap items-center justify-between gap-x-12 gap-y-9 border-b border-line py-16 md:py-22`}
     >
       <div className="flex max-w-[440px] flex-col gap-3">
         <MonoLabel className="text-xs text-signal">For instructors</MonoLabel>
