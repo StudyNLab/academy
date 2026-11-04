@@ -45,6 +45,10 @@ export async function withdrawUser(db: Db, userId: string, headers?: Headers | n
       .update(schema.learningTimeDaily)
       .set({ userId: null })
       .where(eq(schema.learningTimeDaily.userId, userId));
+    // Q&A 글은 남기고 "탈퇴한 회원"으로 보인다 (닉네임이 비므로, 결정 D2). 1:1 문의는 분쟁 기록이라 3년 보관한다.
+    // 사이트 알림 · 알림 설정은 지운다
+    await tx.delete(schema.notifications).where(eq(schema.notifications.userId, userId));
+    await tx.delete(schema.notificationPrefs).where(eq(schema.notificationPrefs.userId, userId));
     // 결제 기록(주문 · 결제 · 환불)은 5년 보관이라 남긴다. 결제하지 않은 주문서만 닫는다
     await tx
       .update(schema.orders)

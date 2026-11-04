@@ -34,7 +34,8 @@ export async function resetDb(db: TestAuth["db"]) {
           chapter_progress, video_watch, self_checks, learning_heartbeats, learning_time_daily,
           attachment_downloads, products, product_items, prices, subscriber_discount_policies, orders,
           order_items, payments, refunds, payment_webhooks, subscriptions, subscription_cycles,
-          subscription_notices cascade`,
+          subscription_notices, questions, answers, reports, inquiries, inquiry_messages, notices, faqs,
+          notifications, notification_prefs cascade`,
     );
   });
 }

@@ -1,5 +1,6 @@
 // 수강 만료 알림 메일 D-30 · D-7 (docs/기술설계.md 2.3). 매일 09:00 KST.
 // 보낼 메일을 대기열에 넣고 그 자리에서 reminded_* 를 적는다 (다시 돌려도 두 번 보내지 않는다).
+// 사이트 알림은 언제나 남기고, 메일은 알림 설정(notification_prefs.expiry_email)을 끈 사람에게는 보내지 않는다 (M7).
 import type { EntitlementLike } from "@aionit/core";
 import { courseAccess, expiryReminderDue, isDeliverableEmail } from "@aionit/core";
 import type { Db } from "@aionit/db";
@@ -33,6 +34,19 @@ export async function sendExpiryReminders(
   if (rows.length === 0) return result;
   const userIds = [...new Set(rows.map((r) => r.user.id))];
   const all = await db.select().from(schema.entitlements).where(inArray(schema.entitlements.userId, userIds));
+  const mailOff = new Set(
+    (
+      await db
+        .select({ userId: schema.notificationPrefs.userId })
+        .from(schema.notificationPrefs)
+        .where(
+          and(
+            inArray(schema.notificationPrefs.userId, userIds),
+            eq(schema.notificationPrefs.expiryEmail, false),
+          ),
+        )
+    ).map((r) => r.userId),
+  );
 
   for (const { entitlement: e, course, user } of rows) {
     const due = expiryReminderDue(e, now);
@@ -58,7 +72,19 @@ export async function sendExpiryReminders(
       )
       .returning({ id: schema.entitlements.id });
     if (!claimed) continue;
-    if (longer || !isDeliverableEmail(user.email)) {
+    if (longer) {
+      result.skipped += 1;
+      continue;
+    }
+    const daysLeft = Math.ceil((e.endsAt!.getTime() - now.getTime()) / DAY);
+    await db.insert(schema.notifications).values({
+      userId: user.id,
+      kind: "expiry",
+      title: `수강 기간이 ${daysLeft}일 남았습니다: ${course.title}`,
+      url: `/courses/${course.slug}`,
+      targetId: e.id,
+    });
+    if (mailOff.has(user.id) || !isDeliverableEmail(user.email)) {
       result.skipped += 1;
       continue;
     }
@@ -68,7 +94,7 @@ export async function sendExpiryReminders(
         to: user.email,
         userId: user.id,
         courseTitle: course.title,
-        daysLeft: Math.ceil((e.endsAt!.getTime() - now.getTime()) / DAY),
+        daysLeft,
         endsAt: e.endsAt!.toISOString(),
         courseUrl: `${deps.baseUrl}/courses/${course.slug}`,
       });

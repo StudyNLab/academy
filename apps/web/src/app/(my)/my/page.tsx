@@ -4,9 +4,10 @@ import { eq, schema } from "@aionit/db";
 import { PageTitle } from "@/components/page-title";
 import { latestConsents } from "@/server/consents";
 import { getDb } from "@/server/db";
+import { notificationPrefs } from "@/server/notifications";
 import { socialProviders } from "@/server/providers";
 import { requireViewer } from "@/server/session";
-import { LinkedAccounts, MarketingToggle, NicknameForm } from "./my-forms";
+import { LinkedAccounts, MarketingToggle, NicknameForm, NotificationPrefsForm } from "./my-forms";
 
 export const metadata: Metadata = { title: "내 정보" };
 
@@ -21,7 +22,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// M-01 내 정보: 닉네임, 이메일, 로그인 연결(구글 · 카카오), 마케팅 수신 동의
+// M-01 내 정보: 닉네임, 이메일, 로그인 연결(구글 · 카카오), 알림 설정(M7) · 마케팅 수신 동의
 export default async function MyPage({
   searchParams,
 }: {
@@ -38,6 +39,7 @@ export default async function MyPage({
     .from(schema.authAccounts)
     .where(eq(schema.authAccounts.userId, viewer.userId));
   const consents = await latestConsents(db, viewer.userId);
+  const prefs = await notificationPrefs(db, viewer.userId);
   const nextChange = nextNicknameChangeAt(user?.nicknameChangedAt ?? null, new Date());
   const params = await searchParams;
 
@@ -62,7 +64,10 @@ export default async function MyPage({
           linkError={params.error ?? null}
         />
       </Section>
-      <Section title="알림 · 동의">
+      <Section title="알림 설정">
+        <NotificationPrefsForm prefs={prefs} />
+      </Section>
+      <Section title="마케팅 수신 동의">
         <MarketingToggle agreed={consents.get("marketing")?.agreed ?? false} />
       </Section>
     </>

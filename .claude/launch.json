@@ -37,6 +37,16 @@
         "TOSS_FAKE": "1"
       },
       "port": 3300
+    },
+    {
+      "name": "web-3400",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aionit/web", "exec", "next", "dev", "--port", "3400"],
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3400",
+        "NEXT_DIST_DIR": ".next-3400"
+      },
+      "port": 3400
     }
   ]
 }

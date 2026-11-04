@@ -33,7 +33,7 @@ export function youtubeEmbed(videoId: string, title: string, track?: TrackOption
  * 연결된 영상 하나. 없거나 아직 볼 수 없으면 null.
  *   유튜브: 누구나 재생 (학습 화면이면 시청 기록용 API 를 켠다)
  *   자체 서버(수강생 전용): 학습 화면(track 있음)은 플레이어 자리 ➔ 화면(HostedVideo)이 토큰을 받아 재생,
- *     미리보기(track 없음)는 🔒 카드, 운영자 미리보기는 "연결됨" 안내
+ *     미리보기(track 없음)는 잠금 카드, 운영자 미리보기는 "연결됨" 안내
  */
 function videoFigure(
   slot: SlotView,
@@ -50,7 +50,7 @@ function videoFigure(
     if (mode === "admin")
       return `<p class="video-hosted-note">자체 서버 영상 연결됨 · <code>${key}</code> ${title}${label} — 수강생 학습 화면에서 재생됩니다</p>`;
     if (!track)
-      return `<figure class="video-block" id="video-${key}"><div class="video-locked"><p>🔒 수강생 전용 영상입니다</p></div><figcaption>${title}</figcaption></figure>`;
+      return `<figure class="video-block" id="video-${key}"><div class="video-locked"><p>수강생 전용 영상입니다</p></div><figcaption>${title}</figcaption></figure>`;
     return `<figure class="video-block" id="video-${key}"><div class="hosted-video" data-hosted-key="${key}"></div><figcaption>${title} · 수강생 전용</figcaption></figure>`;
   }
   return null;

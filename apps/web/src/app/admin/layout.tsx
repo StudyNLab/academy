@@ -10,6 +10,9 @@ const menu = [
   { href: "/admin/products", label: "상품 · 가격" },
   { href: "/admin/subscriptions", label: "구독" },
   { href: "/admin/refunds", label: "환불" },
+  { href: "/admin/inquiries", label: "1:1 문의" },
+  { href: "/admin/qna", label: "Q&A 관리" },
+  { href: "/admin/notices", label: "공지 · FAQ" },
   { href: "/admin/logs", label: "기록" },
 ];
 

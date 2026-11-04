@@ -37,10 +37,14 @@ export {
   sql,
 } from "drizzle-orm";
 export type {
+  AnswerRole,
   CourseField,
   CourseStatus,
+  InquiryStatus,
   LoginResult,
+  NotificationKind,
   PolicyKind,
+  ReportTarget,
   Role,
   UserStatus,
   VersionStatus,

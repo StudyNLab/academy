@@ -51,6 +51,25 @@ export type MailJob =
       courseUrl: string;
     }
   | {
+      /** 내 질문에 새 답변 (알림 설정에서 끌 수 있다) */
+      template: "qna-answer";
+      to: string;
+      userId: string | null;
+      courseTitle: string;
+      questionTitle: string;
+      /** 강사 · 운영자가 답했나 */
+      fromStaff: boolean;
+      url: string;
+    }
+  | {
+      /** 1:1 문의에 운영자 답변 */
+      template: "inquiry-answer";
+      to: string;
+      userId: string | null;
+      title: string;
+      url: string;
+    }
+  | {
       template: "subscription-notice";
       to: string;
       userId: string | null;
@@ -234,12 +253,32 @@ export function renderMail(job: MailJob): RenderedMail {
       }
       break;
     }
+    case "qna-answer":
+      return layout(
+        job.fromStaff ? "질문에 강사 답변이 달렸습니다" : "질문에 새 답변이 달렸습니다",
+        [
+          `${job.courseTitle} 에 남긴 질문 "${job.questionTitle}" 에 새 답변이 달렸습니다.`,
+          "답변으로 해결되었다면 질문 화면에서 [해결됨] 을 눌러 주세요. 다른 수강생에게도 도움이 됩니다.",
+          "이 메일은 사이트의 내 정보 > 알림 설정에서 끌 수 있습니다.",
+        ],
+        { label: "답변 보기", url: job.url },
+      );
+    case "inquiry-answer":
+      return layout(
+        "1:1 문의에 답변이 왔습니다",
+        [
+          `문의하신 "${job.title}" 에 답변을 드렸습니다.`,
+          "답변 내용은 사이트에서 확인할 수 있습니다. 더 궁금한 점은 같은 문의에 이어서 남겨 주세요.",
+        ],
+        { label: "답변 보기", url: job.url },
+      );
     case "expiry-reminder":
       return layout(
         `수강 기간이 ${job.daysLeft}일 남았습니다`,
         [
           `${job.courseTitle} 의 수강 기간이 ${lastDay(job.endsAt)} 에 끝납니다.`,
           "기간이 끝나도 진도와 실습 체크는 남아 있고, 연장권을 사면 이어서 볼 수 있습니다.",
+          "이 메일은 사이트의 내 정보 > 알림 설정에서 끌 수 있습니다.",
         ],
         { label: "강의 보기", url: job.courseUrl },
       );

@@ -141,3 +141,33 @@ describe("createMemoryMailer", () => {
     expect(mailer.sent).toHaveLength(1);
   });
 });
+
+describe("Q&A · 1:1 문의 메일 (M7)", () => {
+  it("답변 알림: 강의 · 질문 제목, 링크 하나, 끄는 곳 안내", () => {
+    const mail = renderMail({
+      template: "qna-answer",
+      to: "a@example.com",
+      userId: null,
+      courseTitle: "AI Agent 개발 · 초급",
+      questionTitle: "401 오류가 나요",
+      fromStaff: true,
+      url: "https://x.test/learn/ai/ch02?qna=q1",
+    });
+    expect(mail.subject).toBe("[AIONIT] 질문에 강사 답변이 달렸습니다");
+    expect(mail.text).toContain('"401 오류가 나요"');
+    expect(mail.text).toContain("알림 설정에서 끌 수 있습니다");
+    expect(mail.text.match(/https?:\/\//g)).toHaveLength(1);
+  });
+
+  it("문의 답변 알림: 답변 내용은 메일에 넣지 않는다 (사이트에서 확인)", () => {
+    const mail = renderMail({
+      template: "inquiry-answer",
+      to: "a@example.com",
+      userId: null,
+      title: "환불 문의",
+      url: "https://x.test/my/inquiries/i1",
+    });
+    expect(mail.subject).toBe("[AIONIT] 1:1 문의에 답변이 왔습니다");
+    expect(mail.text).toContain("https://x.test/my/inquiries/i1");
+  });
+});

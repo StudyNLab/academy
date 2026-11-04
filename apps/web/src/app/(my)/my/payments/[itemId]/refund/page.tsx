@@ -116,7 +116,9 @@ export default async function RefundPage({ params }: { params: Promise<{ itemId:
             {quote.message} <Link href="/policies/refund">환불 규정</Link>
           </Notice>
           <p className="m-0 text-[14px] text-ink-2">
-            사정이 있으면 1:1 문의로 알려 주세요 (문의 화면은 준비 중입니다).
+            사정이 있으면{" "}
+            <Link href={`/my/inquiries/new?category=${encodeURIComponent("결제 · 환불")}`}>1:1 문의</Link>로
+            알려 주세요.
           </p>
         </div>
       )}

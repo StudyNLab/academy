@@ -4,3 +4,4 @@ export * from "./auth";
 export * from "./content";
 export * from "./learning";
 export * from "./commerce";
+export * from "./support";
