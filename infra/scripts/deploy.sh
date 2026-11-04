@@ -70,8 +70,9 @@ pack | vm $DEV "rm -rf ~/build/aionit && mkdir -p ~/build/aionit && tar -xf - -C
 
 step "2/6 이미지 빌드 (개발 VM)"
 # 패키지 내려받기가 멈추는 일이 있어(2026-11-05, 17분 멈춤) 이미지마다 20분을 넘기면 끊는다
-vm $DEV "cd ~/build/aionit && timeout 20m docker build -q -f infra/docker/Dockerfile --target web -t aionit-web:$TAG . >/dev/null \
-  && timeout 20m docker build -q -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null" \
+# --provenance=false: 빌드 기록(attestation)을 붙이면 이미지가 묶음(index)이 되는데, 보관소 정리(garbage-collect)가 묶음 안의 층을 지워 버린다 (registry 2.x)
+vm $DEV "cd ~/build/aionit && timeout 20m docker build -q --provenance=false -f infra/docker/Dockerfile --target web -t aionit-web:$TAG . >/dev/null \
+  && timeout 20m docker build -q --provenance=false -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null" \
   || { echo "이미지 빌드 실패 (또는 20분 넘김). 서버는 그대로입니다." >&2; exit 1; }
 
 step "3/6 이미지 옮기기 (개발 VM ➔ 보관소 ➔ 앱 VM, 바뀐 층만)"
