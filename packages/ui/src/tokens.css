@@ -31,10 +31,10 @@
 
 :root {
   color-scheme: light;
-  --bg: #f6f5f1;
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --surface-sunken: #efede7;
-  --line: #dad7cf;
+  --surface-sunken: #eef1f5;
+  --line: #e1e5eb;
   --line-strong: #121a26;
   --ink: #121a26;
   --ink-2: #4a5361;

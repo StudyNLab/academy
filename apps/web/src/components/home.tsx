@@ -100,7 +100,7 @@ function Figure({
         alt={alt}
         width={width}
         height={height}
-        className="block h-auto w-full border border-[#ECEAE4] bg-white"
+        className="block h-auto w-full border border-[#E1E5EB] bg-white"
       />
       <figcaption className="text-[13px] text-ink-2">{children}</figcaption>
     </figure>
