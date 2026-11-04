@@ -10,6 +10,22 @@ JUMP=user1@10.100.4.52
 DEV=22063 APP=22061 DATA=22062
 vm() { local port=$1; shift; ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$port" user1@127.0.0.1 "$@"; }
 
+# 이미지 보관소(registry): 개발 VM 의 127.0.0.1:5055 에만 연다. 개발 VM 과 앱 VM 은 서로 닿지 않으므로
+# 배포하는 동안 노트북을 거치는 SSH 터널(앱 VM 127.0.0.1:5055 ➔ 노트북 15055 ➔ 개발 VM 5055)로 받아 간다.
+# 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
+REG_PORT=5055 REG_LOCAL=15055
+REG_IMAGE=registry:2.8.3
+REG=127.0.0.1:$REG_PORT
+
+# 단계마다 걸린 시간을 찍는다
+START=$SECONDS STEP_AT=
+step() {
+  [ -n "$STEP_AT" ] && echo "   ($((SECONDS - STEP_AT))초)"
+  STEP_AT=$SECONDS
+  [ -n "${1:-}" ] && echo "== $*"
+  return 0
+}
+
 cd "$(git rev-parse --show-toplevel)"
 
 current_tag() { vm $APP "grep ^APP_TAG= ~/aionit/.env | cut -d= -f2"; }
@@ -49,17 +65,33 @@ fi
 PREV=$(current_tag)
 echo "== 배포 $PREV ➔ $TAG"
 
-echo "== 1/6 빌드 맥락 보내기"
+step "1/6 빌드 맥락 보내기"
 pack | vm $DEV "rm -rf ~/build/aionit && mkdir -p ~/build/aionit && tar -xf - -C ~/build/aionit"
 
-echo "== 2/6 이미지 빌드 (개발 VM)"
+step "2/6 이미지 빌드 (개발 VM)"
 vm $DEV "cd ~/build/aionit && docker build -q -f infra/docker/Dockerfile --target web -t aionit-web:$TAG . >/dev/null \
   && docker build -q -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null"
 
-echo "== 3/6 이미지 옮기기 (개발 VM ➔ 앱 VM)"
-vm $DEV "docker save aionit-web:$TAG aionit-worker:$TAG | gzip -1" | vm $APP "gunzip | docker load -q"
+step "3/6 이미지 옮기기 (개발 VM ➔ 보관소 ➔ 앱 VM, 바뀐 층만)"
+vm $DEV "docker ps -q -f name=^aionit-registry\$ | grep -q . || docker run -d --restart=always --name aionit-registry \
+  -p 127.0.0.1:$REG_PORT:5000 -v aionit-registry:/var/lib/registry -e REGISTRY_STORAGE_DELETE_ENABLED=true $REG_IMAGE >/dev/null"
+vm $DEV "for i in \$(seq 1 15); do curl -fs http://$REG/v2/ >/dev/null && exit 0; sleep 1; done; exit 1"
+vm $DEV "for img in aionit-web aionit-worker; do docker tag \$img:$TAG $REG/\$img:$TAG && docker push -q $REG/\$img:$TAG >/dev/null \
+  && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done"
+# 터널: 노트북 $REG_LOCAL ➔ 개발 VM $REG_PORT, 앱 VM $REG_PORT ➔ 노트북 $REG_LOCAL
+TUNNELS=()
+ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ProxyJump="$JUMP" -p $DEV -L $REG_LOCAL:127.0.0.1:$REG_PORT user1@127.0.0.1 &
+TUNNELS+=($!)
+ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ProxyJump="$JUMP" -p $APP -R $REG_PORT:127.0.0.1:$REG_LOCAL user1@127.0.0.1 &
+TUNNELS+=($!)
+trap 'kill "${TUNNELS[@]}" 2>/dev/null || true' EXIT
+vm $APP "for i in \$(seq 1 20); do curl -fs http://$REG/v2/ >/dev/null && exit 0; sleep 1; done; echo '보관소 터널이 열리지 않습니다' >&2; exit 1"
+vm $APP "for img in aionit-web aionit-worker; do docker pull -q $REG/\$img:$TAG >/dev/null && docker tag $REG/\$img:$TAG \$img:$TAG \
+  && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done"
+kill "${TUNNELS[@]}" 2>/dev/null || true
+trap - EXIT
 
-echo "== 4/6 서버 설정 반영"
+step "4/6 서버 설정 반영"
 vm $APP "cat > ~/aionit/compose.yaml" < infra/app-vm/compose.yaml
 # Caddyfile 이 바뀌었으면 Caddy 를 다시 띄운다 (compose 는 붙인 파일만 바뀐 것을 모른다)
 vm $APP "cat > ~/aionit/Caddyfile.new" < infra/app-vm/Caddyfile
@@ -72,21 +104,39 @@ vm $APP 'cd ~/aionit && if cmp -s Caddyfile Caddyfile.new; then rm Caddyfile.new
 # 데이터 서버의 compose.yaml 은 배포 때 바꾸지 않는다 (DB 재시작은 따로, 신중하게). 백업 스크립트만 맞춘다.
 vm $DATA "cat > ~/aionit/backup.sh && chmod +x ~/aionit/backup.sh" < infra/data-vm/backup.sh
 
-echo "== 5/6 배포 전 DB 백업 + 마이그레이션"
+step "5/6 배포 전 DB 백업 + 마이그레이션"
 vm $DATA "~/aionit/backup.sh pre-deploy-$TAG"
 vm $APP "cd ~/aionit && APP_TAG=$TAG docker compose run --rm --no-deps worker pnpm --filter @aionit/db migrate"
 
-echo "== 6/6 전환 + 상태 확인"
+step "6/6 전환 + 상태 확인"
 vm $APP "echo $PREV > ~/aionit/.previous_tag"
 switch_to "$TAG"
 if healthy; then
-  echo "완료: $TAG 배포됨"
+  step
+  echo "완료: $TAG 배포됨 (모두 $((SECONDS - START))초)"
 else
   echo "상태 확인 실패 ➔ $PREV 로 되돌립니다" >&2
   [ "$PREV" != none ] && switch_to "$PREV"
   exit 1
 fi
 
-# 오래된 이미지 정리 (현재 · 직전만 남김)
-vm $APP "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null"
-vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null; docker builder prune -f --filter until=168h >/dev/null"
+# 오래된 이미지 정리 (현재 · 직전만 남김). 정리에 실패해도 배포는 끝난 것이다.
+vm $APP "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null" || true
+vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null
+  docker image prune -f >/dev/null
+  docker builder prune -f --filter until=168h >/dev/null
+  docker builder prune -f --max-used-space 15gb >/dev/null" || true
+# 보관소: 현재 · 직전 태그만 남기고 지운 뒤 빈 층을 치운다. 같은 내용(digest)을 가리키는 태그는 건드리지 않는다.
+vm $DEV "reg=http://$REG
+  acc='-H Accept:application/vnd.oci.image.index.v1+json -H Accept:application/vnd.oci.image.manifest.v1+json -H Accept:application/vnd.docker.distribution.manifest.v2+json -H Accept:application/vnd.docker.distribution.manifest.list.v2+json'
+  digest() { curl -fsI \$acc \$reg/v2/\$1/manifests/\$2 | tr -d '\r' | awk -F': ' 'tolower(\$1)==\"docker-content-digest\"{print \$2}'; }
+  for repo in aionit-web aionit-worker; do
+    keep=\"\$(digest \$repo $TAG) \$(digest \$repo $PREV 2>/dev/null || true)\"
+    for t in \$(curl -fs \$reg/v2/\$repo/tags/list | tr -d '\"[]{}' | sed 's/.*tags://' | tr , ' '); do
+      [ \"\$t\" = $TAG ] || [ \"\$t\" = $PREV ] && continue
+      d=\$(digest \$repo \$t) || continue
+      case \" \$keep \" in *\" \$d \"*) continue ;; esac
+      curl -fs -X DELETE \$reg/v2/\$repo/manifests/\$d >/dev/null || true
+    done
+  done
+  docker exec aionit-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1" || true
