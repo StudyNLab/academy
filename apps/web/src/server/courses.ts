@@ -308,7 +308,7 @@ export async function rejectVersion(db: Db, versionId: string, actor: Actor & { 
   });
 }
 
-// ---- 영상 연결 (AD-05 일부: 유튜브) ----
+// ---- 영상 연결 (AD-05: 유튜브. 자체 서버 영상은 videos.ts linkHosted) ----
 
 /** 유튜브 주소 ➔ 영상 id. 받는 형식: youtu.be/ID, youtube.com/watch?v=ID, /embed/ID, /shorts/ID, 또는 id 만 */
 export function parseYoutubeId(input: string): string | null {
@@ -338,7 +338,7 @@ export async function linkYoutube(db: Db, slotId: string, input: { url: string |
     throw new CourseError("BAD_YOUTUBE_URL", "유튜브 영상 주소를 확인해 주세요.");
   await db
     .update(schema.videoSlots)
-    .set({ source: youtubeVideoId ? "youtube" : "none", youtubeVideoId })
+    .set({ source: youtubeVideoId ? "youtube" : "none", youtubeVideoId, videoAssetId: null })
     .where(eq(schema.videoSlots.id, slotId));
   await writeAudit(db, {
     actorId: input.actorId,

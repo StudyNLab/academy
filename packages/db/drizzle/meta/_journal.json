@@ -36,6 +36,13 @@
       "when": 1793747564432,
       "tag": "0004_faithful_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793772705925,
+      "tag": "0005_easy_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

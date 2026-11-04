@@ -72,11 +72,7 @@ export async function courseDetail(db: Db, slug: string, options: { allowUnpubli
         .where(eq(schema.chapters.courseVersionId, versionId))
         .orderBy(asc(schema.chapters.sortOrder))
     : [];
-  const slots = await db
-    .select()
-    .from(schema.videoSlots)
-    .where(eq(schema.videoSlots.courseId, course.course.id))
-    .orderBy(asc(schema.videoSlots.key));
+  const slots = await courseSlots(db, course.course.id);
   const previews = await db
     .select()
     .from(schema.previewRules)
@@ -101,13 +97,38 @@ export async function courseDetail(db: Db, slug: string, options: { allowUnpubli
 
 export type CourseDetail = NonNullable<Awaited<ReturnType<typeof courseDetail>>>;
 
-function slotMap(slots: (typeof schema.videoSlots.$inferSelect)[]): Map<string, SlotView> {
-  return new Map(
-    slots.map((s) => [
-      s.key,
-      { key: s.key, title: s.title, source: s.source, youtubeVideoId: s.youtubeVideoId },
-    ]),
-  );
+/** 과정의 영상 자리 + 자체 서버 영상이 재생할 수 있는 상태인지 (변환 끝남) */
+export async function courseSlots(db: Db, courseId: string) {
+  const rows = await db
+    .select({ slot: schema.videoSlots, assetStatus: schema.videoAssets.status })
+    .from(schema.videoSlots)
+    .leftJoin(schema.videoAssets, eq(schema.videoAssets.id, schema.videoSlots.videoAssetId))
+    .where(eq(schema.videoSlots.courseId, courseId))
+    .orderBy(asc(schema.videoSlots.key));
+  return rows.map((r) => ({
+    ...r.slot,
+    hostedReady: r.slot.source === "hosted" && r.assetStatus === "ready",
+  }));
+}
+
+export type CourseSlot = Awaited<ReturnType<typeof courseSlots>>[number];
+
+/** 지금 재생할 수 있는 영상인가 (진도 · 완료 조건에 드는 영상): 유튜브 연결 또는 변환이 끝난 자체 서버 영상 */
+export const playableSlot = (s: CourseSlot) =>
+  (s.source === "youtube" && !!s.youtubeVideoId) || s.hostedReady;
+
+export function slotView(s: CourseSlot): SlotView {
+  return {
+    key: s.key,
+    title: s.title,
+    source: s.source,
+    youtubeVideoId: s.youtubeVideoId,
+    hostedReady: s.hostedReady,
+  };
+}
+
+function slotMap(slots: CourseSlot[]): Map<string, SlotView> {
+  return new Map(slots.map((s) => [s.key, slotView(s)]));
 }
 
 /** 무료 미리보기 (P-04): 공개 중인 버전에서 운영자가 정한 범위만 */
@@ -155,10 +176,7 @@ export async function adminChapter(db: Db, versionId: string, chapterKey: string
     .innerJoin(schema.courses, eq(schema.courses.id, schema.courseVersions.courseId))
     .where(and(eq(schema.chapters.courseVersionId, versionId), eq(schema.chapters.chapterKey, chapterKey)));
   if (!row) return null;
-  const slots = await db
-    .select()
-    .from(schema.videoSlots)
-    .where(eq(schema.videoSlots.courseId, row.course.id));
+  const slots = await courseSlots(db, row.course.id);
   const main = slots.find((s) => s.kind === "main" && s.chapterKey === chapterKey);
   return {
     ...row,
@@ -261,11 +279,20 @@ export async function adminVersion(db: Db, versionId: string) {
   return { ...row, chapters: chapterRows, unlinked };
 }
 
-/** 교재 그림 내려주기 권한: 공개 중인 버전의 그림은 누구나, 그 밖(검수 전 등)은 운영자만 */
+/**
+ * 교재 그림 찾기. 내려줄지는 route 에서 정한다 (api/v1/content/[versionId]/[...path]):
+ * 공개 중인 버전 ➔ 무료 미리보기에 나오는 그림은 누구나, 나머지는 볼 수 있는 사람(수강권 · 운영자 · 그 과정 강사)만.
+ * 공개 전 버전(검수 중 등) ➔ 운영자만.
+ */
 export async function contentAsset(db: Db, versionId: string, path: string) {
   const [row] = await db
     .select({
       objectKey: schema.files.objectKey,
+      course: {
+        id: schema.courses.id,
+        inSubscription: schema.courses.inSubscription,
+        ownerInstructorId: schema.courses.ownerInstructorId,
+      },
       versionStatus: schema.courseVersions.status,
       isPublished: sql<boolean>`${schema.courses.publishedVersionId} = ${schema.courseVersions.id} and ${schema.courses.status} = 'published'`,
     })
@@ -275,4 +302,61 @@ export async function contentAsset(db: Db, versionId: string, path: string) {
     .innerJoin(schema.courses, eq(schema.courses.id, schema.courseVersions.courseId))
     .where(and(eq(schema.chapterAssets.courseVersionId, versionId), eq(schema.chapterAssets.path, path)));
   return row ?? null;
+}
+
+const safeDecode = (part: string) => {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+};
+
+/** 무료 미리보기 화면에 나오는 그림 경로. 버전 + 미리보기 범위가 같으면 본문을 다시 훑지 않는다 */
+const previewImageCache = new Map<string, Set<string>>();
+
+export async function isPreviewImage(db: Db, courseId: string, versionId: string, path: string) {
+  const rules = await db
+    .select({
+      chapterKey: schema.previewRules.chapterKey,
+      scope: schema.previewRules.scope,
+      sectionIds: schema.previewRules.sectionIds,
+    })
+    .from(schema.previewRules)
+    .where(eq(schema.previewRules.courseId, courseId))
+    .orderBy(asc(schema.previewRules.chapterKey));
+  const cacheKey = `${versionId}:${JSON.stringify(rules)}`;
+  const cached = previewImageCache.get(cacheKey);
+  if (cached) return cached.has(path);
+  const chapters =
+    rules.length === 0
+      ? []
+      : await db
+          .select({ key: schema.chapters.chapterKey, html: schema.chapters.contentHtml })
+          .from(schema.chapters)
+          .where(
+            and(
+              eq(schema.chapters.courseVersionId, versionId),
+              inArray(
+                schema.chapters.chapterKey,
+                rules.map((r) => r.chapterKey),
+              ),
+            ),
+          );
+  const paths = new Set<string>();
+  const prefix = `/api/v1/content/${versionId}/`;
+  for (const chapter of chapters) {
+    const rule = rules.find((r) => r.chapterKey === chapter.key)!;
+    const html =
+      rule.scope === "whole" ? chapter.html : keepSections(chapter.html, rule.sectionIds as string[]);
+    let at = html.indexOf(prefix);
+    while (at >= 0) {
+      const rest = html.slice(at + prefix.length).match(/^[^"'\s)]+/)?.[0] ?? "";
+      paths.add(rest.split("/").map(safeDecode).join("/"));
+      at = html.indexOf(prefix, at + prefix.length);
+    }
+  }
+  if (previewImageCache.size > 200) previewImageCache.clear();
+  previewImageCache.set(cacheKey, paths);
+  return paths.has(path);
 }

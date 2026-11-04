@@ -2,14 +2,17 @@
 
 // L-02 학습 화면 (docs/화면상세기획.md 1장): 학습 머리글 · 목차 · 챕터 영상 ➔ 교재 ➔ 끼운 영상 · 스스로 확인 · 챕터 끝 요약
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonoLabel, ProgressBar } from "@aionit/ui";
 import { Reader } from "@/components/reader";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { api } from "@/lib/client-api";
+import type { Playback } from "@/server/videos";
 import type { LearnResult } from "@/server/learning";
-import type { Beat, ChapterStatus, VideoTrack } from "./learn-sync";
-import { LearnSync, trackVideos } from "./learn-sync";
+import { HostedVideo } from "./hosted-video";
+import type { Beat, ChapterStatus } from "./learn-sync";
+import { html5Player, LearnSync, trackVideos, VideoTrack } from "./learn-sync";
 
 type Data = Extract<LearnResult, { kind: "ok" }>;
 type Lab = Data["labs"][number];
@@ -58,6 +61,8 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
   );
 
   const onMount = useCallback((el: HTMLDivElement) => setRoot(el), []);
+  /** 자체 서버 영상: 재생을 시작하면 HostedVideo 가 넘긴 video 요소로 시청 구간을 잰다 */
+  const hostedTracks = useRef(new Map<string, VideoTrack>());
   const topSections = useMemo(() => chapter.toc.filter((t) => t.level === 1).map((t) => t.id), [chapter.toc]);
 
   // 읽은 위치 · 학습 신호 · 영상 시청
@@ -101,7 +106,7 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
       const now = Date.now();
       const at = new Date(now).toISOString();
       const beats: Beat[] = [];
-      for (const v of videos) {
+      for (const v of [...videos, ...hostedTracks.current.values()]) {
         const beat = v.take(at);
         if (beat) beats.push(beat);
       }
@@ -137,7 +142,7 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
       })
       .catch(() => undefined);
     const sampler = setInterval(() => {
-      for (const v of videos) {
+      for (const v of [...videos, ...hostedTracks.current.values()]) {
         v.sample();
         if (v.playing) lastActivity = Date.now();
       }
@@ -178,6 +183,15 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
     return [...root.querySelectorAll<HTMLElement>(".self-check-slot")].map((el) => ({
       el,
       sectionId: el.dataset.section!,
+    }));
+  }, [root]);
+
+  // 자체 서버 영상: 본문 안 자리(.hosted-video)에 플레이어를 그린다
+  const hostedSlots = useMemo(() => {
+    if (!root) return [];
+    return [...root.querySelectorAll<HTMLElement>(".hosted-video")].map((el) => ({
+      el,
+      key: el.dataset.hostedKey!,
     }));
   }, [root]);
 
@@ -302,6 +316,25 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
           <div className="mt-4">
             <Reader html={data.html} onMount={onMount} />
           </div>
+          {hostedSlots.map(({ el, key }) => {
+            const video = data.videos.find((v) => v.key === key);
+            return video
+              ? createPortal(
+                  <HostedVideo
+                    title={video.title}
+                    startAt={data.startAt[key]}
+                    load={() =>
+                      api<Playback>("/learn/videos/playback", { courseId: course.id, videoKey: key })
+                    }
+                    onVideo={(el) =>
+                      hostedTracks.current.set(key, new VideoTrack(key, chapter.key, html5Player(el)))
+                    }
+                  />,
+                  el,
+                  key,
+                )
+              : null;
+          })}
           {slots.map(({ el, sectionId }) => {
             const lab = labs.find((l) => l.sectionId === sectionId);
             return lab ? createPortal(<SelfCheck lab={lab} onToggle={toggleCheck} />, el, sectionId) : null;

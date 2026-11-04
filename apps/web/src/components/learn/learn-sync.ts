@@ -200,8 +200,35 @@ function loadYouTubeApi(): Promise<YtNamespace> {
 
 const PLAYING = 1;
 
+/** 시청 기록에 필요한 것만: 유튜브 플레이어와 자체 서버 영상(video 요소)을 같은 방식으로 본다 */
+export interface TrackablePlayer {
+  isPlaying(): boolean;
+  currentTime(): number;
+  duration(): number;
+  destroy(): void;
+}
+
+function youtubePlayer(player: YtPlayer): TrackablePlayer {
+  return {
+    isPlaying: () => player.getPlayerState() === PLAYING,
+    currentTime: () => player.getCurrentTime(),
+    duration: () => player.getDuration(),
+    destroy: () => player.destroy(),
+  };
+}
+
+/** 자체 서버 영상 (HostedVideo 의 video 요소). 플레이어 정리는 HostedVideo 가 한다 */
+export function html5Player(el: HTMLVideoElement): TrackablePlayer {
+  return {
+    isPlaying: () => !el.paused && !el.ended && el.readyState > 2,
+    currentTime: () => el.currentTime,
+    duration: () => (Number.isFinite(el.duration) ? el.duration : 0),
+    destroy: () => undefined,
+  };
+}
+
 /** 영상 하나의 재생 구간 (콘텐츠 시간 기준). 1초마다 재생 위치를 보고, 이어지면 늘리고 건너뛰면 새 구간 */
-class VideoTrack {
+export class VideoTrack {
   private ranges: Range[] = [];
   private current: Range | null = null;
   private last: number | null = null;
@@ -209,12 +236,12 @@ class VideoTrack {
   constructor(
     readonly key: string,
     readonly chapterKey: string,
-    readonly player: YtPlayer,
+    readonly player: TrackablePlayer,
   ) {}
 
   get playing(): boolean {
     try {
-      return this.player.getPlayerState() === PLAYING;
+      return this.player.isPlaying();
     } catch {
       return false;
     }
@@ -225,7 +252,7 @@ class VideoTrack {
       this.close();
       return;
     }
-    const t = this.player.getCurrentTime();
+    const t = this.player.currentTime();
     // 1초 사이 3.5초 넘게 갔거나 뒤로 갔으면 건너뛴 것 (배속 2배까지는 이어 본 것)
     if (this.current && this.last !== null && t >= this.last && t - this.last <= 3.5) this.current[1] = t;
     else {
@@ -257,8 +284,8 @@ class VideoTrack {
       at,
       videoKey: this.key,
       ranges,
-      positionSec: Math.floor(this.player.getCurrentTime()),
-      durationSec: Math.floor(this.player.getDuration() || 0),
+      positionSec: Math.floor(this.player.currentTime()),
+      durationSec: Math.floor(this.player.duration() || 0),
     };
   }
 }
@@ -267,7 +294,7 @@ export async function trackVideos(root: HTMLElement, chapterKey: string): Promis
   const frames = [...root.querySelectorAll<HTMLIFrameElement>("iframe[data-video-key]")];
   if (frames.length === 0) return [];
   const YT = await loadYouTubeApi();
-  return frames.map((frame) => new VideoTrack(frame.dataset.videoKey!, chapterKey, new YT.Player(frame, {})));
+  return frames.map(
+    (frame) => new VideoTrack(frame.dataset.videoKey!, chapterKey, youtubePlayer(new YT.Player(frame, {}))),
+  );
 }
-
-export type { VideoTrack };

@@ -7,9 +7,10 @@
 | Academy-dev | 개발 서비스 + **이미지 빌드** | 연결 안 됨 | `… -p 22063 …` |
 
 - 모두 호스트 TrainingGround(10.100.4.52)의 VirtualBox VM. VPN 이 필요하다.
-- data VM 의 PostgreSQL(5432) · Garage(3900)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
+- data VM 의 PostgreSQL(5432) · Garage(3900 S3 API · 3902 웹 주소)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
+- Garage 웹 주소(3902, `garage.toml` 의 `[s3_web]`, root_domain `.web.garage`)는 **영상 버킷 `aionit-media` 만** 웹 공개 설정(`garage bucket website --allow aionit-media`)이다. app VM Caddy 가 `/media/*` 요청마다 web 에 재생 토큰을 확인한 뒤 Host `aionit-media.web.garage` 로 프록시한다. 다른 버킷은 웹 공개하지 않는다.
 - 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
-- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키).
+- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4).
 
 ## 사이트 보기 (도메인 전)
 

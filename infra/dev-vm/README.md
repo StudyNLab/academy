@@ -15,7 +15,7 @@
 | 서비스 | 이미지 | VM 안 주소 | 노트북 터널 주소 |
 |---|---|---|---|
 | PostgreSQL | `postgres:18.6` | 127.0.0.1:5432 | `localhost:15432` (DB `aionit`, 사용자 `aionit`) |
-| Garage S3 API | `dxflrs/garage:v2.5.0` | 127.0.0.1:3900 | `localhost:13900` (버킷 `aionit-dev`, 지역 `garage`) |
+| Garage S3 API | `dxflrs/garage:v2.5.0` | 127.0.0.1:3900 | `localhost:13900` (버킷 `aionit-dev` · 영상 `aionit-dev-media`, 지역 `garage`) |
 | Garage 관리 API | 〃 | 127.0.0.1:3903 | (필요할 때만) |
 | Mailpit SMTP | `axllent/mailpit:v1.33.0` | 127.0.0.1:1025 | `localhost:11025` |
 | Mailpit 웹 화면 | 〃 | 127.0.0.1:8025 | http://localhost:18025 |
