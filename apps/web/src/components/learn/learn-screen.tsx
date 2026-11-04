@@ -1,7 +1,9 @@
 "use client";
 
 // L-02 학습 화면 (docs/화면상세기획.md 1장): 학습 머리글 · 목차 · 챕터 영상 ➔ 교재 ➔ 끼운 영상 · 스스로 확인 · 챕터 끝 요약
+// + Q&A 패널 (L-06, 1.6): 머리글 [Q&A n] 으로 연다. 알림에서 오면 ?qna=질문id 로 그 질문을 연다
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonoLabel, ProgressBar } from "@aionit/ui";
@@ -11,6 +13,7 @@ import { api } from "@/lib/client-api";
 import type { Playback } from "@/server/videos";
 import type { LearnResult } from "@/server/learning";
 import { HostedVideo } from "./hosted-video";
+import { QnaPanel } from "./qna-panel";
 import type { Beat, ChapterStatus } from "./learn-sync";
 import { html5Player, LearnSync, trackVideos, VideoTrack } from "./learn-sync";
 
@@ -33,8 +36,18 @@ function watermark(nickname: string): string {
   return `url("data:image/svg+xml,${encodeURIComponent(svg).replace("currentColor", "%23808080")}")`;
 }
 
-export function LearnScreen({ data, nickname }: { data: Data; nickname: string }) {
+export function LearnScreen({
+  data,
+  nickname,
+  qnaCount,
+}: {
+  data: Data;
+  nickname: string;
+  qnaCount: number;
+}) {
   const { course, chapter } = data;
+  const router = useRouter();
+  const [qna, setQna] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [labs, setLabs] = useState(data.labs);
   const [status, setStatus] = useState<ChapterStatus>({
@@ -61,6 +74,13 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
   );
 
   const onMount = useCallback((el: HTMLDivElement) => setRoot(el), []);
+
+  // 알림 · 메일의 링크(?qna=질문id)로 오면 그 질문을 연다
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("qna");
+    if (id) setQna({ open: true, id });
+  }, []);
+
   /** 자체 서버 영상: 재생을 시작하면 HostedVideo 가 넘긴 video 요소로 시청 구간을 잰다 */
   const hostedTracks = useRef(new Map<string, VideoTrack>());
   const topSections = useMemo(() => chapter.toc.filter((t) => t.level === 1).map((t) => t.id), [chapter.toc]);
@@ -219,6 +239,11 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
       ? Math.round(((data.chapters.filter((c) => c.done).length + 1) / data.chapters.length) * 100)
       : data.percent;
 
+  const currentSection = (() => {
+    const t = chapter.toc.find((item) => item.level === 1 && item.id === current);
+    return t ? { id: t.id, title: t.title } : null;
+  })();
+
   const toc = (
     <Toc
       data={data}
@@ -254,6 +279,17 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
               <span className="text-right text-[12px] tabular-nums text-ink-2">진도 {percent}%</span>
               <ProgressBar value={percent} label="과정 진도" />
             </div>
+            <button
+              type="button"
+              onClick={() => setQna((v) => ({ open: !v.open, id: null }))}
+              aria-expanded={qna.open}
+              aria-label={`Q&A, 이 챕터의 미해결 질문 ${qnaCount}개`}
+              className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold text-ink"
+            >
+              <span aria-hidden="true">💬</span>
+              <span className="hidden sm:inline">Q&amp;A</span>
+              <span className="tabular-nums">{qnaCount}</span>
+            </button>
             <ThemeToggle />
             <button
               type="button"
@@ -275,8 +311,11 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
         ) : null}
       </header>
 
-      <div className="mx-auto grid max-w-[1296px] lg:grid-cols-[280px_1fr]">
-        <aside className="hidden border-r border-line lg:block">
+      <div
+        className={`mx-auto grid ${qna.open ? "max-w-[1680px] lg:grid-cols-[1fr_400px] xl:grid-cols-[280px_1fr_400px]" : "max-w-[1296px] lg:grid-cols-[280px_1fr]"}`}
+      >
+        {/* Q&A 를 열면 1280px 아래에서는 목차를 접어 본문 폭을 지킨다 */}
+        <aside className={`hidden border-r border-line ${qna.open ? "xl:block" : "lg:block"}`}>
           <div className="sticky top-[61px] max-h-[calc(100vh-61px)] overflow-y-auto px-6 py-8">{toc}</div>
         </aside>
 
@@ -385,6 +424,20 @@ export function LearnScreen({ data, nickname }: { data: Data; nickname: string }
             </nav>
           </section>
         </main>
+        {qna.open ? (
+          // 데스크톱: 오른쪽 칸 (본문을 밀어낸다) / 좁은 화면: 전체 화면
+          <aside className="fixed inset-0 z-40 bg-bg lg:sticky lg:top-[61px] lg:z-auto lg:h-[calc(100vh-61px)] lg:border-l lg:border-line">
+            <QnaPanel
+              courseId={course.id}
+              chapterKey={chapter.key}
+              chapterName={`${chapter.label.replace(/^CHAPTER\s*/i, "CH") || chapter.key} ${chapter.title}`}
+              section={currentSection}
+              openId={qna.id}
+              onClose={() => setQna({ open: false, id: null })}
+              onChanged={() => router.refresh()}
+            />
+          </aside>
+        ) : null}
       </div>
 
       {/* 좁은 화면: 아래 고정 막대 + 목차 시트 */}

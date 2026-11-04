@@ -4,6 +4,8 @@ export interface ApiFailure {
   code: string;
   message: string;
   status: number;
+  /** /api/v1 이 더 알려 준 것 (예: API 키처럼 보이는 글자 목록) */
+  details?: unknown;
 }
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiFailure };
@@ -31,9 +33,11 @@ async function post<T>(url: string, body: unknown, method = "POST"): Promise<Api
   try {
     response = await fetch(url, {
       method,
-      ...(body instanceof FormData
-        ? { body }
-        : { headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) }),
+      ...(method === "GET"
+        ? { cache: "no-store" as const }
+        : body instanceof FormData
+          ? { body }
+          : { headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) }),
       credentials: "same-origin",
     });
   } catch {
@@ -48,6 +52,7 @@ async function post<T>(url: string, body: unknown, method = "POST"): Promise<Api
   const raw = ((data?.error as Record<string, unknown> | undefined) ?? data ?? {}) as {
     code?: string;
     message?: string;
+    details?: unknown;
   };
   const code = raw.code ?? (response.status === 429 ? "RATE_LIMITED" : "UNKNOWN");
   const message =
@@ -57,7 +62,7 @@ async function post<T>(url: string, body: unknown, method = "POST"): Promise<Api
       : raw.message && /[가-힣]/.test(raw.message)
         ? raw.message
         : "잠시 뒤 다시 시도해 주세요.");
-  return { ok: false, error: { code, message, status: response.status } };
+  return { ok: false, error: { code, message, status: response.status, details: raw.details } };
 }
 
 export const authApi = <T = Record<string, unknown>>(path: string, body?: unknown) =>
@@ -69,6 +74,10 @@ export const api = <T = Record<string, unknown>>(path: string, body?: unknown) =
 
 export const apiDelete = <T = Record<string, unknown>>(path: string) =>
   post<T>(`/api/v1${path}`, undefined, "DELETE");
+
+/** 읽기 요청 (화면이 열린 뒤 불러오는 목록 등) */
+export const apiGet = <T = Record<string, unknown>>(path: string) =>
+  post<T>(`/api/v1${path}`, undefined, "GET");
 
 /** 구글 · 카카오로 이동. 가입 화면은 동의 · 닉네임을 함께 보낸다 */
 export async function startSocial(

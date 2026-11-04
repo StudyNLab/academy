@@ -1,6 +1,8 @@
 // 공통 머리글 · 바닥글 (docs/화면상세기획.md 0.2)
 import Link from "next/link";
 import { buttonClass, Wordmark } from "@aionit/ui";
+import { getDb } from "@/server/db";
+import { unreadCount } from "@/server/notifications";
 import { getViewer } from "@/server/session";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -14,6 +16,7 @@ const navLink = "inline-flex min-h-11 items-center whitespace-nowrap text-ink no
 
 export async function SiteHeader() {
   const viewer = await getViewer();
+  const unread = viewer ? await unreadCount(getDb(), viewer.userId) : 0;
   return (
     <header className="border-b border-line">
       <div className="mx-auto flex min-h-[72px] max-w-[1296px] flex-wrap items-center justify-between gap-x-6 px-5 pt-3 md:flex-nowrap md:gap-x-10 md:px-14 md:pt-0">
@@ -52,7 +55,20 @@ export async function SiteHeader() {
               <Link href="/learn" className={`${navLink} text-[15px]`}>
                 내 강의실
               </Link>
-              <UserMenu nickname={viewer.nickname} />
+              <Link
+                href="/my/notifications"
+                aria-label={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : "알림"}
+                className="hidden min-h-11 items-center gap-1 text-[15px] whitespace-nowrap text-ink no-underline md:inline-flex"
+              >
+                <span aria-hidden="true">🔔</span>
+                {unread > 0 ? (
+                  <span className="min-w-5 bg-signal px-1 text-center text-[12px] leading-5 font-semibold text-on-primary tabular-nums">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+              </Link>
+              {/* 좁은 화면은 머리글 한 줄을 지키려고 🔔 대신 회원 메뉴에 알림 수를 둔다 */}
+              <UserMenu nickname={viewer.nickname} unread={unread} />
             </>
           ) : (
             <Link href="/signup" className={buttonClass("primary", "md")}>
@@ -80,6 +96,12 @@ export function SiteFooter() {
           <span>[상호] · 대표 [이름] · 사업자등록번호 [번호] · 통신판매업 신고 [번호]</span>
         </div>
         <nav aria-label="정책" className="flex flex-wrap items-start gap-x-5 gap-y-2">
+          <Link href="/notices" className="text-ink-2">
+            공지
+          </Link>
+          <Link href="/faq" className="text-ink-2">
+            자주 묻는 질문
+          </Link>
           <Link href="/policies/terms" className="text-ink-2">
             이용약관
           </Link>

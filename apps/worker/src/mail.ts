@@ -11,8 +11,11 @@ export async function sendMailJob(job: MailJob, deps: { db: Db; mailer: Mailer }
     await deps.db.insert(schema.emailLogs).values({ ...log, toEmail: null, status: "skipped" });
     return;
   }
+  // 이 worker 가 모르는 문안(web 만 먼저 새 버전일 때)이면 빈 메일을 보내지 않고 다시 시도하게 둔다
+  const rendered = renderMail(job) as ReturnType<typeof renderMail> | undefined;
+  if (!rendered?.subject) throw new Error(`모르는 메일 문안: ${job.template}`);
   try {
-    const { messageId } = await deps.mailer.send({ to: job.to, ...renderMail(job) });
+    const { messageId } = await deps.mailer.send({ to: job.to, ...rendered });
     await deps.db.insert(schema.emailLogs).values({ ...log, status: "sent", providerMessageId: messageId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

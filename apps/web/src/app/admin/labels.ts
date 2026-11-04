@@ -21,6 +21,17 @@ export const ACTION_LABEL: Record<string, string> = {
   "user.suspend": "이용 정지",
   "user.unsuspend": "정지 풀기",
   "user.withdraw": "회원 탈퇴",
+  "qna.hide": "Q&A 숨김",
+  "qna.unhide": "Q&A 다시 보이기",
+  "qna.report_dismiss": "신고 정리 (문제없음)",
+  "inquiry.reply": "문의 답변",
+  "inquiry.close": "문의 닫기",
+  "notice.create": "공지 쓰기",
+  "notice.update": "공지 고치기",
+  "notice.delete": "공지 지우기",
+  "faq.create": "FAQ 더하기",
+  "faq.update": "FAQ 고치기",
+  "faq.delete": "FAQ 지우기",
 };
 
 /** 환불 상태 (AD-10) */

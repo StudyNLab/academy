@@ -57,6 +57,13 @@
       "when": 1793799113116,
       "tag": "0007_mixed_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793823343818,
+      "tag": "0008_qna_inquiry_notifications",
+      "breakpoints": true
     }
   ]
 }

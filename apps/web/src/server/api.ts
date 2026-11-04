@@ -9,6 +9,7 @@ import { getDb } from "./db";
 import { EntitlementError } from "./entitlements";
 import { getEnv } from "./env";
 import { LearningError } from "./learning";
+import { SupportError } from "./support-error";
 import type { Viewer } from "./viewer";
 import { loadViewer, staffAccess } from "./viewer";
 
@@ -84,6 +85,10 @@ export function route<C>(handler: (request: Request, context: C) => Promise<Resp
         error instanceof LearningError
       ) {
         return json({ error: { code: error.code, message: error.message } }, error.status);
+      }
+      if (error instanceof SupportError) {
+        const details = error.details === undefined ? {} : { details: error.details };
+        return json({ error: { code: error.code, message: error.message, ...details } }, error.status);
       }
       const traceId = crypto.randomUUID().slice(0, 8);
       console.error(`[api] ${request.method} ${new URL(request.url).pathname} 실패 (${traceId})`, error);

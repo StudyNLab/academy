@@ -26,6 +26,15 @@ export async function purgeExpiredRecords(db: Db, now = new Date()) {
     const heartbeats = await tx.execute(
       sql`delete from learning_heartbeats where at < ${ago(RETENTION.learningHeartbeatsMs, now)}`,
     );
+    // 사이트 알림: 읽은 것 90일, 읽지 않은 것도 1년
+    const notifications = await tx.execute(
+      sql`delete from notifications where (read_at is not null and created_at < ${ago(RETENTION.notificationsReadMs, now)})
+          or created_at < ${ago(RETENTION.notificationsMs, now)}`,
+    );
+    // 1:1 문의: 마지막 글부터 3년 (전자상거래법 소비자 불만 · 분쟁 기록)
+    const oldInquiries = sql`select id from inquiries where last_message_at < ${ago(RETENTION.inquiriesMs, now)}`;
+    await tx.execute(sql`delete from inquiry_messages where inquiry_id in (${oldInquiries})`);
+    const inquiries = await tx.execute(sql`delete from inquiries where id in (${oldInquiries})`);
     // 횟수 제한 카운터는 하루 지나면 의미가 없다
     const rateLimits = await tx.execute(
       sql`delete from rate_limits where last_request < ${now.getTime() - 86_400_000}`,
@@ -38,6 +47,8 @@ export async function purgeExpiredRecords(db: Db, now = new Date()) {
       verifications: verifications.count,
       rateLimits: rateLimits.count,
       learningHeartbeats: heartbeats.count,
+      notifications: notifications.count,
+      inquiries: inquiries.count,
     };
   });
 }

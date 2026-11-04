@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { StatusDot } from "@aionit/ui";
+import { INQUIRY_STATUS } from "@/components/inquiry-labels";
 import { PageTitle } from "@/components/page-title";
 import { userDetail } from "@/server/admin-queries";
 import { adminCourseList } from "@/server/catalog";
 import { getDb } from "@/server/db";
 import { entitlementsForAdmin } from "@/server/entitlements";
+import { inquiriesOfUser } from "@/server/inquiries";
 import { recordPiiAccess } from "@/server/records";
 import { requireStaff } from "@/server/session";
 import { LOGIN_RESULT_LABEL, ROLE_LABEL, STATUS_LABEL, STATUS_TONE } from "../../labels";
@@ -39,7 +42,11 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
   const detail = await userDetail(db, id);
   if (!detail) notFound();
   const { user, accounts, logins, roleHistory } = detail;
-  const [entitlements, courses] = await Promise.all([entitlementsForAdmin(db, id), adminCourseList(db)]);
+  const [entitlements, courses, inquiries] = await Promise.all([
+    entitlementsForAdmin(db, id),
+    adminCourseList(db),
+    inquiriesOfUser(db, id),
+  ]);
   const now = new Date();
   // 운영자가 회원 개인정보를 봤다는 기록 (개인정보 안전성 확보조치 기준)
   await recordPiiAccess(db, {
@@ -122,6 +129,22 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
           />
         </div>
       ) : null}
+
+      <h2 className="mt-12 mb-3 text-[19px] font-semibold">1:1 문의</h2>
+      <ul className="m-0 flex list-none flex-col p-0 text-[14px]">
+        {inquiries.map((q) => (
+          <li
+            key={q.id}
+            className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line py-2.5"
+          >
+            <Link href={`/admin/inquiries/${q.id}`}>
+              {q.category} · {q.title}
+            </Link>
+            <StatusDot tone={INQUIRY_STATUS[q.status][1]}>{INQUIRY_STATUS[q.status][0]}</StatusDot>
+          </li>
+        ))}
+        {inquiries.length === 0 ? <li className="py-2.5 text-ink-2">없음</li> : null}
+      </ul>
 
       <h2 className="mt-12 mb-3 text-[19px] font-semibold">역할 이력</h2>
       <ul className="m-0 flex list-none flex-col p-0 text-[14px]">

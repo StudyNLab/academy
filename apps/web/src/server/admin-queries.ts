@@ -79,6 +79,9 @@ export async function dashboardCounts(db: Db) {
     refunds: number;
     sales: number;
     subscribers: number;
+    inquiries: number;
+    reports: number;
+    stale: number;
   }>(sql`
     select
       (select count(*)::int from users where status <> 'withdrawn') as total,
@@ -87,6 +90,10 @@ export async function dashboardCounts(db: Db) {
       (select count(*)::int from login_logs where at > now() - interval '24 hours' and result like 'fail%') as failures,
       (select count(*)::int from refunds where status = 'requested') as refunds,
       (select count(*)::int from subscriptions where status in ('active', 'past_due', 'cancel_scheduled')) as subscribers,
+      (select count(*)::int from inquiries where status = 'open') as inquiries,
+      (select count(distinct (target_type, target_id))::int from reports where status = 'open') as reports,
+      (select count(*)::int from questions where status = 'open' and answer_count = 0 and hidden_at is null
+        and deleted_at is null and created_at <= now() - interval '3 days') as stale,
       (select coalesce(sum(total_amount), 0)::bigint::int from orders
         where status in ('paid', 'partially_refunded', 'refunded')
           and paid_at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul') as sales`);

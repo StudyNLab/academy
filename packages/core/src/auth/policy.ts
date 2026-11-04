@@ -43,6 +43,11 @@ export const RETENTION = {
   piiAccessLogsMs: 730 * DAY,
   /** 학습 신호 원자료 (하루 집계는 learning_time_daily 에 남는다) */
   learningHeartbeatsMs: 90 * DAY,
+  /** 1:1 문의 (소비자 불만 · 분쟁 기록, 전자상거래법 3년). 마지막 글부터 센다 */
+  inquiriesMs: 3 * 365 * DAY,
+  /** 사이트 알림: 읽은 것은 90일, 읽지 않은 것도 1년 지나면 지운다 */
+  notificationsReadMs: 90 * DAY,
+  notificationsMs: 365 * DAY,
 } as const;
 
 export interface LockoutPolicy {

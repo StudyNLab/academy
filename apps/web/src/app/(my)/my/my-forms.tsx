@@ -124,6 +124,48 @@ export function LinkedAccounts({
   );
 }
 
+/** 메일 알림 설정 (사이트 알림은 언제나 남는다) */
+export function NotificationPrefsForm({
+  prefs,
+}: {
+  prefs: { qnaAnswerEmail: boolean; expiryEmail: boolean };
+}) {
+  const [value, setValue] = useState(prefs);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function change(key: keyof typeof prefs, next: boolean) {
+    setValue((v) => ({ ...v, [key]: next }));
+    const result = await api<typeof prefs>("/me/notification-prefs", { [key]: next });
+    if (!result.ok) {
+      setValue((v) => ({ ...v, [key]: !next }));
+      return setMessage(result.error.message);
+    }
+    setMessage("알림 설정을 저장했습니다.");
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Checkbox
+        checked={value.qnaAnswerEmail}
+        onChange={(e) => void change("qnaAnswerEmail", e.target.checked)}
+      >
+        내 질문에 답변이 달리면 메일로 알림
+      </Checkbox>
+      <Checkbox checked={value.expiryEmail} onChange={(e) => void change("expiryEmail", e.target.checked)}>
+        수강 기간이 30일 · 7일 남으면 메일로 알림
+      </Checkbox>
+      <p className="m-0 text-[13px] text-ink-2">
+        꺼도 사이트 알림(머리글의 🔔)에는 남습니다. 결제 · 환불 · 구독 · 1:1 문의 답변 메일은 끌 수 없습니다.
+      </p>
+      {message ? (
+        <p role="status" className="m-0 text-[13px] text-ink-2">
+          {message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function MarketingToggle({ agreed }: { agreed: boolean }) {
   const [value, setValue] = useState(agreed);
   const [message, setMessage] = useState<string | null>(null);

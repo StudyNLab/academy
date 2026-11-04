@@ -8,6 +8,7 @@ import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { learnChapter } from "@/server/learning";
 import { paymentsEnabled } from "@/server/payments";
+import { openQuestionCount } from "@/server/qna";
 import { getViewer } from "@/server/session";
 
 type Params = Promise<{ slug: string; key: string }>;
@@ -44,5 +45,6 @@ export default async function LearnPage({ params }: { params: Params }) {
       </>
     );
   }
-  return <LearnScreen data={result} nickname={viewer!.nickname} />;
+  const qnaCount = await openQuestionCount(db, result.course.id, key);
+  return <LearnScreen data={result} nickname={viewer!.nickname} qnaCount={qnaCount} />;
 }
