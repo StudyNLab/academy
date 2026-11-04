@@ -1,10 +1,11 @@
 // 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계. M4: 영상 변환.
-// M5: 만료 알림 메일.
+// M5: 만료 알림 메일. M6: 구독 자동결제 · 재시도 · 갱신 안내.
 import { CONTENT_QUEUE } from "@aionit/content";
 import { VIDEO_QUEUE, VIDEO_QUEUE_OPTIONS } from "@aionit/core/media";
 import { createDb, eq, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
 import { createSmtpMailer, MAIL_QUEUE } from "@aionit/mail";
+import { createTossGateway, runSubscriptionBilling } from "@aionit/payments";
 import { createS3StoreFromEnv } from "@aionit/storage";
 import { PgBoss } from "pg-boss";
 import { processCourseVersion } from "./content";
@@ -112,6 +113,29 @@ await boss.work(EXPIRY_REMINDERS, async () => {
   });
   console.warn(`[worker] 만료 알림 ${JSON.stringify(result)}`);
 });
+
+// 구독 자동결제: 매일 06:00 KST (해지 예약 끝내기 · 가격 변경 알림 · 갱신 안내 · 결제일 결제 · 실패 재시도).
+// 자동결제 키(API 개별 연동)가 없으면 돌리지 않는다
+const billingSecret = process.env.TOSS_BILLING_SECRET_KEY;
+const SUBSCRIPTION_BILLING = "subscriptions.billing";
+await boss.createQueue(SUBSCRIPTION_BILLING, { retryLimit: 0 });
+if (billingSecret) {
+  const billingGateway = createTossGateway({ secretKey: billingSecret });
+  await boss.schedule(SUBSCRIPTION_BILLING, "0 6 * * *", {}, { tz: "Asia/Seoul" });
+  await boss.work(SUBSCRIPTION_BILLING, async () => {
+    const result = await runSubscriptionBilling({
+      db,
+      gateway: billingGateway,
+      secret,
+      baseUrl: siteUrl,
+      enqueueMail: async (job) => void (await boss.send(MAIL_QUEUE, job)),
+    });
+    console.warn(`[worker] 구독 자동결제 ${JSON.stringify(result)}`);
+  });
+} else {
+  await boss.unschedule(SUBSCRIPTION_BILLING);
+  console.warn("[worker] TOSS_BILLING_SECRET_KEY 가 없어 구독 자동결제를 돌리지 않습니다");
+}
 
 // 보관 기간 정리: 매일 04:10 KST (DB 백업 03:30 뒤)
 const RETENTION_PURGE = "system.retention-purge";

@@ -49,6 +49,18 @@ export type MailJob =
       /** 끝나는 시각 (ISO, 다음 날 0시 KST) */
       endsAt: string;
       courseUrl: string;
+    }
+  | {
+      template: "subscription-notice";
+      to: string;
+      userId: string | null;
+      kind: "renewal" | "price_change" | "payment_failed" | "cancel_scheduled" | "ended";
+      planName: string;
+      amount: number;
+      /** ISO: 갱신 결제일 · 새 가격 적용일 · 결제 실패 중 이용 기한(다음 날 0시) · 해지 예약 끝나는 시각 · 끝난 시각 */
+      date: string;
+      reason: string | null;
+      url: string;
     };
 
 export type MailTemplate = MailJob["template"];
@@ -172,6 +184,56 @@ export function renderMail(job: MailJob): RenderedMail {
         ],
         { label: "결제 내역 보기", url: job.historyUrl },
       );
+    case "subscription-notice": {
+      const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "long" }).format(
+        new Date(job.date),
+      );
+      switch (job.kind) {
+        case "renewal":
+          return layout(
+            "구독이 곧 자동으로 결제됩니다",
+            [
+              `${job.planName} 구독이 ${day} 에 ${won(job.amount)} 자동으로 결제됩니다.`,
+              "계속 이용하지 않으려면 그 전에 구독 관리에서 해지를 예약하세요. 해지해도 이미 결제한 기간 끝까지 이용할 수 있습니다.",
+            ],
+            { label: "구독 관리", url: job.url },
+          );
+        case "price_change":
+          return layout(
+            "구독 가격이 바뀝니다",
+            [`${job.planName} 구독 가격이 ${day} 결제분부터 바뀝니다.`, job.reason ?? ""],
+            { label: "구독 관리", url: job.url },
+          );
+        case "payment_failed":
+          return layout(
+            "구독 자동결제에 실패했습니다",
+            [
+              `${job.planName} 구독의 ${won(job.amount)} 자동결제에 실패했습니다.${job.reason ? ` (${job.reason})` : ""}`,
+              `${lastDay(job.date)} 까지는 지금처럼 이용할 수 있고, 그 사이 다시 결제를 시도합니다. 결제 수단을 바꾸면 바로 다시 결제합니다.`,
+            ],
+            { label: "결제 수단 바꾸기", url: job.url },
+          );
+        case "cancel_scheduled":
+          return layout(
+            "구독 해지가 예약되었습니다",
+            [
+              `${lastDay(job.date)} 까지는 지금처럼 이용할 수 있고, 그 뒤에는 자동결제가 되지 않습니다.`,
+              "진도 기록은 지워지지 않습니다. 마음이 바뀌면 그 전에 구독 관리에서 해지를 취소할 수 있습니다.",
+            ],
+            { label: "구독 관리", url: job.url },
+          );
+        case "ended":
+          return layout(
+            "구독이 끝났습니다",
+            [
+              `${job.planName} 구독이 끝났습니다.`,
+              job.reason ?? "진도 기록은 남아 있어 다시 구독하면 이어서 볼 수 있습니다.",
+            ],
+            { label: "다시 구독하기", url: job.url },
+          );
+      }
+      break;
+    }
     case "expiry-reminder":
       return layout(
         `수강 기간이 ${job.daysLeft}일 남았습니다`,

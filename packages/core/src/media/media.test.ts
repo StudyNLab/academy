@@ -80,3 +80,15 @@ describe("화질 단계", () => {
 it("회원 번호 일부", () => {
   expect(memberTag("019a4f2c-1b2c-7d3e-8f40-a1b2c3d4e5f6")).toBe("D4E5F6");
 });
+
+describe("빌링키 보관", () => {
+  const secret = "s".repeat(40);
+  it("감싼 값으로 되돌릴 수 있고, 원문이 보이지 않고, 다른 비밀값 · 고친 값은 열리지 않는다", async () => {
+    const { sealBillingKey, openBillingKey } = await import("./index");
+    const sealed = sealBillingKey(secret, "bk_real_123");
+    expect(sealed).not.toContain("bk_real");
+    expect(openBillingKey(secret, sealed)).toBe("bk_real_123");
+    expect(() => openBillingKey("t".repeat(40), sealed)).toThrow();
+    expect(() => openBillingKey(secret, `${sealed.slice(0, -2)}AA`)).toThrow();
+  });
+});

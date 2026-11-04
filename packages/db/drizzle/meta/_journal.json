@@ -50,6 +50,13 @@
       "when": 1793778678960,
       "tag": "0006_strong_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793799113116,
+      "tag": "0007_mixed_black_crow",
+      "breakpoints": true
     }
   ]
 }

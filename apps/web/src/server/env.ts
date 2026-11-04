@@ -15,6 +15,9 @@ const schema = z.object({
   /** 토스페이먼츠 (테스트 모드). 없으면 결제를 열지 않는다 */
   TOSS_CLIENT_KEY: z.string().optional(),
   TOSS_SECRET_KEY: z.string().optional(),
+  /** 토스 자동결제(구독)용 API 개별 연동 키 (M6). 없으면 구독 신청을 열지 않는다 */
+  TOSS_BILLING_CLIENT_KEY: z.string().optional(),
+  TOSS_BILLING_SECRET_KEY: z.string().optional(),
   /** "1" 이면 개발 서버에서 가짜 결제 (화면 흐름 테스트용, 운영 빌드에서는 무시) */
   TOSS_FAKE: z.string().optional(),
 });

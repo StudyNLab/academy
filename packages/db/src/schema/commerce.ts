@@ -3,7 +3,9 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -147,10 +149,8 @@ export const orderItems = pgTable(
       .notNull()
       .references(() => products.id),
     productType: text({ enum: PRODUCT_TYPES }).notNull(),
-    /** 수강권을 줄 (연장권은 늘릴) 과정 */
-    courseId: uuid()
-      .notNull()
-      .references(() => courses.id),
+    /** 수강권을 줄 (연장권은 늘릴) 과정. 구독 결제는 비어 있다 */
+    courseId: uuid().references(() => courses.id),
     productName: text().notNull(),
     listPrice: won().notNull(),
     discountAmount: won().notNull().default(0),
@@ -196,6 +196,10 @@ export const payments = pgTable(
       .notNull()
       .default("toss"),
     providerPaymentKey: text().notNull().unique(),
+    /** 토스 키 묶음: 단건은 결제위젯 키, 자동결제는 API 개별 연동 키. 취소는 결제한 키 묶음으로만 된다 */
+    keySet: text({ enum: ["widget", "billing"] })
+      .notNull()
+      .default("widget"),
     method: text(),
     amount: won().notNull(),
     /** 취소된 금액 합계 (부분 취소 포함) */
@@ -280,4 +284,131 @@ export const paymentWebhooks = pgTable(
     receivedAt: createdAt(),
   },
   (t) => [index("payment_webhooks_key_idx").on(t.paymentKey)],
+);
+
+export const SUBSCRIPTION_STATUSES = [
+  "pending",
+  "active",
+  "past_due",
+  "cancel_scheduled",
+  "canceled",
+  "ended",
+] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+/**
+ * 구독 (데이터모델 3.7, M6). pending = 신청하고 카드 등록 · 첫 결제 전.
+ * 해지 예약 = cancel_scheduled ➔ 기간 끝에 ended. 즉시 해지 · 환불 = canceled. 자동결제 실패 = past_due (1 · 3 · 7일 뒤 재시도)
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: id(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id),
+    status: text({ enum: SUBSCRIPTION_STATUSES }).notNull().default("pending"),
+    /** 📌 신청할 때 */
+    interval: text({ enum: ["month", "year"] }).notNull(),
+    planName: text().notNull(),
+    /** 회차마다 결제하는 금액. 가격 변경은 pending_* 를 거쳐 알리고(올림은 동의 후) 바뀐다 */
+    amount: won().notNull(),
+    /** 결제일 기준 (가입한 KST 날짜) */
+    anchorDate: date({ mode: "string" }),
+    currentCycle: integer().notNull().default(0),
+    currentPeriodStart: tz(),
+    currentPeriodEnd: tz(),
+    /** 🔒 토스 빌링키 (AES-256-GCM, packages/core/media sealBillingKey) */
+    billingKeySealed: text(),
+    customerKey: text().notNull(),
+    /** 결제 수단 표시 (예: 신한카드 •••• 123*) */
+    cardLabel: text(),
+    /** 구독 수강권 (구독 포함 강의 전체) */
+    entitlementId: uuid().references(() => entitlements.id),
+    /** 자동결제 동의 (다른 동의와 따로, 전자상거래법) · 구독 약관 · 환불 규정 동의 */
+    autoRenewAgreedAt: tz().notNull(),
+    termsAgreedAt: tz().notNull(),
+    agreedIp: text(),
+    refundPolicyDocumentId: uuid().references(() => policyDocuments.id),
+    /** 가격 변경 대기: 새 금액 · 적용할 회차 · 동의가 필요한가 · 동의한 시각 */
+    pendingAmount: won(),
+    pendingFromCycle: integer(),
+    pendingNeedsConsent: boolean(),
+    pendingAgreedAt: tz(),
+    cancelRequestedAt: tz(),
+    cancelReason: text(),
+    endedAt: tz(),
+    endReason: text(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("subscriptions_user_idx").on(t.userId),
+    index("subscriptions_status_idx").on(t.status, t.currentPeriodEnd),
+    // 한 사람에게 살아 있는 구독은 하나만
+    uniqueIndex("subscriptions_user_live_key")
+      .on(t.userId)
+      .where(sql`${t.status} in ('active', 'past_due', 'cancel_scheduled')`),
+  ],
+);
+
+/** 회차별 결제. 결제마다 주문(orders) · 결제(payments)도 만들어 결제 내역 · 영수증 · 환불을 단건과 같이 쓴다 */
+export const subscriptionCycles = pgTable(
+  "subscription_cycles",
+  {
+    id: id(),
+    subscriptionId: uuid()
+      .notNull()
+      .references(() => subscriptions.id),
+    cycleNo: integer().notNull(),
+    /** KST 결제일 */
+    billingDate: date({ mode: "string" }).notNull(),
+    periodStart: tz().notNull(),
+    periodEnd: tz().notNull(),
+    amount: won().notNull(),
+    supplyAmount: won().notNull(),
+    vatAmount: won().notNull(),
+    status: text({ enum: ["scheduled", "paid", "failed", "refunded"] })
+      .notNull()
+      .default("scheduled"),
+    orderId: uuid().references(() => orders.id),
+    paymentId: uuid().references(() => payments.id),
+    retryCount: integer().notNull().default(0),
+    nextRetryAt: tz(),
+    lastError: text(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("subscription_cycles_key").on(t.subscriptionId, t.cycleNo)],
+);
+
+export const SUBSCRIPTION_NOTICE_KINDS = [
+  "started",
+  "renewal",
+  "price_change",
+  "payment_failed",
+  "cancel_scheduled",
+  "ended",
+] as const;
+
+/** 법정 고지 · 안내 메일 기록 (갱신 · 가격 변경 · 결제 실패 · 해지). 같은 회차에 같은 종류는 한 번만 */
+export const subscriptionNotices = pgTable(
+  "subscription_notices",
+  {
+    id: id(),
+    subscriptionId: uuid()
+      .notNull()
+      .references(() => subscriptions.id),
+    kind: text({ enum: SUBSCRIPTION_NOTICE_KINDS }).notNull(),
+    cycleNo: integer().notNull(),
+    /** 가격 변경 알림의 새 금액 */
+    newAmount: won(),
+    sentAt: createdAt(),
+    /** 가격 인상 동의 */
+    agreedAt: tz(),
+  },
+  (t) => [uniqueIndex("subscription_notices_key").on(t.subscriptionId, t.kind, t.cycleNo)],
 );

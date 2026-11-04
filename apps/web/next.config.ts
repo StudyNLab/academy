@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   poweredByHeader: false,
-  transpilePackages: ["@aionit/ui", "@aionit/core", "@aionit/db", "@aionit/mail"],
+  transpilePackages: ["@aionit/ui", "@aionit/core", "@aionit/db", "@aionit/mail", "@aionit/payments"],
   // 네이티브 모듈(argon2) · 작업 대기열은 묶지 않고 node_modules 에서 그대로 불러온다
   serverExternalPackages: ["@node-rs/argon2", "pg-boss"],
   experimental: {

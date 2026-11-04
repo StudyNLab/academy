@@ -17,6 +17,7 @@
     "@aionit/core": "workspace:*",
     "@aionit/db": "workspace:*",
     "@aionit/mail": "workspace:*",
+    "@aionit/payments": "workspace:*",
     "@aionit/storage": "workspace:*",
     "@aionit/ui": "workspace:*",
     "@fontsource/ibm-plex-mono": "5.3.0",

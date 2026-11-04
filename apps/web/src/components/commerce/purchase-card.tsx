@@ -99,10 +99,13 @@ export function PurchaseCard({
           {paymentsOn ? "지금은 판매하지 않는 강의입니다" : "곧 판매를 시작합니다"}
         </p>
         <p className="m-0 text-[14px] leading-[1.7] text-ink-2">
-          {course.inSubscription
-            ? "구독하면 이 강의를 들을 수 있습니다 (구독은 곧 열립니다)."
-            : "프리미엄 강의"}
+          {course.inSubscription ? "구독하면 이 강의를 들을 수 있습니다." : "프리미엄 강의"}
         </p>
+        {course.inSubscription ? (
+          <Link href="/subscribe" className={buttonClass("outline", "md", "w-full")}>
+            구독 알아보기
+          </Link>
+        ) : null}
         {previewKey ? (
           <Link
             href={`/courses/${course.slug}/preview/${previewKey}`}
@@ -152,7 +155,7 @@ export function PurchaseCard({
       </p>
       {course.inSubscription && !subscriber ? (
         <p className="m-0 border-t border-line pt-3 text-[13px] text-ink-2">
-          이 강의는 구독에도 포함됩니다 (구독은 곧 열립니다).
+          이 강의는 구독에도 포함됩니다. <Link href="/subscribe">구독 알아보기 →</Link>
         </p>
       ) : null}
       {/* 좁은 화면: 아래 고정 막대 */}

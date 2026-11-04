@@ -4,48 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button, Checkbox, Notice } from "@aionit/ui";
 import { won } from "@/components/commerce/format";
+import type { TossWidgets } from "@/components/commerce/toss-sdk";
+import { loadTossSdk, tossMessage } from "@/components/commerce/toss-sdk";
 import { api } from "@/lib/client-api";
 
-// 토스페이먼츠 결제위젯 (JavaScript SDK v2). 주문서에 결제 수단 · 토스 약관 UI 를 그리고, 결제하기를 누르면 결제창을 연다.
-// CSP 'strict-dynamic': 우리 스크립트(nonce)가 넣은 스크립트라 따로 허용하지 않아도 된다 (src/proxy.ts)
-const SDK_URL = "https://js.tosspayments.com/v2/standard";
-
-interface TossWidgets {
-  setAmount(amount: { currency: "KRW"; value: number }): Promise<void>;
-  renderPaymentMethods(options: { selector: string; variantKey: string }): Promise<unknown>;
-  renderAgreement(options: { selector: string; variantKey: string }): Promise<unknown>;
-  requestPayment(options: {
-    orderId: string;
-    orderName: string;
-    successUrl: string;
-    failUrl: string;
-  }): Promise<void>;
-}
-
-declare global {
-  interface Window {
-    TossPayments?: (clientKey: string) => { widgets(options: { customerKey: string }): TossWidgets };
-  }
-}
-
-let sdk: Promise<NonNullable<Window["TossPayments"]>> | null = null;
-
-function loadSdk() {
-  sdk ??= new Promise((resolve, reject) => {
-    if (window.TossPayments) return resolve(window.TossPayments);
-    const script = document.createElement("script");
-    script.src = SDK_URL;
-    script.async = true;
-    script.onload = () =>
-      window.TossPayments ? resolve(window.TossPayments) : reject(new Error("load failed"));
-    script.onerror = () => {
-      sdk = null;
-      reject(new Error("load failed"));
-    };
-    document.head.appendChild(script);
-  });
-  return sdk;
-}
+// 토스페이먼츠 결제위젯 (SDK v2). 주문서에 결제 수단 · 토스 약관 UI 를 그리고, 결제하기를 누르면 결제창을 연다.
 
 interface PayParams {
   orderId: string;
@@ -53,15 +16,6 @@ interface PayParams {
   amount: number;
   successUrl: string;
   failUrl: string;
-}
-
-function tossMessage(e: unknown): string {
-  const code = (e as { code?: string }).code;
-  if (code === "USER_CANCEL" || code === "PAY_PROCESS_CANCELED")
-    return "결제를 취소했습니다. 다시 결제할 수 있습니다.";
-  if (e instanceof Error && e.message === "load failed")
-    return "결제 화면을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.";
-  return `결제 화면 오류: ${(e as { message?: string }).message ?? "다시 시도해 주세요."}`;
 }
 
 export function CheckoutForm({
@@ -96,7 +50,7 @@ export function CheckoutForm({
     started.current = true;
     void (async () => {
       try {
-        const TossPayments = await loadSdk();
+        const TossPayments = await loadTossSdk();
         const w = TossPayments(clientKey).widgets({ customerKey });
         await w.setAmount({ currency: "KRW", value: amount });
         await Promise.all([

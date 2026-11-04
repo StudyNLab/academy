@@ -1,4 +1,4 @@
-// L-05 수강 만료 / 권한 없음 안내 ➔ 연장권 · 구매로 잇는다 (구독 안내는 M6)
+// L-05 수강 만료 / 권한 없음 안내 ➔ 연장권 · 구매 · 구독 안내로 잇는다
 import Link from "next/link";
 import { buttonClass, MonoLabel } from "@aionit/ui";
 import { BuyButton } from "@/components/commerce/buy-button";
@@ -45,9 +45,13 @@ export function AccessNotice({
             : "강의를 구매하거나 구독하면 교재 전체 · 실습 파일 · 스스로 확인 · 강의 Q&A 가 열립니다."}
       </p>
       <p className="m-0 text-[15px] text-ink-2">
-        {course.inSubscription
-          ? "이 강의는 구독에도 포함됩니다 (구독은 곧 열립니다)."
-          : "프리미엄 강의입니다 (구독자 할인)."}
+        {course.inSubscription ? (
+          <>
+            이 강의는 구독에도 포함됩니다. <Link href="/subscribe">구독 알아보기 →</Link>
+          </>
+        ) : (
+          "프리미엄 강의입니다 (구독자 할인)."
+        )}
       </p>
       {extension || purchase ? (
         <div className="flex flex-wrap gap-3 border-t border-line-strong pt-6">

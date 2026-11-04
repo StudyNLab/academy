@@ -8,6 +8,7 @@ const menu = [
   { href: "/admin/courses", label: "과정" },
   { href: "/admin/users", label: "회원" },
   { href: "/admin/products", label: "상품 · 가격" },
+  { href: "/admin/subscriptions", label: "구독" },
   { href: "/admin/refunds", label: "환불" },
   { href: "/admin/logs", label: "기록" },
 ];

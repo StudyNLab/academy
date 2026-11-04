@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { RefundCalculation } from "@aionit/core";
 import { REFUND_TIER_LABEL } from "@aionit/core";
 import { StatusDot } from "@aionit/ui";
 import { formatDayTime, won } from "@/components/commerce/format";
 import { PageTitle } from "@/components/page-title";
 import { getDb } from "@/server/db";
+import type { RefundCalculation } from "@/server/refunds";
 import { adminRefundDetail } from "@/server/refunds";
 import { requireStaff } from "@/server/session";
 import { REFUND_STATUS } from "../../labels";
@@ -21,13 +21,20 @@ function Calculation({ title, calc }: { title: string; calc: RefundCalculation }
     <section className="flex flex-col gap-2 border-t border-line pt-4 text-[14px]">
       <h3 className="m-0 text-[16px] font-semibold">{title}</h3>
       <p className="m-0">
-        {won(calc.amount)} ({REFUND_TIER_LABEL[calc.tier]}) · 규정 {calc.ruleVersion}
+        {won(calc.amount)} (
+        {calc.kind === "subscription"
+          ? calc.tier === "full"
+            ? "전액"
+            : "일할 − 위약금"
+          : REFUND_TIER_LABEL[calc.tier]}
+        ) · 규정 {calc.ruleVersion}
       </p>
       <p className="m-0 text-ink-2">{calc.explanation}</p>
       <p className="m-0 text-ink-2">
         결제일부터 {calc.daysSincePayment}일 · {calc.used ? "이용함" : "이용 전"}
-        {calc.progressPercent !== null ? ` · 진도율 ${calc.progressPercent}%` : ""} · 지난 기간{" "}
-        {calc.elapsedDays}/{calc.periodDays}일
+        {calc.kind === "subscription"
+          ? ` · 이번 회차 ${calc.usedDays}/${calc.periodDays}일`
+          : `${calc.progressPercent !== null ? ` · 진도율 ${calc.progressPercent}%` : ""} · 지난 기간 ${calc.elapsedDays}/${calc.periodDays}일`}
       </p>
     </section>
   );
