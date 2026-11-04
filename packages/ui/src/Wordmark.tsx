@@ -1,8 +1,8 @@
-// 워드마크 "AIonIT": 굵은 AI · IT 사이에 가늘고 작은 on (Signal 색). 글자만, 심볼 없음 (docs/디자인시스템.md 3장)
+// 워드마크 "AIonIT": 굵은 AI · IT 사이에 조금 작고 굵은 빨간 on (로고 전용 색 --logo-on). 글자만, 심볼 없음 (docs/디자인시스템.md 3장)
 // 서체 Manrope 는 로고 전용이다. 본문에는 쓰지 않는다.
 
 const base = "font-logo font-extrabold tracking-[-0.045em]";
-const on = "mx-[0.03em] text-[0.78em] font-light tracking-[-0.01em] text-signal";
+const on = "mx-[0.03em] text-[0.82em] font-bold tracking-[-0.02em] text-logo-on";
 
 /** 가로 워드마크. `korean` 이면 가는 세로선 뒤에 "아이오닛" 을 붙인다 (머리글에서는 떼고 쓴다). */
 export function Wordmark({ className = "", korean = false }: { className?: string; korean?: boolean }) {
@@ -78,7 +78,7 @@ export function SquareMark({ size = 48, className = "" }: { size?: number; class
       <span aria-hidden="true">AI</span>
       {small ? null : (
         <>
-          <span aria-hidden="true" className="text-[0.78em] font-light tracking-[-0.01em] text-[#F0A88C]">
+          <span aria-hidden="true" className="text-[0.82em] font-bold tracking-[-0.02em] text-[#FF6B5E]">
             on
           </span>
           <span aria-hidden="true">IT</span>

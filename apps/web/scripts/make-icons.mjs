@@ -18,18 +18,18 @@ async function fontData(file) {
 }
 
 const f800 = await fontData("manrope-latin-800-normal.woff2");
-const f300 = await fontData("manrope-latin-300-normal.woff2");
+const f700 = await fontData("manrope-latin-700-normal.woff2");
 
 function html(size) {
   const small = size < 24;
   const fontSize = small ? size * 0.5 : size * 0.35;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:M;font-weight:800;src:${f800}}
-@font-face{font-family:M;font-weight:300;src:${f300}}
+@font-face{font-family:M;font-weight:700;src:${f700}}
 html,body{margin:0;background:transparent}
 #m{width:${size}px;height:${size}px;background:#18304F;color:#F6F5F1;display:flex;flex-direction:column;align-items:center;justify-content:center;
 font-family:M;font-weight:800;font-size:${fontSize}px;line-height:0.86;letter-spacing:${small ? "-0.08em" : "-0.05em"}}
-#m i{font-style:normal;font-weight:300;font-size:0.78em;letter-spacing:-0.01em;color:#F0A88C}
+#m i{font-style:normal;font-weight:700;font-size:0.82em;letter-spacing:-0.02em;color:#FF6B5E}
 </style></head><body><div id="m"><span>AI</span>${small ? "" : "<i>on</i><span>IT</span>"}</div></body></html>`;
 }
 

@@ -12,6 +12,8 @@
   --color-on-primary: var(--on-primary);
   --color-link: var(--link);
   --color-signal: var(--signal);
+  /* 로고의 on 전용 빨강. 다른 강조에는 Signal 을 쓴다 (디자인시스템 3.1) */
+  --color-logo-on: var(--logo-on);
   --color-done: var(--done);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
@@ -40,6 +42,7 @@
   --on-primary: #f6f5f1;
   --link: #18304f;
   --signal: #b4492d;
+  --logo-on: #d62828;
   --done: #2e6b4a;
   --warn: #8a5a00;
   --danger: #a3302b;
@@ -63,6 +66,7 @@
     --on-primary: #0e131b;
     --link: #9db7e8;
     --signal: #e07a5b;
+    --logo-on: #ff5a4e;
     --done: #6fbf8e;
     --warn: #e3b341;
     --danger: #f08a84;
@@ -86,6 +90,7 @@
   --on-primary: #0e131b;
   --link: #9db7e8;
   --signal: #e07a5b;
+  --logo-on: #ff5a4e;
   --done: #6fbf8e;
   --warn: #e3b341;
   --danger: #f08a84;
