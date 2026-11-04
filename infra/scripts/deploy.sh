@@ -61,7 +61,14 @@ vm $DEV "docker save aionit-web:$TAG aionit-worker:$TAG | gzip -1" | vm $APP "gu
 
 echo "== 4/6 서버 설정 반영"
 vm $APP "cat > ~/aionit/compose.yaml" < infra/app-vm/compose.yaml
-vm $APP "cat > ~/aionit/Caddyfile" < infra/app-vm/Caddyfile
+# Caddyfile 이 바뀌었으면 Caddy 를 다시 띄운다 (compose 는 붙인 파일만 바뀐 것을 모른다)
+vm $APP "cat > ~/aionit/Caddyfile.new" < infra/app-vm/Caddyfile
+vm $APP 'cd ~/aionit && if cmp -s Caddyfile Caddyfile.new; then rm Caddyfile.new; else
+  tag=$(grep ^CADDY_TAG= .env | cut -d= -f2)
+  docker run --rm -v "$PWD/Caddyfile.new:/etc/caddy/Caddyfile:ro" "caddy:$tag" caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 \
+    || { echo "Caddyfile 검사 실패: 바꾸지 않습니다" >&2; rm Caddyfile.new; exit 1; }
+  mv Caddyfile.new Caddyfile && docker compose restart caddy >/dev/null 2>&1 || true
+  echo "Caddy 설정 바뀜: 다시 띄움"; fi'
 # 데이터 서버의 compose.yaml 은 배포 때 바꾸지 않는다 (DB 재시작은 따로, 신중하게). 백업 스크립트만 맞춘다.
 vm $DATA "cat > ~/aionit/backup.sh && chmod +x ~/aionit/backup.sh" < infra/data-vm/backup.sh
 
