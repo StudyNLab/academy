@@ -16,7 +16,7 @@ export async function SiteHeader() {
   const viewer = await getViewer();
   return (
     <header className="border-b border-line">
-      <div className="mx-auto flex min-h-[72px] max-w-[1296px] flex-wrap items-center justify-between gap-x-10 px-5 pt-3 md:flex-nowrap md:px-14 md:pt-0">
+      <div className="mx-auto flex min-h-[72px] max-w-[1296px] flex-wrap items-center justify-between gap-x-6 px-5 pt-3 md:flex-nowrap md:gap-x-10 md:px-14 md:pt-0">
         <Link href="/" aria-label="AIONIT 홈" className="text-[22px] text-ink no-underline hover:text-ink">
           <Wordmark />
         </Link>
@@ -45,23 +45,25 @@ export async function SiteHeader() {
               로그인
             </Link>
           )}
-          {/* 밝게 · 어둡게 (학습 화면과 같은 버튼). 좁은 화면에서는 메뉴 줄 오른쪽 끝 */}
-          <span className="ml-auto flex md:ml-0">
+        </nav>
+        <div className="flex items-center gap-x-5 md:gap-x-6">
+          {viewer ? (
+            <>
+              <Link href="/learn" className={`${navLink} text-[15px]`}>
+                내 강의실
+              </Link>
+              <UserMenu nickname={viewer.nickname} />
+            </>
+          ) : (
+            <Link href="/signup" className={buttonClass("primary", "md")}>
+              무료로 시작하기
+            </Link>
+          )}
+          {/* 밝게 · 어둡게 (학습 화면과 같은 버튼). 맨 오른쪽, 그림이 본문 오른쪽 끝에 맞도록 버튼 여백만큼 당긴다 */}
+          <span className="-mr-3 flex">
             <ThemeToggle />
           </span>
-        </nav>
-        {viewer ? (
-          <div className="flex items-center gap-x-6">
-            <Link href="/learn" className={`${navLink} text-[15px]`}>
-              내 강의실
-            </Link>
-            <UserMenu nickname={viewer.nickname} />
-          </div>
-        ) : (
-          <Link href="/signup" className={buttonClass("primary", "md")}>
-            무료로 시작하기
-          </Link>
-        )}
+        </div>
       </div>
     </header>
   );
