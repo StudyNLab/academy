@@ -9,7 +9,7 @@ import "@fontsource/ibm-plex-sans-kr/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 // 로고 전용 (Wordmark)
-import "@fontsource/manrope/300.css";
+import "@fontsource/manrope/700.css";
 import "@fontsource/manrope/800.css";
 import "./globals.css";
 import "./reader.css";
