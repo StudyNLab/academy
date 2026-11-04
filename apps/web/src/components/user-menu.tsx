@@ -43,7 +43,9 @@ export function UserMenu({ nickname }: { nickname: string }) {
         onClick={() => setOpen((v) => !v)}
         className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold text-ink"
       >
-        {nickname} <span aria-hidden="true">▾</span>
+        {/* 좁은 화면: 머리글 한 줄(로고 · 내 강의실 · 닉네임 · 밝기 버튼)에 들어가도록 긴 닉네임은 … 로 줄인다 */}
+        <span className="max-w-[6.5em] truncate md:max-w-[16em]">{nickname}</span>
+        <span aria-hidden="true">▾</span>
       </button>
       {open ? (
         <div
