@@ -26,7 +26,7 @@ export const viewport: Viewport = {
   ],
 };
 
-/** 다크 모드: 운영체제 설정을 따르되, 학습 화면에서 직접 고른 값(쿠키)을 기억한다 (docs/디자인시스템.md 6장) */
+/** 다크 모드: 운영체제 설정을 따르되, 머리글 · 학습 화면의 버튼으로 직접 고른 값(쿠키)을 기억한다 (docs/디자인시스템.md 6장) */
 const THEME_COOKIE = "aionit.theme";
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
