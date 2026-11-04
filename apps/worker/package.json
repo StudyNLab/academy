@@ -11,9 +11,11 @@
     "grant-role": "tsx --env-file-if-exists=../../.env src/grant-role.ts"
   },
   "dependencies": {
+    "@aionit/content": "workspace:*",
     "@aionit/core": "workspace:*",
     "@aionit/db": "workspace:*",
     "@aionit/mail": "workspace:*",
+    "@aionit/storage": "workspace:*",
     "pg-boss": "12.38.0",
     "tsx": "4.23.15"
   },

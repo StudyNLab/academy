@@ -36,5 +36,13 @@ export {
   or,
   sql,
 } from "drizzle-orm";
-export type { LoginResult, PolicyKind, Role, UserStatus } from "./schema/index";
-export { POLICY_KINDS, ROLES } from "./schema/index";
+export type {
+  CourseField,
+  CourseStatus,
+  LoginResult,
+  PolicyKind,
+  Role,
+  UserStatus,
+  VersionStatus,
+} from "./schema/index";
+export { COURSE_FIELDS, POLICY_KINDS, ROLES, VERSION_STATUSES } from "./schema/index";

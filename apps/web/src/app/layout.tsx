@@ -8,6 +8,7 @@ import "@fontsource/ibm-plex-sans-kr/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./globals.css";
+import "./reader.css";
 
 export const metadata: Metadata = {
   title: { default: "AIONIT", template: "%s · AIONIT" },

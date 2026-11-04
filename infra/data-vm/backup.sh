@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# AIONIT DB 백업 (Academy-data VM 에서 실행). 매일 cron 으로, 배포 전에는 배포 스크립트가 부른다.
+# AIONIT DB · 파일 백업 (Academy-data VM 에서 실행). 매일 cron 으로, 배포 전에는 배포 스크립트가 부른다.
 #   ~/aionit/backup.sh              ➔ daily-YYYYMMDD-HHMM
 #   ~/aionit/backup.sh pre-deploy-x ➔ 이름을 붙여서
 # 결과: /srv/data/backup/db/*.dump (VM 안) + /mnt/aionit-backup/db/ (호스트 G:\AIONIT-backup, 공유 폴더)
+#       + /mnt/aionit-backup/files/aionit (파일 저장소 Garage 버킷 사본, 바뀐 것만)
 set -euo pipefail
 
 LABEL="${1:-daily-$(date +%Y%m%d-%H%M)}"
@@ -32,3 +33,18 @@ else
 fi
 
 find "$LOCAL_DIR" -name '*.dump*' -mtime +"$KEEP_LOCAL_DAYS" -delete
+
+# 파일 저장소(Garage, 교재 · 그림 · 첨부) 백업: 공유 폴더로 바뀐 것만 (rclone sync, 읽기 전용 키 garage-backup.env).
+# 바뀌거나 지워진 파일은 지우지 않고 files/changed/<날짜>/ 로 옮겨 둔다. S3 와 같은 모양이라 S3 · R2 로도 그대로 올릴 수 있다.
+RCLONE_IMAGE=rclone/rclone:1.75.2
+if mountpoint -q /mnt/aionit-backup && [ -f garage-backup.env ]; then
+  mkdir -p /mnt/aionit-backup/files/changed
+  docker run --rm --network host --env-file garage-backup.env \
+    -v /mnt/aionit-backup/files:/backup "$RCLONE_IMAGE" \
+    sync garage:aionit /backup/aionit --backup-dir "/backup/changed/$(date +%Y%m%d-%H%M)" \
+    --checksum --stats-one-line --stats 0 -q
+  echo "파일 백업: /mnt/aionit-backup/files/aionit ($(du -sh /mnt/aionit-backup/files/aionit 2>/dev/null | cut -f1))"
+  find /mnt/aionit-backup/files/changed -mindepth 1 -maxdepth 1 -mtime +"$KEEP_SHARE_DAILY_DAYS" -exec rm -rf {} +
+else
+  echo "경고: 공유 폴더 또는 garage-backup.env 가 없어 파일 백업을 건너뜁니다" >&2
+fi

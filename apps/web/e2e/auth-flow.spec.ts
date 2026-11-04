@@ -2,6 +2,7 @@
 // 메일은 개발 VM 의 Mailpit 에서 읽는다 (터널 http://localhost:18025).
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { resetRateLimits } from "./helpers";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://localhost:18025";
 
@@ -38,6 +39,7 @@ test("가입 ➔ 메일 인증 ➔ 로그인 ➔ 로그아웃 ➔ 비밀번호 �
   const password = "Calm-Forest-Engine-31";
   const newPassword = "Bright-Stone-Window-64";
 
+  await resetRateLimits();
   // 가입
   await page.goto("/signup");
   await page.getByLabel("이메일").fill(email);
