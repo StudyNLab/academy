@@ -29,6 +29,11 @@ export const SESSION_POLICY = {
   updateAgeSec: 24 * 3600,
   /** 운영자 · 강사: 로그인부터 12시간, 연장 없음 */
   privilegedMaxAgeMs: 12 * HOUR,
+  /**
+   * 비밀번호가 없는 회원(구글 · 카카오만)이 민감한 일(탈퇴, 2단계 인증 켜기 · 끄기)을 할 때:
+   * 비밀번호 대신 "이 시간 안에 로그인했는가"로 본인을 확인한다
+   */
+  recentLoginMs: 15 * MINUTE,
 } as const;
 
 export const RETENTION = {
@@ -36,6 +41,8 @@ export const RETENTION = {
   loginLogsPrivilegedMs: 730 * DAY,
   auditLogsMs: 730 * DAY,
   piiAccessLogsMs: 730 * DAY,
+  /** 학습 신호 원자료 (하루 집계는 learning_time_daily 에 남는다) */
+  learningHeartbeatsMs: 90 * DAY,
 } as const;
 
 export interface LockoutPolicy {

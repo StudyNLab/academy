@@ -72,11 +72,14 @@ type Step =
 export function TwoFactorSettings({
   enabled,
   hasPassword,
+  recentLogin,
   staff,
   next,
 }: {
   enabled: boolean;
+  /** 없으면(구글 · 카카오만) 비밀번호 대신 "로그인한 지 15분 안"으로 본인을 확인한다 */
   hasPassword: boolean;
+  recentLogin: boolean;
   staff: boolean;
   next: string | null;
 }) {
@@ -92,7 +95,7 @@ export function TwoFactorSettings({
     setError(null);
     setBusy(true);
     const result = await authApi<{ totpURI: string; backupCodes: string[] }>("/two-factor/enable", {
-      password,
+      ...(hasPassword ? { password } : {}),
       issuer: "AIONIT",
     });
     setBusy(false);
@@ -116,19 +119,33 @@ export function TwoFactorSettings({
     event.preventDefault();
     setError(null);
     setBusy(true);
-    const result = await authApi("/two-factor/disable", { password });
+    const result = await authApi("/two-factor/disable", hasPassword ? { password } : {});
     setBusy(false);
     if (!result.ok) return setError(result.error.message);
     setPassword("");
     router.refresh();
   }
 
-  if (!hasPassword && !enabled) {
+  async function loginAgain() {
+    await authApi("/sign-out");
+    window.location.assign(
+      `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+    );
+  }
+
+  // 비밀번호가 없는 계정: 로그인한 지 오래됐으면 다시 로그인부터
+  if (!hasPassword && !recentLogin && step.kind === "idle") {
     return (
-      <p className="m-0 text-[15px] leading-[1.7] text-ink-2">
-        2단계 인증은 비밀번호와 함께 씁니다. 구글 · 카카오로만 가입했다면 먼저 비밀번호를 정해야 합니다.
-        운영자 · 강사 계정은 이메일 · 비밀번호로 가입해 주세요.
-      </p>
+      <div className="flex flex-col gap-5">
+        <StatusDot tone={enabled ? "done" : "muted"}>{enabled ? "켜져 있음" : "꺼져 있음"}</StatusDot>
+        <p className="m-0 text-[15px] leading-[1.7] text-ink-2">
+          구글 · 카카오로 가입한 계정은 비밀번호 대신 <strong className="text-ink">방금 로그인했는지</strong>
+          로 본인을 확인합니다. 다시 로그인하면 15분 동안 2단계 인증을 {enabled ? "끌" : "켤"} 수 있습니다.
+        </p>
+        <Button variant="primary" onClick={() => void loginAgain()} className="self-start">
+          다시 로그인하기
+        </Button>
+      </div>
     );
   }
 
@@ -136,7 +153,9 @@ export function TwoFactorSettings({
     return (
       <div className="flex flex-col gap-5">
         <Notice tone="done" title="2단계 인증을 켰습니다">
-          이제 로그인할 때 비밀번호 다음에 인증 앱의 코드를 입력합니다.
+          {hasPassword
+            ? "이제 로그인할 때 비밀번호 다음에 인증 앱의 코드를 입력합니다."
+            : "이제 관리 화면에 들어갈 때 인증 앱의 코드를 입력합니다."}
         </Notice>
         <BackupCodes codes={step.backupCodes} />
         {next ? (
@@ -196,15 +215,22 @@ export function TwoFactorSettings({
       {staff ? (
         <Notice tone="warn">운영자 · 강사는 2단계 인증을 끄면 관리 화면에 들어갈 수 없습니다.</Notice>
       ) : null}
-      <Field
-        label="끄려면 비밀번호 입력"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <Button type="submit" variant="outline" disabled={busy || !password} className="self-start">
+      {hasPassword ? (
+        <Field
+          label="끄려면 비밀번호 입력"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      ) : null}
+      <Button
+        type="submit"
+        variant="outline"
+        disabled={busy || (hasPassword && !password)}
+        className="self-start"
+      >
         2단계 인증 끄기
       </Button>
     </form>
@@ -212,19 +238,27 @@ export function TwoFactorSettings({
     <form onSubmit={start} className="flex flex-col gap-5">
       <StatusDot tone="muted">꺼져 있음</StatusDot>
       <p className="m-0 text-[15px] leading-[1.7] text-ink-2">
-        비밀번호가 새어 나가도 내 휴대폰의 인증 앱 코드 없이는 로그인할 수 없게 합니다.
+        {hasPassword
+          ? "비밀번호가 새어 나가도 내 휴대폰의 인증 앱 코드 없이는 로그인할 수 없게 합니다."
+          : "구글 · 카카오 계정을 누가 알아내도 내 휴대폰의 인증 앱 코드 없이는 관리 화면에 들어갈 수 없게 합니다."}
         {staff ? " 운영자 · 강사는 꼭 켜야 합니다." : " 수강생은 선택입니다."}
       </p>
       {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Field
-        label="비밀번호 확인"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <Button type="submit" disabled={busy || !password} className="self-start">
+      {hasPassword ? (
+        <Field
+          label="비밀번호 확인"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      ) : (
+        <p className="m-0 text-[14px] text-ink-2">
+          구글 · 카카오로 가입한 계정이라 비밀번호 대신 방금 로그인한 것으로 본인을 확인했습니다.
+        </p>
+      )}
+      <Button type="submit" disabled={busy || (hasPassword && !password)} className="self-start">
         2단계 인증 켜기
       </Button>
     </form>

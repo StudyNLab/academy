@@ -1,0 +1,529 @@
+/* 교재 본문 (업로드 패키지의 content.html). 교재 도구(academy.css)의 class 이름을 그대로 받아
+   디자인 시스템 토큰으로 다시 칠한다 (docs/디자인시스템.md 6장). 상자 · 카드 대신 선과 여백, 코드는 어두운 바탕. */
+
+.reader {
+  --reader-width: 720px;
+  max-width: var(--reader-width);
+  font-size: 17px;
+  line-height: 1.85;
+  color: var(--ink);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+@media (max-width: 767px) {
+  .reader {
+    font-size: 16px;
+  }
+}
+
+/* ---------- 표지 · 학습 목표 · 흐름 ---------- */
+.reader .cover {
+  border-top: 1px solid var(--line-strong);
+  padding: 28px 0 8px;
+  margin-bottom: 28px;
+}
+.reader .cover .label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+  margin: 0 0 10px;
+}
+.reader .cover h1 {
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.reader .cover p {
+  color: var(--ink-2);
+  font-size: 18px;
+  line-height: 1.7;
+  font-weight: 300;
+  margin: 0 0 6px;
+}
+.reader .goals,
+.reader .flow {
+  border-top: 1px solid var(--line);
+  padding: 18px 0;
+  margin: 0 0 18px;
+}
+.reader .goals h3,
+.reader .flow .flow-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  font-weight: 500;
+  margin: 0 0 10px;
+}
+.reader .goals ul {
+  list-style: none;
+  padding: 0;
+}
+.reader .goals li {
+  position: relative;
+  padding-left: 26px;
+}
+.reader .goals li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--done);
+  font-weight: 700;
+}
+.reader .flow ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  counter-reset: step;
+}
+.reader .flow li {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  margin: 0;
+}
+.reader .flow li span::before {
+  counter-increment: step;
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--signal);
+  margin-right: 6px;
+}
+.reader .flow li.lab span::before {
+  color: var(--done);
+}
+.reader .flow li + li::before {
+  content: "→";
+  color: var(--ink-2);
+  margin: 0 10px;
+}
+
+/* ---------- Section ---------- */
+.reader .sec {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 28px;
+  margin: 56px 0 0;
+  scroll-margin-top: 24px;
+}
+.reader .sec > h1 {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-size: clamp(26px, 3.4vw, 32px);
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  margin: 0 0 24px;
+}
+.reader .sec > h1 .num,
+.reader h2 .num {
+  font-family: var(--font-mono);
+  font-size: 0.6em;
+  color: var(--signal);
+  font-weight: 500;
+}
+.reader h2 .num {
+  margin-right: 10px;
+}
+.reader .sec.lab {
+  border-top: 2px solid var(--done);
+}
+.reader .sec.lab > h1 .num {
+  color: var(--done);
+}
+.reader h2 {
+  font-size: 23px;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 44px 0 14px;
+  scroll-margin-top: 24px;
+}
+.reader .sec > h1 + h2 {
+  margin-top: 8px;
+}
+.reader h3 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 32px 0 10px;
+}
+.reader p {
+  margin: 0 0 16px;
+}
+.reader ul,
+.reader ol {
+  margin: 0 0 16px;
+  padding-left: 1.4em;
+}
+.reader li {
+  margin: 4px 0;
+}
+.reader li::marker {
+  color: var(--ink-2);
+}
+.reader strong {
+  font-weight: 600;
+}
+.reader a {
+  color: var(--link);
+}
+.reader p.def {
+  border-left: 2px solid var(--signal);
+  padding-left: 16px;
+}
+.reader :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--surface-sunken);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+}
+
+/* ---------- 그림 · 표 ---------- */
+.reader figure {
+  margin: 28px 0;
+}
+.reader figure.fig img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  /* 교재 그림은 흰 바탕으로 만들어져 다크 모드에서도 밝은 지면 위에 둔다 (디자인시스템 2.1) */
+  background: #f2f1ed;
+  cursor: zoom-in;
+}
+.reader figure figcaption {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-align: center;
+}
+.reader figure.tbl figcaption {
+  text-align: left;
+  margin: 0 0 8px;
+}
+.reader .tbl-wrap {
+  overflow-x: auto;
+}
+.reader table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.reader thead th {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 10px 12px;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 2px solid var(--line-strong);
+  white-space: nowrap;
+}
+.reader td,
+.reader tbody th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+/* ---------- 여백 메모 (강조 박스) ---------- */
+.reader .box {
+  border-top: 2px solid var(--signal);
+  background: var(--surface);
+  padding: 14px 18px 4px;
+  margin: 24px 0;
+  font-size: 15.5px;
+}
+.reader .box .box-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  color: var(--signal);
+}
+.reader .box.warn {
+  border-top-color: var(--warn);
+}
+.reader .box.warn .box-title {
+  color: var(--warn);
+}
+.reader .box.prac {
+  border-top-color: var(--ink);
+}
+.reader .box.prac .box-title {
+  color: var(--ink);
+}
+
+/* ---------- 코드 (라이트에서도 어두운 바탕) ---------- */
+.reader .code {
+  margin: 20px 0 24px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: 2px;
+}
+.reader .code .code-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #a9b1be;
+}
+.reader .code .code-head .tag {
+  color: var(--code-ink);
+  font-weight: 500;
+}
+.reader .code.run .code-head .tag::before {
+  content: "▶ ";
+  color: #e07a5b;
+}
+.reader .code .code-head .lang {
+  margin-left: auto;
+}
+.reader .code .copy {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #e8e6e0;
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 2px;
+  padding: 2px 10px;
+  min-height: 28px;
+  cursor: pointer;
+}
+.reader .code .copy:hover {
+  border-color: #e8e6e0;
+}
+.reader .code pre {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.8;
+  tab-size: 4;
+}
+.reader .code pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.reader .code.text pre,
+.reader .code.term pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reader .code pre.numbered {
+  padding-left: 0;
+}
+.reader .code pre.numbered .line {
+  display: block;
+  padding-right: 12px;
+}
+.reader .code pre .ln {
+  display: inline-block;
+  width: 3.4em;
+  padding-right: 12px;
+  margin-right: 12px;
+  text-align: right;
+  color: #8a93a3;
+  border-right: 1px solid rgb(255 255 255 / 0.12);
+  user-select: none;
+}
+.reader .code pre .line.dim,
+.reader .code pre .line.dim * {
+  color: #8a93a3 !important;
+}
+.reader .code.term .prompt {
+  color: #6fbf8e;
+}
+.reader .code.term .cmd {
+  color: #ffffff;
+  font-weight: 500;
+}
+.reader .hl .k,
+.reader .hl .kn,
+.reader .hl .kc,
+.reader .hl .kd,
+.reader .hl .ow,
+.reader .hl .nf,
+.reader .hl .fm,
+.reader .hl .nc,
+.reader .hl .nb,
+.reader .hl .bp {
+  color: var(--code-keyword, #9db7e8);
+}
+.reader .hl .s,
+.reader .hl .s1,
+.reader .hl .s2,
+.reader .hl .sa,
+.reader .hl .sd,
+.reader .hl .si,
+.reader .hl .se,
+.reader .hl .mi,
+.reader .hl .mf,
+.reader .hl .m {
+  color: #e3b58c;
+}
+.reader .hl .c,
+.reader .hl .c1,
+.reader .hl .cm,
+.reader .hl .ch {
+  color: #8a93a3;
+  font-style: italic;
+}
+@media (max-width: 767px) {
+  /* 모바일: 코드는 화면 끝까지 */
+  .reader .code {
+    margin-left: -20px;
+    margin-right: -20px;
+  }
+}
+.reader p.code-sec {
+  margin: 36px 0 12px;
+  border-left: 2px solid var(--signal);
+  padding-left: 12px;
+  color: var(--ink-2);
+}
+.reader p.code-sec.basic,
+.reader p.code-sec.print {
+  border-left-color: var(--line);
+}
+.reader details.fold {
+  margin: 14px 0 20px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.reader details.fold > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.reader details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.reader details.fold > summary .open {
+  margin-left: auto;
+  color: var(--link);
+}
+.reader details.fold > summary .open::before {
+  content: "▸ ";
+}
+.reader details.fold[open] > summary .open::before {
+  content: "▾ ";
+}
+
+/* ---------- 영상 ---------- */
+.reader .video-block {
+  margin: 24px 0;
+}
+.reader .video-embed {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #1b2534;
+}
+.reader .video-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.reader .video-block figcaption {
+  text-align: left;
+  border-bottom: 3px solid var(--signal);
+  padding-bottom: 8px;
+}
+.reader .video-missing {
+  border: 1px dashed var(--warn);
+  color: var(--warn);
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+/* ---------- 스스로 확인 (학습 화면, docs/디자인시스템.md 4장) ---------- */
+.reader .self-check {
+  margin: 28px 0 8px;
+  border-top: 2px solid var(--ink);
+  font-size: 15px;
+}
+.reader .self-check-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px 0;
+  font-weight: 600;
+}
+.reader .self-check ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.reader .self-check li {
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.reader .self-check label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 11px 0;
+  cursor: pointer;
+}
+.reader .self-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--done);
+}
+
+/* 학습 화면은 머리글이 위에 붙어 있어, 목차로 이동할 때 그만큼 띄운다 */
+.reader section[id],
+.reader figure[id] {
+  scroll-margin-top: 80px;
+}
+
+/* ---------- 그림 크게 보기 ---------- */
+.zoom-view {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(8 12 20 / 0.9);
+  overflow: auto;
+  text-align: center;
+  padding: 32px 16px;
+  cursor: zoom-out;
+}
+.zoom-view img {
+  max-width: none;
+  background: #f2f1ed;
+}
+.zoom-view p {
+  color: #e8e6e0;
+  font-size: 14px;
+}

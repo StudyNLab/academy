@@ -1,8 +1,12 @@
-// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리.
-import { createDb } from "@aionit/db";
+// 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계.
+import { CONTENT_QUEUE } from "@aionit/content";
+import { createDb, eq, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
 import { createSmtpMailer, MAIL_QUEUE } from "@aionit/mail";
+import { createS3StoreFromEnv } from "@aionit/storage";
 import { PgBoss } from "pg-boss";
+import { processCourseVersion } from "./content";
+import { aggregateRecentDays } from "./learning";
 import { sendMailJob } from "./mail";
 import { purgeExpiredRecords } from "./retention";
 
@@ -16,6 +20,8 @@ const mailer = createSmtpMailer({
   url: smtpUrl,
   from: process.env.MAIL_FROM ?? "AIONIT <no-reply@aionit.local>",
 });
+
+const store = createS3StoreFromEnv();
 
 const boss = new PgBoss({ connectionString: url, schema: "pgboss" });
 boss.on("error", (error) => console.error("pg-boss 오류", error));
@@ -39,6 +45,43 @@ await boss.createQueue(MAIL_QUEUE, {
 });
 await boss.work<MailJob>(MAIL_QUEUE, async (jobs) => {
   for (const job of jobs) await sendMailJob(job.data, { db, mailer });
+});
+
+// 교재 패키지 처리. 실패하면 그 버전을 "invalid" 로 두고 이유를 보고서에 남긴다 (운영자가 다시 올린다)
+await boss.createQueue(CONTENT_QUEUE, { retryLimit: 0, deleteAfterSeconds: 7 * 86400 });
+await boss.work<{ versionId: string }>(CONTENT_QUEUE, async (jobs) => {
+  for (const job of jobs) {
+    try {
+      await processCourseVersion({ db, store }, job.data.versionId);
+    } catch (error) {
+      console.error(`[worker] 교재 처리 실패 ${job.data.versionId}`, error);
+      const message = error instanceof Error ? error.message : String(error);
+      await db
+        .update(schema.courseVersions)
+        .set({
+          status: "invalid",
+          validationReport: {
+            ok: false,
+            errors: [{ code: "PROCESS_FAILED", message: `처리 중 오류: ${message.slice(0, 300)}` }],
+            warnings: [],
+            course: null,
+            chapters: [],
+            skipped: [],
+            diff: null,
+          },
+        })
+        .where(eq(schema.courseVersions.id, job.data.versionId));
+    }
+  }
+});
+
+// 하루 유효 학습 시간 집계: 매일 00:20 KST (어제 · 그제)
+const LEARNING_DAILY = "learning.daily-time";
+await boss.createQueue(LEARNING_DAILY);
+await boss.schedule(LEARNING_DAILY, "20 0 * * *", {}, { tz: "Asia/Seoul" });
+await boss.work(LEARNING_DAILY, async () => {
+  const result = await aggregateRecentDays(db);
+  console.warn(`[worker] 학습 시간 집계 ${JSON.stringify(result)}`);
 });
 
 // 보관 기간 정리: 매일 04:10 KST (DB 백업 03:30 뒤)

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SESSION_POLICY } from "@aionit/core";
 import { eq, schema } from "@aionit/db";
 import { Notice } from "@aionit/ui";
 import { PageTitle } from "@/components/page-title";
@@ -20,6 +21,8 @@ export default async function SecurityPage({ searchParams }: { searchParams: Sea
     .where(eq(schema.authAccounts.userId, viewer.userId));
   const hasPassword = accounts.some((a) => a.providerId === "credential");
   const staff = viewer.roles.length > 0;
+  // 비밀번호가 없는 회원은 "방금 로그인"으로 본인을 확인한다 (서버 auth.ts 의 before 와 같은 규칙)
+  const recentLogin = Date.now() - viewer.sessionCreatedAt.getTime() <= SESSION_POLICY.recentLoginMs;
   const next = typeof params.next === "string" ? safeNext(params.next) : null;
 
   return (
@@ -28,7 +31,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Sea
       {params.required && !viewer.twoFactorEnabled ? (
         <div className="mb-6">
           <Notice tone="warn" title="2단계 인증을 켜야 관리 화면에 들어갈 수 있습니다">
-            운영자 · 강사는 비밀번호와 함께 인증 앱의 코드로 로그인해야 합니다. 아래에서 켜 주세요.
+            운영자 · 강사는 관리 화면에 들어갈 때 인증 앱의 코드를 한 번 더 입력합니다. 아래에서 켜 주세요.
           </Notice>
         </div>
       ) : null}
@@ -37,6 +40,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Sea
         <TwoFactorSettings
           enabled={viewer.twoFactorEnabled}
           hasPassword={hasPassword}
+          recentLogin={recentLogin}
           staff={staff}
           next={next}
         />

@@ -2,8 +2,11 @@ import "server-only";
 import type { Role } from "@aionit/db";
 import type { z } from "zod";
 import { getAuth } from "./auth-instance";
+import { CourseError } from "./courses";
 import { getDb } from "./db";
+import { EntitlementError } from "./entitlements";
 import { getEnv } from "./env";
+import { LearningError } from "./learning";
 import type { Viewer } from "./viewer";
 import { loadViewer, staffAccess } from "./viewer";
 
@@ -62,7 +65,12 @@ export function route<C>(handler: (request: Request, context: C) => Promise<Resp
       if (request.method !== "GET" && request.method !== "HEAD") assertSameOrigin(request);
       return await handler(request, context);
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (
+        error instanceof ApiError ||
+        error instanceof CourseError ||
+        error instanceof EntitlementError ||
+        error instanceof LearningError
+      ) {
         return json({ error: { code: error.code, message: error.message } }, error.status);
       }
       const traceId = crypto.randomUUID().slice(0, 8);

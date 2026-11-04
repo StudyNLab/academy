@@ -5,7 +5,7 @@
 // - 운영자 · 강사: 2단계 인증 필수, 세션 12시간 (session.ts 에서 확인)
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 import type { Db } from "@aionit/db";
-import { eq, schema } from "@aionit/db";
+import { and, eq, schema } from "@aionit/db";
 import {
   checkPassword,
   IP_RATE_LIMITS,
@@ -209,6 +209,8 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
         twoFactorTable: "twoFactors",
         backupCodeOptions: { amount: 10, length: 10 },
         accountLockout: { enabled: true, maxFailedAttempts: 10, durationSeconds: 900 },
+        // 구글 · 카카오로만 가입한 회원(비밀번호 없음)도 켤 수 있게. 대신 아래 before 에서 "방금 로그인"을 확인한다
+        allowPasswordless: true,
       }),
     ],
 
@@ -331,6 +333,28 @@ export function createAuth({ db, env, enqueueMail }: AuthDeps) {
               email: session?.user.email,
               nickname: session?.user.name,
             });
+            return;
+          }
+          case "/two-factor/enable":
+          case "/two-factor/disable":
+          case "/two-factor/get-totp-uri":
+          case "/two-factor/generate-backup-codes": {
+            // 비밀번호가 있으면 라이브러리가 비밀번호를 확인한다. 없으면(구글 · 카카오만) 로그인한 지 15분 안이어야 한다
+            const session = await getSessionFromCtx(ctx);
+            if (!session) return;
+            const [credential] = await db
+              .select({ password: schema.authAccounts.password })
+              .from(schema.authAccounts)
+              .where(
+                and(
+                  eq(schema.authAccounts.userId, session.user.id),
+                  eq(schema.authAccounts.providerId, "credential"),
+                ),
+              );
+            if (credential?.password) return;
+            if (Date.now() - session.session.createdAt.getTime() > SESSION_POLICY.recentLoginMs) {
+              fail("FORBIDDEN", "RELOGIN_REQUIRED", "본인 확인을 위해 다시 로그인한 뒤 해 주세요.");
+            }
             return;
           }
           case "/two-factor/verify-totp":

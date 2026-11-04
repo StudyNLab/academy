@@ -1,12 +1,10 @@
+import { SESSION_POLICY } from "@aionit/core";
 import { eq, schema } from "@aionit/db";
 import { z } from "zod";
 import { ApiError, json, parseBody, requireApiViewer, route } from "@/server/api";
 import { getAuth } from "@/server/auth-instance";
 import { getDb } from "@/server/db";
 import { withdrawUser } from "@/server/withdraw";
-
-/** 비밀번호가 없는 회원(구글 · 카카오만)은 로그인한 지 이 시간 안이어야 탈퇴할 수 있다 */
-const RECENT_LOGIN_MS = 15 * 60_000;
 
 export const POST = route(async (request) => {
   const viewer = await requireApiViewer(request);
@@ -29,7 +27,7 @@ export const POST = route(async (request) => {
       .then(() => true)
       .catch(() => false);
     if (!ok) throw new ApiError(400, "INVALID_PASSWORD", "비밀번호가 맞지 않습니다.");
-  } else if (Date.now() - viewer.sessionCreatedAt.getTime() > RECENT_LOGIN_MS) {
+  } else if (Date.now() - viewer.sessionCreatedAt.getTime() > SESSION_POLICY.recentLoginMs) {
     throw new ApiError(400, "RELOGIN_REQUIRED", "본인 확인을 위해 다시 로그인한 뒤 탈퇴해 주세요.");
   }
   await withdrawUser(db, viewer.userId, request.headers);

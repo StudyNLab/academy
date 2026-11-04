@@ -1,4 +1,5 @@
 import "server-only";
+import { CONTENT_QUEUE } from "@aionit/content";
 import type { MailJob } from "@aionit/mail";
 import { MAIL_QUEUE } from "@aionit/mail";
 import { PgBoss } from "pg-boss";
@@ -25,6 +26,7 @@ function getQueue(): Promise<PgBoss> {
         retryBackoff: true,
         deleteAfterSeconds: 3600,
       });
+      await boss.createQueue(CONTENT_QUEUE, { retryLimit: 0, deleteAfterSeconds: 7 * 86400 });
       return boss;
     });
   }
@@ -34,4 +36,10 @@ function getQueue(): Promise<PgBoss> {
 export async function enqueueMail(job: MailJob): Promise<void> {
   const boss = await getQueue();
   await boss.send(MAIL_QUEUE, job);
+}
+
+/** 올린 교재 패키지를 worker 가 처리하도록 넣는다 */
+export async function enqueueContent(versionId: string): Promise<void> {
+  const boss = await getQueue();
+  await boss.send(CONTENT_QUEUE, { versionId });
 }

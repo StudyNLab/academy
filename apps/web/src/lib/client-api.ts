@@ -26,13 +26,14 @@ const AUTH_MESSAGES: Record<string, string> = {
   EMAIL_DOES_NOT_MATCH: "가입한 이메일과 같은 이메일의 계정만 연결할 수 있습니다.",
 };
 
-async function post<T>(url: string, body: unknown): Promise<ApiResult<T>> {
+async function post<T>(url: string, body: unknown, method = "POST"): Promise<ApiResult<T>> {
   let response: Response;
   try {
     response = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body ?? {}),
+      method,
+      ...(body instanceof FormData
+        ? { body }
+        : { headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) }),
       credentials: "same-origin",
     });
   } catch {
@@ -62,8 +63,12 @@ async function post<T>(url: string, body: unknown): Promise<ApiResult<T>> {
 export const authApi = <T = Record<string, unknown>>(path: string, body?: unknown) =>
   post<T>(`/api/v1/auth${path}`, body);
 
+/** 쓰기 요청. body 가 FormData 면 파일 올리기(multipart) */
 export const api = <T = Record<string, unknown>>(path: string, body?: unknown) =>
   post<T>(`/api/v1${path}`, body);
+
+export const apiDelete = <T = Record<string, unknown>>(path: string) =>
+  post<T>(`/api/v1${path}`, undefined, "DELETE");
 
 /** 구글 · 카카오로 이동. 가입 화면은 동의 · 닉네임을 함께 보낸다 */
 export async function startSocial(

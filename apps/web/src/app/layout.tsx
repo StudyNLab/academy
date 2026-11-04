@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import "@fontsource/ibm-plex-sans-kr/300.css";
 import "@fontsource/ibm-plex-sans-kr/400.css";
@@ -7,7 +8,11 @@ import "@fontsource/ibm-plex-sans-kr/600.css";
 import "@fontsource/ibm-plex-sans-kr/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
+// 로고 전용 (Wordmark)
+import "@fontsource/manrope/300.css";
+import "@fontsource/manrope/800.css";
 import "./globals.css";
+import "./reader.css";
 
 export const metadata: Metadata = {
   title: { default: "AIONIT", template: "%s · AIONIT" },
@@ -21,9 +26,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+/** 다크 모드: 운영체제 설정을 따르되, 학습 화면에서 직접 고른 값(쿠키)을 기억한다 (docs/디자인시스템.md 6장) */
+const THEME_COOKIE = "aionit.theme";
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const theme = (await cookies()).get(THEME_COOKIE)?.value;
   return (
-    <html lang="ko">
+    <html lang="ko" data-theme={theme === "dark" || theme === "light" ? theme : undefined}>
       <body>{children}</body>
     </html>
   );
