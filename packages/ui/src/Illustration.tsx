@@ -1,162 +1,95 @@
-// 그림 규칙 (docs/디자인시스템.md 3.2): 선 굵기 1.5, 색은 잉크(currentColor) 와 Signal 둘뿐.
-// 면은 surface · sunken 토큰을 써서 다크 모드에서도 그대로 쓴다. 장식용 그림은 aria-hidden.
+// 그림 규칙 (docs/디자인시스템.md 3.2): 분야 그림은 연한 바탕 + 남색 선 + Signal 하나.
+// 색은 토큰(--illust-bg · --illust-ink · --signal · --surface) 이라 다크 모드에서도 그대로 쓴다.
+// 움직임 class(aio-*) 는 motion.css. 장식용 그림은 aria-hidden.
 
 export type FieldKey = "infra" | "security" | "ai";
 
-const INK = "currentColor";
+const BG = "var(--illust-bg)";
+const INK = "var(--illust-ink)";
 const SIGNAL = "var(--signal)";
 const SURFACE = "var(--surface)";
-const SUNKEN = "var(--surface-sunken)";
-const LINE = "var(--line)";
 
-/** 세 분야 그림 120×96: 서버 랙 · 로그가 든 방패 · 노드 망 */
+/** 세 분야 그림 120×96: 서버 랙(표시등 깜빡임) · 로그가 든 방패(검사선) · 노드 망(신호 흐름) */
 export function FieldIcon({ field, className = "" }: { field: FieldKey; className?: string }) {
-  const props = { viewBox: "0 0 120 96", "aria-hidden": true, className: `text-ink ${className}` } as const;
+  const props = { viewBox: "0 0 120 96", "aria-hidden": true, className } as const;
   if (field === "infra") {
     return (
       <svg {...props}>
+        <rect x="15" y="7" width="90" height="82" fill={BG} stroke={INK} strokeWidth="2" />
         <g fill={SURFACE} stroke={INK} strokeWidth="1.5">
-          <rect x="16" y="14" width="88" height="18" />
-          <rect x="16" y="38" width="88" height="18" />
-          <rect x="16" y="62" width="88" height="18" />
+          <rect x="23" y="15" width="74" height="19" />
+          <rect x="23" y="39" width="74" height="19" />
+          <rect x="23" y="63" width="74" height="19" />
         </g>
-        <g stroke={INK} strokeWidth="1.5" opacity="0.4">
-          <path d="M80 19 V27 M86 19 V27 M92 19 V27 M98 19 V27" />
-          <path d="M80 43 V51 M86 43 V51 M92 43 V51 M98 43 V51" />
-          <path d="M80 67 V75 M86 67 V75 M92 67 V75 M98 67 V75" />
+        <g stroke={INK} strokeWidth="2" opacity="0.35">
+          <path d="M68 20v9M74 20v9M80 20v9M86 20v9M68 44v9M74 44v9M80 44v9M86 44v9M68 68v9M74 68v9M80 68v9M86 68v9" />
         </g>
-        <circle cx="27" cy="23" r="2.5" fill={INK} opacity="0.4" />
-        <circle cx="27" cy="47" r="2.5" fill={SIGNAL} />
-        <circle cx="27" cy="71" r="2.5" fill={INK} opacity="0.4" />
+        <circle className="aio-blink" cx="33" cy="24.5" r="3.5" fill={SIGNAL} />
+        <circle
+          className="aio-blink"
+          style={{ animationDelay: "0.7s" }}
+          cx="33"
+          cy="48.5"
+          r="3.5"
+          fill={SIGNAL}
+        />
+        <circle
+          className="aio-blink"
+          style={{ animationDelay: "1.4s" }}
+          cx="33"
+          cy="72.5"
+          r="3.5"
+          fill={SIGNAL}
+        />
       </svg>
     );
   }
   if (field === "security") {
+    const shield = "M60 5 L99 18 V46 C99 69 83 83 60 92 C37 83 21 69 21 46 V18 Z";
     return (
       <svg {...props}>
-        <path
-          d="M60 10 L94 22 V48 C94 68 80 80 60 88 C40 80 26 68 26 48 V22 Z"
-          fill={SURFACE}
-          stroke={INK}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-        <path d="M44 34 H76" stroke={INK} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
-        <path d="M44 46 H70" stroke={SIGNAL} strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M44 58 H72" stroke={INK} strokeWidth="2.5" strokeLinecap="round" opacity="0.4" />
+        <defs>
+          <clipPath id="aio-shield-clip">
+            <path d={shield} />
+          </clipPath>
+        </defs>
+        <path d={shield} fill={BG} stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+        <g stroke={INK} strokeWidth="3" strokeLinecap="round" opacity="0.35">
+          <path d="M40 30 H80" />
+          <path d="M40 54 H76" />
+          <path d="M40 66 H66" />
+        </g>
+        <path d="M40 42 H74" stroke={SIGNAL} strokeWidth="3.5" strokeLinecap="round" />
+        <g clipPath="url(#aio-shield-clip)">
+          <rect className="aio-scan" x="18" y="18" width="84" height="2.5" fill={SIGNAL} opacity="0.7" />
+        </g>
       </svg>
     );
   }
   return (
     <svg {...props}>
-      <g stroke={INK} strokeWidth="1.5" opacity="0.35">
-        <path d="M22 24 L60 36 M22 48 L60 36 M22 72 L60 36 M22 24 L60 60 M22 48 L60 60 M22 72 L60 60 M60 36 L98 48 M60 60 L98 48" />
+      <rect x="9" y="7" width="102" height="82" fill={BG} stroke={INK} strokeWidth="2" />
+      <g stroke={INK} strokeWidth="1.5" opacity="0.3">
+        <path d="M27 25 L60 38 M27 48 L60 38 M27 71 L60 58 M27 48 L60 58 M27 71 L60 38" />
       </g>
-      <g fill={SURFACE} stroke={INK} strokeWidth="1.5">
-        <circle cx="22" cy="24" r="5.5" />
-        <circle cx="22" cy="48" r="5.5" />
-        <circle cx="22" cy="72" r="5.5" />
-        <circle cx="60" cy="36" r="5.5" />
-        <circle cx="60" cy="60" r="5.5" />
+      <g stroke={SIGNAL} strokeWidth="2" fill="none">
+        <path className="aio-flow" d="M27 25 L60 58 L93 48" />
+        <path className="aio-flow" style={{ animationDelay: "-0.5s" }} d="M60 38 L93 48" />
       </g>
-      <circle cx="98" cy="48" r="6.5" fill={SIGNAL} />
+      <g fill={SURFACE} stroke={INK} strokeWidth="2">
+        <circle cx="27" cy="25" r="5" />
+        <circle cx="27" cy="48" r="5" />
+        <circle cx="27" cy="71" r="5" />
+        <circle cx="60" cy="38" r="5" />
+        <circle cx="60" cy="58" r="5" />
+      </g>
+      <circle className="aio-ring" cx="93" cy="48" r="7" fill="none" stroke={SIGNAL} strokeWidth="1.5" />
+      <circle cx="93" cy="48" r="7" fill={SIGNAL} stroke={SURFACE} strokeWidth="2" />
     </svg>
   );
 }
 
-/** 첫 화면 그림: 인프라 · 보안 두 층 위에 AI 층이 켜진다 (680×540) */
-export function LayersIllustration({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 680 540"
-      role="img"
-      aria-label="인프라, 보안, AI 세 층이 쌓인 그림. 맨 위 AI 층에서 신호가 켜진다"
-      className={`block h-auto w-full text-ink ${className}`}
-    >
-      {/* 01 인프라: 서버 격자 */}
-      <path d="M140 390 L140 404 L380 524 L620 404 L620 390 L380 510 Z" fill={LINE} />
-      <path
-        d="M140 390 L380 270 L620 390 L380 510 Z"
-        fill={SUNKEN}
-        stroke={INK}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <g fill={INK} opacity="0.4">
-        {[
-          [322, 443],
-          [366, 421],
-          [409, 400],
-          [452, 378],
-          [495, 356],
-          [356, 460],
-          [399, 438],
-          [442, 416],
-          [486, 395],
-          [529, 373],
-          [390, 476],
-          [433, 455],
-          [476, 433],
-          [519, 412],
-          [562, 390],
-        ].map(([x, y]) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} r="3" />
-        ))}
-      </g>
-      {/* 02 보안: 로그 줄, 하나가 잡힌다 */}
-      <path d="M140 260 L140 274 L380 394 L620 274 L620 260 L380 380 Z" fill={LINE} />
-      <path
-        d="M140 260 L380 140 L620 260 L380 380 Z"
-        fill={SURFACE}
-        stroke={INK}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <g strokeWidth="3" strokeLinecap="round" fill="none">
-        <path d="M303 303 L409 250" stroke={INK} opacity="0.35" />
-        <path d="M332 318 L476 246" stroke={INK} opacity="0.35" />
-        <path d="M361 332 L447 289" stroke={SIGNAL} />
-        <path d="M390 346 L543 270" stroke={INK} opacity="0.35" />
-      </g>
-      {/* 03 AI: 루프 위에서 신호가 켜진다 */}
-      <path d="M140 130 L140 144 L380 264 L620 144 L620 130 L380 250 Z" fill={LINE} />
-      <path
-        d="M140 130 L380 10 L620 130 L380 250 Z"
-        fill={SURFACE}
-        stroke={INK}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <ellipse cx="380" cy="130" rx="110" ry="55" fill="none" stroke={INK} strokeWidth="1.5" />
-      <path d="M484 117 L493 131 L478 134 Z" fill={INK} />
-      <path d="M276 143 L267 129 L282 126 Z" fill={INK} />
-      <rect x="260" y="120" width="20" height="20" fill={SURFACE} stroke={INK} strokeWidth="1.5" />
-      <rect x="480" y="120" width="20" height="20" fill={SURFACE} stroke={INK} strokeWidth="1.5" />
-      <path d="M380 122 V66" stroke={SIGNAL} strokeWidth="3" strokeLinecap="round" />
-      <circle cx="380" cy="60" r="6" fill="var(--bg)" stroke={SIGNAL} strokeWidth="3" />
-      <circle cx="380" cy="130" r="9" fill={SIGNAL} stroke={SURFACE} strokeWidth="2.5" />
-      {/* 층 이름 */}
-      <g stroke="var(--ink-2)" strokeWidth="1" strokeDasharray="2 4">
-        <path d="M66 130 H138" />
-        <path d="M110 260 H138" />
-        <path d="M88 390 H138" />
-      </g>
-      <g className="font-mono text-[11px] tracking-[0.08em]">
-        <text x="0" y="134" fill={SIGNAL}>
-          03 · AI
-        </text>
-        <text x="0" y="264" fill="var(--ink-2)">
-          02 · SECURITY
-        </text>
-        <text x="0" y="394" fill="var(--ink-2)">
-          01 · INFRA
-        </text>
-      </g>
-    </svg>
-  );
-}
-
-/** 강의 표지 96×96: 남색 바탕(라이트 · 다크 공통) 에 번호와 분야 무늬 */
+/** 강의 표지 96×96: 남색 바탕(라이트 · 다크 공통) 에 번호와 분야 무늬. 줄(group)에 마우스를 올리면 무늬가 커진다 */
 export function CourseCover({
   no,
   field,
@@ -176,7 +109,10 @@ export function CourseCover({
       <span className="font-mono text-[11px] tracking-[0.08em] text-[#F0A88C]">
         {String(no).padStart(2, "0")}
       </span>
-      <svg viewBox="0 0 76 40" className="h-10 w-[76px]">
+      <svg
+        viewBox="0 0 76 40"
+        className="h-10 w-[76px] transition-transform duration-200 ease-out group-hover:scale-110"
+      >
         {field === "ai" ? (
           <>
             <circle cx="38" cy="22" r="15" fill="none" stroke={paper} strokeWidth="1.5" />

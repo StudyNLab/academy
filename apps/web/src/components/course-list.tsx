@@ -14,11 +14,11 @@ export function CourseList({ courses }: { courses: CatalogItem[] }) {
         <li key={course.id} className="border-b border-line">
           <Link
             href={`/courses/${course.slug}`}
-            className="grid grid-cols-[96px_1fr] gap-x-6 gap-y-2 py-6 text-ink no-underline hover:bg-sunken hover:text-ink md:grid-cols-[96px_1fr_120px_200px_140px] md:items-center md:gap-x-7 md:px-2"
+            className="group grid grid-cols-[96px_1fr] gap-x-6 gap-y-2 py-6 text-ink no-underline hover:bg-sunken hover:text-ink md:grid-cols-[96px_1fr_120px_200px_140px] md:items-center md:gap-x-7 md:px-2"
           >
             <CourseCover no={i + 1} field={course.field} className="row-span-4 md:row-span-1" />
             <span className="flex flex-col gap-1.5">
-              <span className="text-[22px] leading-[1.35] font-semibold tracking-[-0.02em]">
+              <span className="text-[22px] leading-[1.35] font-semibold tracking-[-0.02em] transition-colors duration-150 group-hover:text-link">
                 {course.title}
               </span>
               {course.summary ? (

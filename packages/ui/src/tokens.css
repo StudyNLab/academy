@@ -45,6 +45,8 @@
   --danger: #a3302b;
   --code-bg: #121a26;
   --code-ink: #e8e6e0;
+  --illust-bg: #e9eef5;
+  --illust-ink: #18304f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +68,8 @@
     --danger: #f08a84;
     --code-bg: #0a0f16;
     --code-ink: #e8e6e0;
+    --illust-bg: #1b2738;
+    --illust-ink: #c9d2e0;
   }
 }
 
@@ -87,6 +91,8 @@
   --danger: #f08a84;
   --code-bg: #0a0f16;
   --code-ink: #e8e6e0;
+  --illust-bg: #1b2738;
+  --illust-ink: #c9d2e0;
 }
 
 @media (prefers-reduced-motion: reduce) {
