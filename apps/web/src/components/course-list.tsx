@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { MonoLabel } from "@aionit/ui";
+import { CourseCover } from "@aionit/ui";
 import type { CatalogItem } from "@/server/catalog";
 import { FIELD_LABEL } from "@/server/catalog";
 
-/** 강의 목록: 카드 그리드 대신 줄 목록 — 번호 · 강의 · 분야 · 구성 · 수강 방법 (디자인시스템 4장) */
+/** 강의 목록: 카드 그리드 대신 줄 목록 — 표지 · 강의 · 분야 · 구성 · 수강 방법 (디자인시스템 4장) */
 export function CourseList({ courses }: { courses: CatalogItem[] }) {
   if (courses.length === 0) {
     return <p className="border-t border-line-strong py-10 text-[16px] text-ink-2">곧 첫 강의가 열립니다.</p>;
@@ -14,9 +14,9 @@ export function CourseList({ courses }: { courses: CatalogItem[] }) {
         <li key={course.id} className="border-b border-line">
           <Link
             href={`/courses/${course.slug}`}
-            className="grid gap-x-8 gap-y-2 py-7 text-ink no-underline hover:bg-sunken hover:text-ink md:grid-cols-[64px_1fr_120px_200px_140px] md:items-baseline md:px-2"
+            className="grid grid-cols-[96px_1fr] gap-x-6 gap-y-2 py-6 text-ink no-underline hover:bg-sunken hover:text-ink md:grid-cols-[96px_1fr_120px_200px_140px] md:items-center md:gap-x-7 md:px-2"
           >
-            <MonoLabel className="text-xs text-signal">{String(i + 1).padStart(2, "0")}</MonoLabel>
+            <CourseCover no={i + 1} field={course.field} className="row-span-4 md:row-span-1" />
             <span className="flex flex-col gap-1.5">
               <span className="text-[22px] leading-[1.35] font-semibold tracking-[-0.02em]">
                 {course.title}

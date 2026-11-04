@@ -20,6 +20,8 @@
 
   --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* 로고 전용. 본문에는 쓰지 않는다 (디자인시스템 3장) */
+  --font-logo: "Manrope", "IBM Plex Sans KR", system-ui, sans-serif;
 
   --radius-ui: 2px;
   --shadow-float: 0 24px 48px -24px rgb(18 26 38 / 0.35);

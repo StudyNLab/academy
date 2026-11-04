@@ -85,7 +85,9 @@ export default async function AdminCourses() {
             <li key={i.id} className="flex items-center justify-between gap-3 border-b border-line py-1">
               <span>
                 {i.name}
-                <span className="ml-2 text-ink-2">{i.courses ? `과정 ${i.courses}개` : "맡은 과정 없음"}</span>
+                <span className="ml-2 text-ink-2">
+                  {i.courses ? `과정 ${i.courses}개` : "맡은 과정 없음"}
+                </span>
               </span>
               {i.courses === 0 ? <InstructorRemove instructorId={i.id} name={i.name} /> : null}
             </li>
