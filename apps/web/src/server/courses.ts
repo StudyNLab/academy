@@ -55,6 +55,31 @@ export async function createInstructor(
   return row!;
 }
 
+/** 잘못 만든 강사 지우기. 그 강사로 된 과정이 있으면 과정의 강사를 먼저 바꿔야 한다 */
+export async function removeInstructor(db: Db, instructorId: string, actor: Actor) {
+  const [row] = await db.select().from(schema.instructors).where(eq(schema.instructors.id, instructorId));
+  if (!row) throw new CourseError("NOT_FOUND", "강사를 찾을 수 없습니다.", 404);
+  const used = await db
+    .select({ id: schema.courses.id })
+    .from(schema.courses)
+    .where(eq(schema.courses.ownerInstructorId, instructorId));
+  if (used.length > 0)
+    throw new CourseError(
+      "INSTRUCTOR_IN_USE",
+      `이 강사로 된 과정이 ${used.length}개 있어 지울 수 없습니다. 과정의 강사를 먼저 바꿔 주세요.`,
+      409,
+    );
+  await db.delete(schema.instructors).where(eq(schema.instructors.id, instructorId));
+  await writeAudit(db, {
+    actorId: actor.actorId,
+    action: "instructor.remove",
+    targetType: "instructor",
+    targetId: instructorId,
+    before: { displayName: row.displayName, userId: row.userId },
+    headers: actor.headers,
+  });
+}
+
 export interface CourseInput {
   slug: string;
   title: string;

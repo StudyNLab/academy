@@ -50,6 +50,16 @@ test("운영자가 교재를 올려 검수 · 공개하면 강의 목록 · 상�
   await page.getByRole("button", { name: "하던 일로 돌아가기" }).click();
   await expect(page.getByRole("heading", { name: "과정", exact: true })).toBeVisible();
 
+  // 잘못 만든 강사는 아래 강사 목록에서 지운다 (맡은 과정이 없을 때만)
+  const typo = `오타강사${stamp}`.slice(0, 20);
+  await page.getByLabel("강사가 목록에 없으면 새로 추가").fill(typo);
+  await page.getByRole("button", { name: "강사 추가" }).click();
+  const typoRow = page.getByRole("listitem").filter({ hasText: typo });
+  await expect(typoRow).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await typoRow.getByRole("button", { name: "지우기" }).click();
+  await expect(typoRow).toHaveCount(0);
+
   // 2. 과정 등록 (강사 추가 포함)
   await page.getByLabel("과정 ID").fill(slug);
   await page.getByLabel("과정 이름").fill(`AI Agent 개발 · 초급 ${stamp}`);

@@ -13,6 +13,7 @@ import {
   linkYoutube,
   publishVersion,
   rejectVersion,
+  removeInstructor,
   rollbackToVersion,
   setPreviewRule,
   uploadPackage,
@@ -267,5 +268,26 @@ describe("올리기 검사", () => {
         actorId,
       }),
     ).rejects.toMatchObject({ code: "NOT_ZIP" });
+  });
+});
+
+describe("강사", () => {
+  it("맡은 과정이 없는 강사만 지우고, 기록을 남긴다", async () => {
+    const course = await setupCourse();
+    const spare = await createInstructor(t.db, { displayName: "잘못 만든 강사", actorId });
+
+    await expect(removeInstructor(t.db, course.ownerInstructorId, { actorId })).rejects.toMatchObject({
+      code: "INSTRUCTOR_IN_USE",
+      status: 409,
+    });
+    await removeInstructor(t.db, spare.id, { actorId });
+    const left = await t.db.select().from(schema.instructors);
+    expect(left.map((i) => i.displayName)).toEqual(["홍길동"]);
+    const [audit] = await t.db
+      .select()
+      .from(schema.auditLogs)
+      .where(eq(schema.auditLogs.action, "instructor.remove"));
+    expect(audit?.targetId).toBe(spare.id);
+    await expect(removeInstructor(t.db, spare.id, { actorId })).rejects.toBeInstanceOf(CourseError);
   });
 });
