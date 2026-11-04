@@ -92,6 +92,11 @@ export function SubscribeForm({ plans }: { plans: Plan[] }) {
       >
         {busy ? "카드 등록창을 여는 중…" : `카드 등록하고 ${won(plan.amount)} 결제`}
       </Button>
+      <p className="m-0 text-[13px] leading-[1.7] text-ink-2">
+        다음 화면(토스페이먼츠 카드 등록창)에서 카드번호 · 유효기간 · 생년월일 6자리를 입력합니다. 카드사가
+        본인 카드인지 확인하는 데 쓰며, 주민등록번호 뒷자리와 카드 비밀번호는 묻지 않습니다. 카드 정보는
+        토스페이먼츠가 보관하고 AIONIT 에는 저장하지 않습니다.
+      </p>
     </div>
   );
 }
