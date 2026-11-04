@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { buttonClass, Wordmark } from "@aionit/ui";
 import { getViewer } from "@/server/session";
+import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
 const nav = [
@@ -44,6 +45,10 @@ export async function SiteHeader() {
               로그인
             </Link>
           )}
+          {/* 밝게 · 어둡게 (학습 화면과 같은 버튼). 좁은 화면에서는 메뉴 줄 오른쪽 끝 */}
+          <span className="ml-auto flex md:ml-0">
+            <ThemeToggle />
+          </span>
         </nav>
         {viewer ? (
           <div className="flex items-center gap-x-6">

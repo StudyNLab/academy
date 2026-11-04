@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const COOKIE = "aionit.theme";
 
-/** 다크 모드 켜고 끄기. 고른 값은 쿠키에 1년 남겨 다음에도 같은 모양으로 그린다 */
+/** 다크 모드 켜고 끄기 (공통 머리글 · 학습 머리글). 고른 값은 쿠키에 1년 남겨 다음에도 같은 모양으로 그린다 */
 export function ThemeToggle() {
   const [dark, setDark] = useState<boolean | null>(null);
 
