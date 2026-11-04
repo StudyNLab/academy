@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { AccessNotice } from "@/components/learn/access-notice";
 import { LearnScreen } from "@/components/learn/learn-screen";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { courseOffers } from "@/server/commerce";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { learnChapter } from "@/server/learning";
+import { paymentsEnabled } from "@/server/payments";
 import { getViewer } from "@/server/session";
 
 type Params = Promise<{ slug: string; key: string }>;
@@ -24,6 +26,7 @@ export default async function LearnPage({ params }: { params: Params }) {
     if (!viewer || result.access.kind !== "learner")
       redirect(`/login?next=${encodeURIComponent(`/learn/${slug}/${key}`)}`);
     const access = result.access.access;
+    const offers = paymentsEnabled() ? await courseOffers(db, result.course, viewer) : null;
     return (
       <>
         <SiteHeader />
@@ -33,6 +36,8 @@ export default async function LearnPage({ params }: { params: Params }) {
             reason={access.ok ? "none" : access.reason}
             lastEndedAt={access.ok ? undefined : access.lastEndedAt}
             previewKey={result.firstPreviewKey}
+            offers={offers}
+            returnTo={`/learn/${slug}/${key}`}
           />
         </main>
         <SiteFooter />

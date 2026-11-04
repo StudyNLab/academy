@@ -2,6 +2,7 @@ import "server-only";
 import type { Role } from "@aionit/db";
 import type { z } from "zod";
 import { getAuth } from "./auth-instance";
+import { CommerceError } from "./commerce";
 import { CourseError } from "./courses";
 import { getDb } from "./db";
 import { EntitlementError } from "./entitlements";
@@ -75,6 +76,7 @@ export function route<C>(handler: (request: Request, context: C) => Promise<Resp
     } catch (error) {
       if (
         error instanceof ApiError ||
+        error instanceof CommerceError ||
         error instanceof CourseError ||
         error instanceof EntitlementError ||
         error instanceof LearningError

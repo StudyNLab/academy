@@ -1,6 +1,9 @@
-// L-05 수강 만료 / 권한 없음 안내. 연장권(M5) · 구독(M6)이 생기면 그 안내로 잇는다
+// L-05 수강 만료 / 권한 없음 안내 ➔ 연장권 · 구매로 잇는다 (구독 안내는 M6)
 import Link from "next/link";
 import { buttonClass, MonoLabel } from "@aionit/ui";
+import { BuyButton } from "@/components/commerce/buy-button";
+import { periodLabel, won } from "@/components/commerce/format";
+import type { Offer } from "@/server/commerce";
 
 const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "long" });
 
@@ -9,12 +12,19 @@ export function AccessNotice({
   reason,
   lastEndedAt,
   previewKey,
+  offers,
+  returnTo,
 }: {
   course: { slug: string; title: string; inSubscription: boolean };
   reason: "none" | "expired" | "not_started";
   lastEndedAt?: Date;
   previewKey?: string | null;
+  /** 판매 중인 상품 (결제를 열지 않았으면 없음) */
+  offers?: { purchase: Offer | null; extension: Offer | null } | null;
+  returnTo: string;
 }) {
+  const extension = reason === "expired" ? (offers?.extension ?? null) : null;
+  const purchase = reason === "not_started" ? null : (offers?.purchase ?? null);
   const title =
     reason === "expired"
       ? "수강 기간이 끝났습니다"
@@ -36,11 +46,39 @@ export function AccessNotice({
       </p>
       <p className="m-0 text-[15px] text-ink-2">
         {course.inSubscription
-          ? "이 강의는 구독에 포함됩니다. 구매 · 구독 · 연장은 곧 열립니다."
-          : "프리미엄 강의입니다. 구매 · 연장은 곧 열립니다."}
+          ? "이 강의는 구독에도 포함됩니다 (구독은 곧 열립니다)."
+          : "프리미엄 강의입니다 (구독자 할인)."}
       </p>
+      {extension || purchase ? (
+        <div className="flex flex-wrap gap-3 border-t border-line-strong pt-6">
+          {extension ? (
+            <BuyButton
+              productId={extension.productId}
+              label={`연장권 ${won(extension.quote.paidAmount)} (${periodLabel(extension.accessDays)})`}
+              loggedIn
+              returnTo={returnTo}
+              size="md"
+              className=""
+            />
+          ) : null}
+          {purchase ? (
+            <BuyButton
+              productId={purchase.productId}
+              label={`${reason === "expired" ? "다시 구매" : "구매하기"} ${won(purchase.quote.paidAmount)}`}
+              loggedIn
+              returnTo={returnTo}
+              variant={extension ? "outline" : "primary"}
+              size="md"
+              className=""
+            />
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-x-6 gap-y-3 border-t border-line-strong pt-6">
-        <Link href={`/courses/${course.slug}`} className={buttonClass("primary", "md")}>
+        <Link
+          href={`/courses/${course.slug}`}
+          className={buttonClass(extension || purchase ? "outline" : "primary", "md")}
+        >
           강의 안내 보기
         </Link>
         {previewKey ? (

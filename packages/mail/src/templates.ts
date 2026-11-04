@@ -5,7 +5,51 @@ export type MailJob =
   | { template: "verify-email"; to: string; userId: string | null; url: string }
   | { template: "reset-password"; to: string; userId: string | null; url: string }
   | { template: "password-changed"; to: string; userId: string | null }
-  | { template: "signup-existing"; to: string; userId: string | null; loginUrl: string; resetUrl: string };
+  | { template: "signup-existing"; to: string; userId: string | null; loginUrl: string; resetUrl: string }
+  | {
+      template: "payment-receipt";
+      to: string;
+      userId: string | null;
+      productName: string;
+      listPrice: number;
+      discountAmount: number;
+      paidAmount: number;
+      supplyAmount: number;
+      vatAmount: number;
+      /** ISO 시각 */
+      paidAt: string;
+      /** 수강 · 연장 끝나는 시각 (없으면 무제한) */
+      accessUntil: string | null;
+      /** 토스 카드 영수증 */
+      receiptUrl: string | null;
+      historyUrl: string;
+    }
+  | {
+      template: "refund-done";
+      to: string;
+      userId: string | null;
+      productName: string;
+      amount: number;
+      historyUrl: string;
+    }
+  | {
+      template: "refund-rejected";
+      to: string;
+      userId: string | null;
+      productName: string;
+      note: string;
+      historyUrl: string;
+    }
+  | {
+      template: "expiry-reminder";
+      to: string;
+      userId: string | null;
+      courseTitle: string;
+      daysLeft: number;
+      /** 끝나는 시각 (ISO, 다음 날 0시 KST) */
+      endsAt: string;
+      courseUrl: string;
+    };
 
 export type MailTemplate = MailJob["template"];
 
@@ -16,6 +60,17 @@ export interface RenderedMail {
 }
 
 const SITE = "AIONIT";
+
+const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+/** 끝나는 시각(다음 날 0시 KST) ➔ 마지막 이용일 */
+const lastDay = (iso: string) =>
+  new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "long" }).format(
+    new Date(new Date(iso).getTime() - 1),
+  );
+const kstTime = (iso: string) =>
+  new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "long", timeStyle: "short" }).format(
+    new Date(iso),
+  );
 
 function escapeHtml(value: string): string {
   return value
@@ -83,6 +138,48 @@ export function renderMail(job: MailJob): RenderedMail {
           "비밀번호가 기억나지 않으면 아래 버튼으로 다시 정할 수 있습니다.",
         ],
         { label: "비밀번호 다시 정하기", url: job.resetUrl },
+      );
+    case "payment-receipt":
+      return layout(
+        "결제가 끝났습니다",
+        [
+          `${job.productName} 결제가 끝났습니다. 결제 시각 ${kstTime(job.paidAt)}.`,
+          job.discountAmount > 0
+            ? `정가 ${won(job.listPrice)} − 할인 ${won(job.discountAmount)} = 결제 금액 ${won(job.paidAmount)} (공급가액 ${won(job.supplyAmount)} · 부가세 ${won(job.vatAmount)})`
+            : `결제 금액 ${won(job.paidAmount)} (공급가액 ${won(job.supplyAmount)} · 부가세 ${won(job.vatAmount)})`,
+          job.accessUntil ? `수강 기간: ${lastDay(job.accessUntil)} 까지` : "수강 기간: 무제한",
+          ...(job.receiptUrl ? [`카드 영수증: ${job.receiptUrl}`] : []),
+          "환불은 결제 내역에서 요청할 수 있습니다 (결제일부터 7일 이내 · 이용 전이면 전액).",
+        ],
+        { label: "결제 내역 보기", url: job.historyUrl },
+      );
+    case "refund-done":
+      return layout(
+        "환불이 끝났습니다",
+        [
+          `${job.productName} 의 환불 ${won(job.amount)} 을 원래 결제 수단으로 돌려드렸습니다.`,
+          "카드사에 따라 실제로 돌려받기까지 3 ~ 7일(영업일)이 걸릴 수 있습니다. 이 강의의 수강권은 끝났고, 진도 기록은 남아 있습니다.",
+        ],
+        { label: "결제 내역 보기", url: job.historyUrl },
+      );
+    case "refund-rejected":
+      return layout(
+        "환불 요청을 처리하지 못했습니다",
+        [
+          `${job.productName} 의 환불 요청을 환불 규정에 따라 처리하지 못했습니다.`,
+          `이유: ${job.note}`,
+          "궁금한 점은 1:1 문의로 알려 주세요.",
+        ],
+        { label: "결제 내역 보기", url: job.historyUrl },
+      );
+    case "expiry-reminder":
+      return layout(
+        `수강 기간이 ${job.daysLeft}일 남았습니다`,
+        [
+          `${job.courseTitle} 의 수강 기간이 ${lastDay(job.endsAt)} 에 끝납니다.`,
+          "기간이 끝나도 진도와 실습 체크는 남아 있고, 연장권을 사면 이어서 볼 수 있습니다.",
+        ],
+        { label: "강의 보기", url: job.courseUrl },
       );
   }
 }

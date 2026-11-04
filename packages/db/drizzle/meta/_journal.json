@@ -43,6 +43,13 @@
       "when": 1793772705925,
       "tag": "0005_easy_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793778678960,
+      "tag": "0006_strong_vindicator",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 // 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계. M4: 영상 변환.
+// M5: 만료 알림 메일.
 import { CONTENT_QUEUE } from "@aionit/content";
 import { VIDEO_QUEUE, VIDEO_QUEUE_OPTIONS } from "@aionit/core/media";
 import { createDb, eq, schema } from "@aionit/db";
@@ -9,6 +10,7 @@ import { PgBoss } from "pg-boss";
 import { processCourseVersion } from "./content";
 import { aggregateRecentDays } from "./learning";
 import { sendMailJob } from "./mail";
+import { sendExpiryReminders } from "./reminders";
 import { purgeExpiredRecords } from "./retention";
 import { transcodeVideo } from "./video";
 
@@ -96,6 +98,19 @@ await boss.schedule(LEARNING_DAILY, "20 0 * * *", {}, { tz: "Asia/Seoul" });
 await boss.work(LEARNING_DAILY, async () => {
   const result = await aggregateRecentDays(db);
   console.warn(`[worker] 학습 시간 집계 ${JSON.stringify(result)}`);
+});
+
+// 수강 만료 알림 메일 D-30 · D-7: 매일 09:00 KST (M5)
+const EXPIRY_REMINDERS = "entitlements.expiry-reminders";
+const siteUrl = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+await boss.createQueue(EXPIRY_REMINDERS);
+await boss.schedule(EXPIRY_REMINDERS, "0 9 * * *", {}, { tz: "Asia/Seoul" });
+await boss.work(EXPIRY_REMINDERS, async () => {
+  const result = await sendExpiryReminders(db, {
+    baseUrl: siteUrl,
+    enqueueMail: async (job) => void (await boss.send(MAIL_QUEUE, job)),
+  });
+  console.warn(`[worker] 만료 알림 ${JSON.stringify(result)}`);
 });
 
 // 보관 기간 정리: 매일 04:10 KST (DB 백업 03:30 뒤)

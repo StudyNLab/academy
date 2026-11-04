@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageTitle } from "@/components/page-title";
 import { dashboardCounts } from "@/server/admin-queries";
 import { getDb } from "@/server/db";
@@ -6,7 +7,7 @@ import { requireStaff } from "@/server/session";
 
 export const metadata: Metadata = { title: "관리자" };
 
-// AD-01 대시보드 (M1: 회원 숫자만. 매출 · 환불 · 문의 · 검수는 해당 단계에서)
+// AD-01 대시보드 (M1 회원, M5 매출 · 환불 요청. 문의 · 검수는 해당 단계에서)
 export default async function AdminHome() {
   await requireStaff("operator", "/admin");
   const counts = await dashboardCounts(getDb());
@@ -15,6 +16,8 @@ export default async function AdminHome() {
     { label: "오늘 가입", value: counts.today },
     { label: "운영자 · 강사", value: counts.staff },
     { label: "로그인 실패 (24시간)", value: counts.failures },
+    { label: "오늘 결제 (원)", value: counts.sales.toLocaleString("ko-KR") },
+    { label: "환불 요청 대기", value: counts.refunds, href: "/admin/refunds" },
   ];
   return (
     <>
@@ -23,7 +26,15 @@ export default async function AdminHome() {
         {tiles.map((tile) => (
           <div key={tile.label} className="flex flex-col gap-1 border-b border-line py-5 pr-4">
             <dt className="text-[13px] text-ink-2">{tile.label}</dt>
-            <dd className="m-0 text-[32px] font-semibold tabular-nums tracking-[-0.03em]">{tile.value}</dd>
+            <dd className="m-0 text-[32px] font-semibold tabular-nums tracking-[-0.03em]">
+              {"href" in tile && tile.href ? (
+                <Link href={tile.href} className="text-ink no-underline">
+                  {tile.value}
+                </Link>
+              ) : (
+                tile.value
+              )}
+            </dd>
           </div>
         ))}
       </dl>

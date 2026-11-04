@@ -4,6 +4,7 @@ import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 
 const tabs = [
   { href: "/my", label: "내 정보" },
+  { href: "/my/payments", label: "결제 내역" },
   { href: "/my/security", label: "로그인 · 보안" },
   { href: "/my/withdraw", label: "회원 탈퇴" },
 ];

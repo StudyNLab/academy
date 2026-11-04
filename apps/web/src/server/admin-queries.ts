@@ -71,12 +71,23 @@ export async function userDetail(db: Db, id: string) {
 }
 
 export async function dashboardCounts(db: Db) {
-  const [row] = await db.execute<{ total: number; today: number; staff: number; failures: number }>(sql`
+  const [row] = await db.execute<{
+    total: number;
+    today: number;
+    staff: number;
+    failures: number;
+    refunds: number;
+    sales: number;
+  }>(sql`
     select
       (select count(*)::int from users where status <> 'withdrawn') as total,
       (select count(*)::int from users where created_at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul') as today,
       (select count(distinct user_id)::int from user_roles where revoked_at is null) as staff,
-      (select count(*)::int from login_logs where at > now() - interval '24 hours' and result like 'fail%') as failures`);
+      (select count(*)::int from login_logs where at > now() - interval '24 hours' and result like 'fail%') as failures,
+      (select count(*)::int from refunds where status = 'requested') as refunds,
+      (select coalesce(sum(total_amount), 0)::bigint::int from orders
+        where status in ('paid', 'partially_refunded', 'refunded')
+          and paid_at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul') as sales`);
   return row!;
 }
 
