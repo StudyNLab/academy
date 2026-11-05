@@ -3,8 +3,20 @@
 #   infra/scripts/deploy.sh             커밋된 현재 HEAD 를 배포
 #   infra/scripts/deploy.sh --rollback  직전 버전으로 되돌리기
 #   infra/scripts/deploy.sh --worktree  (개발 중 시험용) 커밋하지 않은 작업 트리를 배포. 태그가 wt- 로 시작한다
+#   infra/scripts/deploy.sh --force     서버에 이미 있는 버전도 처음부터 다시 배포 (되돌릴 버전은 그대로 둔다)
 # 흐름: 개발 VM 에서 이미지 빌드 ➔ 앱 VM 으로 옮김 ➔ DB 백업 ➔ 마이그레이션 ➔ 전환 ➔ 상태 확인 (실패 시 자동 되돌리기)
+# 서버의 ~/aionit/.previous_tag 가 '되돌릴 버전'이다. 같은 버전을 다시 배포해도 바뀌지 않는다.
 set -euo pipefail
+
+MODE=deploy FORCE=
+for arg in "$@"; do
+  case $arg in
+    --rollback) MODE=rollback ;;
+    --worktree) MODE=worktree ;;
+    --force) FORCE=1 ;;
+    *) echo "모르는 옵션: $arg (쓸 수 있는 것: --rollback · --worktree · --force)" >&2; exit 1 ;;
+  esac
+done
 
 JUMP=user1@10.100.4.52
 DEV=22063 APP=22061 DATA=22062
@@ -29,6 +41,12 @@ step() {
 cd "$(git rev-parse --show-toplevel)"
 
 current_tag() { vm $APP "grep ^APP_TAG= ~/aionit/.env | cut -d= -f2"; }
+previous_tag() { vm $APP "cat ~/aionit/.previous_tag 2>/dev/null || true"; }
+# 비어 있으면 파일을 지운다 (되돌릴 버전 없음)
+set_previous_tag() {
+  if [ -n "$1" ]; then vm $APP "echo $1 > ~/aionit/.previous_tag"; else vm $APP "rm -f ~/aionit/.previous_tag"; fi
+}
+has_images() { vm $APP "docker image inspect aionit-web:$1 aionit-worker:$1 >/dev/null 2>&1"; }
 
 switch_to() {
   local tag=$1
@@ -43,18 +61,22 @@ healthy() {
   done; exit 1'
 }
 
-if [ "${1:-}" = "--rollback" ]; then
-  prev=$(vm $APP "cat ~/aionit/.previous_tag 2>/dev/null || true")
-  [ -n "$prev" ] || { echo "되돌릴 이전 버전이 없습니다" >&2; exit 1; }
+if [ "$MODE" = rollback ]; then
+  prev=$(previous_tag)
   now=$(current_tag)
+  [ -n "$prev" ] && [ "$prev" != none ] || { echo "되돌릴 이전 버전이 없습니다. 서버는 그대로($now)입니다." >&2; exit 1; }
+  [ "$prev" != "$now" ] || { echo "되돌릴 버전($prev)이 지금 버전과 같아 되돌릴 곳이 없습니다. 서버는 그대로입니다." >&2; exit 1; }
+  # 이미지가 없으면 compose 가 Docker Hub 에서 찾다가 실패하고 .env 만 바뀐 채 남는다. 바꾸기 전에 멈춘다.
+  has_images "$prev" || { echo "이전 버전 $prev 의 이미지(aionit-web · aionit-worker)가 앱 VM 에 없어 되돌릴 수 없습니다. 서버는 그대로($now)입니다.
+그 버전이 꼭 필요하면 그 커밋을 받아(git checkout $prev) 다시 배포하세요." >&2; exit 1; }
   echo "== 되돌리기: $now ➔ $prev"
-  vm $APP "echo $now > ~/aionit/.previous_tag"
+  set_previous_tag "$now"
   switch_to "$prev"
-  healthy && echo "완료: $prev 로 되돌렸습니다" || { echo "되돌린 버전도 상태 확인 실패" >&2; exit 1; }
+  healthy && echo "완료: $prev 로 되돌렸습니다" || { echo "되돌린 버전도 상태 확인 실패 (다시 --rollback 하면 $now 로 돌아갑니다)" >&2; exit 1; }
   exit 0
 fi
 
-if [ "${1:-}" = "--worktree" ]; then
+if [ "$MODE" = worktree ]; then
   TAG="wt-$(git rev-parse --short HEAD)-$(date +%m%d%H%M)"
   pack() { git ls-files -co --exclude-standard -z | tar --null -T - -cf -; }
 else
@@ -62,8 +84,20 @@ else
   TAG=$(git rev-parse --short HEAD)
   pack() { git archive --format=tar HEAD; }
 fi
-PREV=$(current_tag)
-echo "== 배포 $PREV ➔ $TAG"
+PREV=$(current_tag)        # 지금 서버에서 도는 버전
+OLD_PREV=$(previous_tag)   # 지금 서버의 되돌릴 버전
+if [ "$TAG" = "$PREV" ]; then
+  # 같은 커밋이면 compose · Caddyfile · 마이그레이션도 지난번 배포와 같다. 다시 할 일이 없다.
+  [ -n "$FORCE" ] || { echo "이미 배포된 버전입니다 ($TAG). 바꿀 것이 없어 멈춥니다.
+서버 파일을 손으로 고쳤거나 컨테이너를 처음부터 다시 올려야 하면: deploy.sh --force"; exit 0; }
+  # 되돌릴 버전을 자기 자신으로 덮어쓰지 않고, 그 버전의 이미지도 남긴다
+  NEXT_PREV=$OLD_PREV
+  echo "== 같은 버전 다시 배포 $TAG (--force). 되돌릴 버전은 그대로: ${NEXT_PREV:-없음}"
+else
+  NEXT_PREV=$PREV
+  echo "== 배포 $PREV ➔ $TAG"
+fi
+KEEP_PREV=${NEXT_PREV:-none}   # 정리 때 남길 이전 버전
 
 step "1/6 빌드 맥락 보내기"
 pack | vm $DEV "rm -rf ~/build/aionit && mkdir -p ~/build/aionit && tar -xf - -C ~/build/aionit"
@@ -112,31 +146,36 @@ vm $DATA "~/aionit/backup.sh pre-deploy-$TAG"
 vm $APP "cd ~/aionit && APP_TAG=$TAG docker compose run --rm --no-deps worker pnpm --filter @aionit/db migrate"
 
 step "6/6 전환 + 상태 확인"
-vm $APP "echo $PREV > ~/aionit/.previous_tag"
+[ "$NEXT_PREV" = "$OLD_PREV" ] || set_previous_tag "$NEXT_PREV"
 switch_to "$TAG"
 if healthy; then
   step
   echo "완료: $TAG 배포됨 (모두 $((SECONDS - START))초)"
+elif [ "$TAG" = "$PREV" ]; then
+  echo "상태 확인 실패. 같은 버전을 다시 올린 것이라 다른 버전으로 자동으로 바꾸지 않습니다.
+이전 버전(${NEXT_PREV:-없음})으로 가려면: deploy.sh --rollback" >&2
+  exit 1
 else
   echo "상태 확인 실패 ➔ $PREV 로 되돌립니다" >&2
   [ "$PREV" != none ] && switch_to "$PREV"
+  [ "$NEXT_PREV" = "$OLD_PREV" ] || set_previous_tag "$OLD_PREV"
   exit 1
 fi
 
-# 오래된 이미지 정리 (현재 · 직전만 남김). 정리에 실패해도 배포는 끝난 것이다.
-vm $APP "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null" || true
-vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$PREV)$' | xargs -r docker rmi -f >/dev/null
+# 오래된 이미지 정리 (현재 · 되돌릴 버전만 남김). 정리에 실패해도 배포는 끝난 것이다.
+vm $APP "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$KEEP_PREV)$' | xargs -r docker rmi -f >/dev/null" || true
+vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$KEEP_PREV)$' | xargs -r docker rmi -f >/dev/null
   docker image prune -f >/dev/null
   docker builder prune -f --filter until=168h >/dev/null
   docker builder prune -f --max-used-space 15gb >/dev/null" || true
-# 보관소: 현재 · 직전 태그만 남기고 지운 뒤 빈 층을 치운다. 같은 내용(digest)을 가리키는 태그는 건드리지 않는다.
+# 보관소: 현재 · 되돌릴 버전 태그만 남기고 지운 뒤 빈 층을 치운다. 같은 내용(digest)을 가리키는 태그는 건드리지 않는다.
 vm $DEV "reg=http://$REG
   acc='-H Accept:application/vnd.oci.image.index.v1+json -H Accept:application/vnd.oci.image.manifest.v1+json -H Accept:application/vnd.docker.distribution.manifest.v2+json -H Accept:application/vnd.docker.distribution.manifest.list.v2+json'
   digest() { curl -fsI \$acc \$reg/v2/\$1/manifests/\$2 | tr -d '\r' | awk -F': ' 'tolower(\$1)==\"docker-content-digest\"{print \$2}'; }
   for repo in aionit-web aionit-worker; do
-    keep=\"\$(digest \$repo $TAG) \$(digest \$repo $PREV 2>/dev/null || true)\"
+    keep=\"\$(digest \$repo $TAG) \$(digest \$repo $KEEP_PREV 2>/dev/null || true)\"
     for t in \$(curl -fs \$reg/v2/\$repo/tags/list | tr -d '\"[]{}' | sed 's/.*tags://' | tr , ' '); do
-      [ \"\$t\" = $TAG ] || [ \"\$t\" = $PREV ] && continue
+      [ \"\$t\" = $TAG ] || [ \"\$t\" = $KEEP_PREV ] && continue
       d=\$(digest \$repo \$t) || continue
       case \" \$keep \" in *\" \$d \"*) continue ;; esac
       curl -fs -X DELETE \$reg/v2/\$repo/manifests/\$d >/dev/null || true
