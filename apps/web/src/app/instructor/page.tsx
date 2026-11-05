@@ -5,14 +5,18 @@ import { Notice, StatusDot } from "@aionit/ui";
 import { PageTitle } from "@/components/page-title";
 import { instructorPage } from "@/server/instructor-page";
 import { contractsOf, instructorDashboard } from "@/server/instructors";
+import { estimateThisMonth } from "@/server/settlements";
 import { COURSE_STATE, won } from "./labels";
 
 export const metadata: Metadata = { title: "강사 화면" };
 
-// I-01 강사 대시보드: 미답변 질문, 이번 달 수강생 · 판매, 검수 상태. 정산(예상 정산액 · 명세)은 M9
+// I-01 강사 대시보드: 미답변 질문, 이번 달 수강생 · 판매 · 예상 정산액, 검수 상태
 export default async function InstructorHome() {
   const { db, instructor } = await instructorPage("/instructor");
-  const data = await instructorDashboard(db, instructor);
+  const [data, estimate] = await Promise.all([
+    instructorDashboard(db, instructor),
+    estimateThisMonth(db, instructor),
+  ]);
   const unsigned = (await contractsOf(db, instructor.id)).filter((c) => !c.contract.signedAt);
   const [year, month] = data.month.split("-");
   const tiles = [
@@ -20,6 +24,11 @@ export default async function InstructorHome() {
     { label: `${Number(month)}월 새 수강생`, value: data.newLearners },
     { label: `${Number(month)}월 판매`, value: `${data.sales}건` },
     { label: `${Number(month)}월 매출 (환불 뺌)`, value: won(data.net) },
+    {
+      label: `${Number(month)}월 예상 정산액 (세전)`,
+      value: won(estimate.gross),
+      href: "/instructor/settlements",
+    },
   ];
 
   return (
@@ -49,7 +58,7 @@ export default async function InstructorHome() {
         ) : null}
       </div>
 
-      <dl className="m-0 mt-6 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+      <dl className="m-0 mt-6 grid grid-cols-2 border-t border-line-strong md:grid-cols-5">
         {tiles.map((tile) => (
           <div key={tile.label} className="flex flex-col gap-1 border-b border-line py-5 pr-4">
             <dt className="text-[13px] text-ink-2">{tile.label}</dt>
@@ -66,8 +75,9 @@ export default async function InstructorHome() {
         ))}
       </dl>
       <p className="mt-3 text-[13px] text-ink-2">
-        매출은 결제액 합계에서 이번 달 끝난 환불을 뺀 값입니다. 예상 정산액 · 월별 정산 명세는 정산 기능이
-        열리면 이 화면에 생깁니다.
+        매출은 결제액 합계에서 이번 달 끝난 환불을 뺀 값입니다. 예상 정산액은 지금까지의 판매 · 구독 배분으로
+        계산한 강사 몫(원천징수 전)이고, 실제 금액은 다음 달 10일 공개되는{" "}
+        <Link href="/instructor/settlements">정산 명세</Link>입니다.
       </p>
 
       <section className="mt-12 border-t border-line-strong pt-6">

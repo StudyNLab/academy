@@ -7,6 +7,7 @@ const menu = [
   { href: "/instructor", label: "대시보드" },
   { href: "/instructor/courses", label: "내 강의" },
   { href: "/instructor/qna", label: "Q&A 답변" },
+  { href: "/instructor/settlements", label: "정산" },
   { href: "/instructor/profile", label: "정산 정보 · 프로필" },
 ];
 

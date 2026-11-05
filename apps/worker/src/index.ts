@@ -1,11 +1,11 @@
 // 작업 처리 (docs/기술설계.md 2.3). M1: 메일 발송, 보관 기간 정리. M2: 교재 패키지 처리. M3: 학습 시간 집계. M4: 영상 변환.
-// M5: 만료 알림 메일. M6: 구독 자동결제 · 재시도 · 갱신 안내.
+// M5: 만료 알림 메일. M6: 구독 자동결제 · 재시도 · 갱신 안내. M9: 월 정산 계산.
 import { CONTENT_QUEUE } from "@aionit/content";
 import { VIDEO_QUEUE, VIDEO_QUEUE_OPTIONS } from "@aionit/core/media";
 import { createDb, eq, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
 import { createSmtpMailer, MAIL_QUEUE } from "@aionit/mail";
-import { createTossGateway, runSubscriptionBilling } from "@aionit/payments";
+import { calculateLastMonth, createTossGateway, runSubscriptionBilling } from "@aionit/payments";
 import { createS3StoreFromEnv } from "@aionit/storage";
 import { PgBoss } from "pg-boss";
 import { processCourseVersion } from "./content";
@@ -136,6 +136,16 @@ if (billingSecret) {
   await boss.unschedule(SUBSCRIPTION_BILLING);
   console.warn("[worker] TOSS_BILLING_SECRET_KEY 가 없어 구독 자동결제를 돌리지 않습니다");
 }
+
+// 월 정산 계산: 매월 2일 05:00 KST. 지난달 마지막 날의 학습 시간은 2일 00:20 집계(늦게 온 신호 포함)에서 끝난다.
+// 운영자가 AD-16 에서 검토 · 다시 계산 · 확정한다. 확정하지 않은 앞달이 있으면 건너뛴다
+const SETTLEMENT_MONTHLY = "settlements.monthly";
+await boss.createQueue(SETTLEMENT_MONTHLY, { retryLimit: 0 });
+await boss.schedule(SETTLEMENT_MONTHLY, "0 5 2 * *", {}, { tz: "Asia/Seoul" });
+await boss.work(SETTLEMENT_MONTHLY, async () => {
+  const result = await calculateLastMonth(db);
+  console.warn(`[worker] 월 정산 계산 ${JSON.stringify(result)}`);
+});
 
 // 보관 기간 정리: 매일 04:10 KST (DB 백업 03:30 뒤)
 const RETENTION_PURGE = "system.retention-purge";

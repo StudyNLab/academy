@@ -199,6 +199,7 @@ export const NOTIFICATION_KINDS = [
   "expiry",
   "content_review",
   "instructor_contract",
+  "settlement",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
