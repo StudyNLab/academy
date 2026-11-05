@@ -76,6 +76,19 @@ export function LearnScreen({
 
   const onMount = useCallback((el: HTMLDivElement) => setRoot(el), []);
 
+  // 실습 체크는 화면을 다 불러온 뒤에 켠다. 불러오는 중(느린 망 · 휴대폰)에 누른 체크는 화면이 받지 못해 사라지므로
+  // 그동안은 누를 수 없게 두고 "불러오는 중"이라고 알린다
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (document.readyState === "complete") {
+      setReady(true);
+      return;
+    }
+    const onLoad = () => setReady(true);
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
+
   // 알림 · 메일의 링크(?qna=질문id)로 오면 그 질문을 연다
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("qna");
@@ -359,7 +372,7 @@ export function LearnScreen({
               {slots.map(({ el, sectionId }) => {
                 const lab = labs.find((l) => l.sectionId === sectionId);
                 return lab
-                  ? createPortal(<SelfCheck lab={lab} onToggle={toggleCheck} />, el, sectionId)
+                  ? createPortal(<SelfCheck lab={lab} ready={ready} onToggle={toggleCheck} />, el, sectionId)
                   : null;
               })}
 
@@ -640,9 +653,11 @@ function Toc({
 
 function SelfCheck({
   lab,
+  ready,
   onToggle,
 }: {
   lab: Lab;
+  ready: boolean;
   onToggle: (sectionId: string, itemId: string, checked: boolean) => void;
 }) {
   const done = lab.items.filter((i) => i.checked).length;
@@ -650,9 +665,7 @@ function SelfCheck({
     <div className="self-check">
       <p className="self-check-title">
         <span>스스로 확인</span>
-        <span className="tabular-nums">
-          {done} / {lab.items.length}
-        </span>
+        <span className="tabular-nums">{ready ? `${done} / ${lab.items.length}` : "불러오는 중…"}</span>
       </p>
       <ul>
         {lab.items.map((item) => (
@@ -661,6 +674,7 @@ function SelfCheck({
               <input
                 type="checkbox"
                 checked={item.checked}
+                disabled={!ready}
                 onChange={(e) => onToggle(lab.sectionId, item.id, e.target.checked)}
               />
               <span>{item.text}</span>

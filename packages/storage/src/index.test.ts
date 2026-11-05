@@ -67,5 +67,7 @@ describe("S3 저장소 설정", () => {
       expect(await store.deletePrefix(prefix)).toBe(1);
       expect(await store.exists(key)).toBe(false);
     },
+    // 5MB 를 개발 VM 터널(SSH)로 올리고 받는다. 터널 속도에 따라 기본 5초를 넘길 때가 있다
+    30_000,
   );
 });

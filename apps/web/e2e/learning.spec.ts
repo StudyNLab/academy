@@ -133,12 +133,12 @@ test("운영자가 수강권을 발급하면 수강생이 학습하고, 체크 �
   // 워터마크 · 진도 막대
   await expect(learner.getByRole("progressbar", { name: "과정 진도" }).first()).toBeVisible();
 
-  // 실습 체크 ➔ 바로 저장 (화면이 준비되기 전에 누르면 React 가 체크를 되돌리므로, 바뀔 때까지 다시 누른다)
+  // 실습 체크 ➔ 바로 저장 (화면을 다 불러오기 전에는 눌리지 않는다 — check() 가 켜질 때까지 기다린다)
   const check = learner.getByRole("checkbox", { name: "결과가 보인다" });
   const saved = learner.waitForResponse(
     (r) => r.url().endsWith("/api/v1/learn/checks") && r.status() === 200,
   );
-  await expect(() => check.check({ timeout: 2_000 })).toPass();
+  await check.check();
   await saved;
   await expect(learner.locator(".self-check-title")).toContainText("1 / 1");
   await shoot(learner, "learn");
