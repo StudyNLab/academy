@@ -1,103 +1,161 @@
-/* AIONIT 디자인 토큰 — docs/디자인시스템.md 2장. 값을 바꿀 때는 문서도 같이 고친다. */
+/* AIONIT 디자인 토큰 — Silver & Blue (시안 AIONIT-Service, docs/디자인시스템.md 2장).
+   이름은 시안 CSS 와 같게 둔다 (paper · surface · soft · ink · muted · line · brand …).
+   아래쪽 "예전 이름" 은 아직 새 디자인으로 옮기지 않은 화면이 쓴다. 화면을 옮기면서 줄인다. */
 
 @theme inline {
-  --color-bg: var(--bg);
+  --color-paper: var(--paper);
+  --color-bg: var(--paper);
   --color-surface: var(--surface);
-  --color-sunken: var(--surface-sunken);
+  --color-soft: var(--soft);
+  --color-sunken: var(--soft);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-ink-2: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-tint: var(--tint);
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
-  --color-link: var(--link);
+  --color-link: var(--brand);
   --color-signal: var(--signal);
-  /* 로고의 on 전용 빨강. 다른 강조에는 Signal 을 쓴다 (디자인시스템 3.1) */
-  --color-logo-on: var(--logo-on);
   --color-done: var(--done);
   --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
   --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
   --color-code-bg: var(--code-bg);
   --color-code-ink: var(--code-ink);
 
-  --font-sans: "IBM Plex Sans KR", system-ui, sans-serif;
+  /* 본문: 영문 · 숫자는 Manrope, 한글은 IBM Plex Sans KR. 라벨 · 번호 · 코드는 Plex Mono */
+  --font-sans: "Manrope", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-display: "Manrope", "IBM Plex Sans KR", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  /* 로고 전용. 본문에는 쓰지 않는다 (디자인시스템 3장) */
-  --font-logo: "Manrope", "IBM Plex Sans KR", system-ui, sans-serif;
 
-  --radius-ui: 2px;
-  --shadow-float: 0 24px 48px -24px rgb(18 26 38 / 0.35);
+  --radius-ui: 9px;
+  --shadow-float: var(--shadow);
 }
 
 :root {
   color-scheme: light;
-  --bg: #f7f8fa;
+  --paper: #f8fafc;
   --surface: #ffffff;
-  --surface-sunken: #eef1f5;
-  --line: #e1e5eb;
-  --line-strong: #121a26;
-  --ink: #121a26;
-  --ink-2: #4a5361;
-  --primary: #18304f;
-  --on-primary: #f6f5f1;
-  --link: #18304f;
-  --signal: #b4492d;
-  --logo-on: #d62828;
+  --soft: #edf2f7;
+  --ink: #1d3048;
+  --muted: #53677d;
+  --line: #d4dfeb;
+  --brand: #39648f;
+  --brand-hover: #2a5078;
+  --tint: #e8f0f8;
+  --lime: #c9d5e6;
   --done: #2e6b4a;
-  --warn: #8a5a00;
-  --danger: #a3302b;
+  --warn: #884525;
+  --warn-bg: #fcf0e5;
+  --danger: #a23735;
+  --danger-bg: #faeeee;
+  --shadow: 0 16px 38px #2b507810, 0 2px 6px #2b507808;
+  --radius: 8px;
+  --header-h: 88px;
+  /* 로고 가운데 ON 만 빨강 (브랜드 색. 다른 강조에는 쓰지 않는다) */
+  --logo-on: #e23542;
+  /* 분야 포인트: AI 블루 · 인프라 청록 · 보안 보라 (번호 · 태그 · 작은 선에만) */
+  --topic-ai: #39648f;
+  --topic-ai-bg: #e8f0f8;
+  --topic-ai-line: #c8d8ea;
+  --topic-infra: #267c85;
+  --topic-infra-bg: #e8f3f3;
+  --topic-infra-line: #c7e0e2;
+  --topic-security: #655794;
+  --topic-security-bg: #efecf7;
+  --topic-security-line: #d8d0ea;
   --code-bg: #121a26;
   --code-ink: #e8e6e0;
-  --illust-bg: #e9eef5;
-  --illust-ink: #18304f;
+
+  /* 예전 이름 */
+  --bg: var(--paper);
+  --surface-sunken: var(--soft);
+  --line-strong: var(--ink);
+  --ink-2: var(--muted);
+  --primary: var(--brand);
+  --on-primary: #ffffff;
+  --link: var(--brand);
+  --signal: var(--brand);
+  --illust-bg: var(--tint);
+  --illust-ink: var(--brand);
 }
 
+@media (max-width: 760px) {
+  :root {
+    --header-h: 70px;
+  }
+}
+
+/* 다크: 운영체제 설정을 따르되(선택 안 함), 머리글 버튼으로 고른 값(data-theme)이 이긴다 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0e131b;
-    --surface: #151c27;
-    --surface-sunken: #0a0f16;
-    --line: #273142;
-    --line-strong: #e8e6e0;
-    --ink: #e8e6e0;
-    --ink-2: #a9b1be;
-    --primary: #e8e6e0;
-    --on-primary: #0e131b;
-    --link: #9db7e8;
-    --signal: #e07a5b;
-    --logo-on: #ff5a4e;
+    --paper: #101722;
+    --surface: #182331;
+    --soft: #202e40;
+    --ink: #edf3fb;
+    --muted: #b6c4d8;
+    --line: #3a4d64;
+    --brand: #a9c6e8;
+    --brand-hover: #d2e3f7;
+    --tint: #263e59;
+    --lime: #9be8ff;
     --done: #6fbf8e;
-    --warn: #e3b341;
-    --danger: #f08a84;
+    --warn: #f3c4a6;
+    --warn-bg: #3c2c25;
+    --danger: #f4b8b4;
+    --danger-bg: #40292d;
+    --shadow: 0 16px 38px #0002, 0 2px 6px #0002;
+    --logo-on: #ff6470;
+    --topic-ai: #b0ceef;
+    --topic-ai-bg: #23374d;
+    --topic-ai-line: #46617e;
+    --topic-infra: #8cd0d0;
+    --topic-infra-bg: #203c43;
+    --topic-infra-line: #3f6670;
+    --topic-security: #c4b6e7;
+    --topic-security-bg: #352e4b;
+    --topic-security-line: #61517d;
     --code-bg: #0a0f16;
-    --code-ink: #e8e6e0;
-    --illust-bg: #1b2738;
-    --illust-ink: #c9d2e0;
+    --on-primary: #101722;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e131b;
-  --surface: #151c27;
-  --surface-sunken: #0a0f16;
-  --line: #273142;
-  --line-strong: #e8e6e0;
-  --ink: #e8e6e0;
-  --ink-2: #a9b1be;
-  --primary: #e8e6e0;
-  --on-primary: #0e131b;
-  --link: #9db7e8;
-  --signal: #e07a5b;
-  --logo-on: #ff5a4e;
+  --paper: #101722;
+  --surface: #182331;
+  --soft: #202e40;
+  --ink: #edf3fb;
+  --muted: #b6c4d8;
+  --line: #3a4d64;
+  --brand: #a9c6e8;
+  --brand-hover: #d2e3f7;
+  --tint: #263e59;
+  --lime: #9be8ff;
   --done: #6fbf8e;
-  --warn: #e3b341;
-  --danger: #f08a84;
+  --warn: #f3c4a6;
+  --warn-bg: #3c2c25;
+  --danger: #f4b8b4;
+  --danger-bg: #40292d;
+  --shadow: 0 16px 38px #0002, 0 2px 6px #0002;
+  --logo-on: #ff6470;
+  --topic-ai: #b0ceef;
+  --topic-ai-bg: #23374d;
+  --topic-ai-line: #46617e;
+  --topic-infra: #8cd0d0;
+  --topic-infra-bg: #203c43;
+  --topic-infra-line: #3f6670;
+  --topic-security: #c4b6e7;
+  --topic-security-bg: #352e4b;
+  --topic-security-line: #61517d;
   --code-bg: #0a0f16;
-  --code-ink: #e8e6e0;
-  --illust-bg: #1b2738;
-  --illust-ink: #c9d2e0;
+  --on-primary: #101722;
 }
 
 @media (prefers-reduced-motion: reduce) {
