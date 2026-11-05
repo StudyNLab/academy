@@ -93,7 +93,7 @@ export default async function AdminSettlementMonth({ params }: { params: Promise
             num(s.subscriptionAmount),
             num(s.refundAmount),
             num(s.adjustmentAmount + s.carriedIn),
-            s.taxType === "business" ? `+${num(s.vatAmount)}` : num(-s.withheld),
+            s.taxType === "business" && s.vatAmount > 0 ? `+${num(s.vatAmount)}` : num(-s.withheld),
             won(s.payoutAmount),
           ])}
         />

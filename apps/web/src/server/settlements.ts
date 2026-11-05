@@ -574,9 +574,17 @@ export interface StatementLine {
   saleMonth?: string;
 }
 
-/** 근거 줄 ➔ 화면 · CSV 용 (주문 항목 · 환불 번호는 빼고 결제일 · 과정 · 금액만) */
+const LINE_ORDER = { single: 0, subscription: 1, refund: 2, adjustment: 3 } as const;
+
+/**
+ * 근거 줄 ➔ 화면 · CSV 용 (주문 항목 · 환불 번호는 빼고 결제일 · 과정 · 금액만).
+ * 순서는 명세와 같게 단건 ➔ 구독 배분 ➔ 환불 차감 ➔ 조정, 그 안에서는 날짜 순
+ */
 export function statementLines(rows: (typeof schema.settlementLines.$inferSelect)[]): StatementLine[] {
-  return rows.map((l) => {
+  const sorted = [...rows].sort(
+    (a, b) => LINE_ORDER[a.kind] - LINE_ORDER[b.kind] || a.occurredAt.getTime() - b.occurredAt.getTime(),
+  );
+  return sorted.map((l) => {
     const d = l.detail;
     return {
       id: l.id,
