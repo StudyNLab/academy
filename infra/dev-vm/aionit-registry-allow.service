@@ -1,0 +1,19 @@
+# 개발 VM 이미지 보관소(aionit-registry, 브리지 주소:5055)는 앱 VM 브리지 주소에서만 받게 한다.
+# docker 가 연 포트는 ufw 를 거치지 않으므로 docker 전용 체인(DOCKER-USER)에 막는 규칙을 넣는다.
+# 설치: sudo cp aionit-registry-allow.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now aionit-registry-allow
+# 확인: sudo iptables -S DOCKER-USER
+[Unit]
+Description=AIONIT registry: allow only the app VM on the bridged network
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=BR_IF=enp0s8 APP_BR=10.100.3.169 REG_PORT=5055
+ExecStart=/bin/sh -c 'r="-i $BR_IF -p tcp -m conntrack --ctorigdstport $REG_PORT ! -s $APP_BR -j DROP"; iptables -C DOCKER-USER $r 2>/dev/null || iptables -I DOCKER-USER $r'
+ExecStop=/bin/sh -c 'iptables -D DOCKER-USER -i $BR_IF -p tcp -m conntrack --ctorigdstport $REG_PORT ! -s $APP_BR -j DROP 2>/dev/null || true'
+
+[Install]
+WantedBy=multi-user.target docker.service

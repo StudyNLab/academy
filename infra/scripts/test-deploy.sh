@@ -8,6 +8,7 @@ set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 DEPLOY=${DEPLOY:-$REPO/infra/scripts/deploy.sh}   # 다른 판을 시험하려면 DEPLOY=경로
+DEV_BR=$(sed -n 's/^DEV_BR=\([0-9.]*\).*/\1/p' "$DEPLOY")
 SB=$(mktemp -d)
 trap 'rm -rf "$SB"' EXIT
 BIN=$SB/bin
@@ -15,17 +16,15 @@ mkdir -p "$BIN"
 
 cat > "$BIN/ssh" <<'EOF'
 #!/usr/bin/env bash
-port= tunnel=
+port=
 while [ $# -gt 0 ]; do
   case $1 in
     -o|-L|-R) shift 2 ;;
     -p) port=$2; shift 2 ;;
-    -N) tunnel=1; shift ;;
     -*) shift ;;
     *) shift; break ;;
   esac
 done
-[ -n "$tunnel" ] && exec /usr/bin/sleep 300
 case $port in 22061) vm=app ;; 22062) vm=data ;; 22063) vm=dev ;; *) echo "가짜 ssh: 모르는 포트 $port" >&2; exit 255 ;; esac
 export HOME=$FAKE_SB/$vm FAKE_VM=$vm
 cd "$HOME"
@@ -44,8 +43,13 @@ case $1 in
     for i; do del "$img" "$i"; [ -z "$f" ] || echo "[$FAKE_VM] 이미지 지움 $i" >> "$log"; done ;;
   build) t=; while [ $# -gt 0 ]; do [ "$1" = -t ] && t=$2; shift; done; add "$img" "$t" ;;
   tag) add "$img" "$3" ;;
-  push) add "$reg" "${3#127.0.0.1:5055/}" ;;
-  pull) grep -qxF "${3#127.0.0.1:5055/}" "$reg" || { echo "가짜 docker: 보관소에 $3 없음" >&2; exit 1; }; add "$img" "$3" ;;
+  push) add "$reg" "${3#*/}" ;;
+  pull) grep -qxF "${3#*/}" "$reg" || { echo "가짜 docker: 보관소에 $3 없음" >&2; exit 1; }; add "$img" "$3" ;;
+  run) case " $* " in *" --name aionit-registry "*)
+      : > "$HOME/.regports"; while [ $# -gt 0 ]; do [ "$1" = -p ] && echo "${2%:5000}" >> "$HOME/.regports"; shift; done
+      echo "[$FAKE_VM] 보관소 다시 만듦: $(paste -sd' ' "$HOME/.regports")" >> "$log" ;; esac ;;
+  port) cat "$HOME/.regports" 2>/dev/null ;;
+  rm) rm -f "$HOME/.regports" ;;
   ps) echo fake ;;
   inspect) echo "${FAKE_HEALTH:-healthy}" ;;
   image) [ "$2" = inspect ] || exit 0; shift 2; for i; do grep -qxF "$i" "$img" || exit 1; done ;;
@@ -107,6 +111,7 @@ setup() {
   printf 'CADDY_TAG=2\nAPP_TAG=%s\n' "$now" > "$SB/app/aionit/.env"
   [ -z "$prev" ] || echo "$prev" > "$SB/app/aionit/.previous_tag"
   touch "$SB/log" "$SB/app/.images" "$SB/dev/.images" "$SB/dev/.registry"
+  printf '127.0.0.1:5055\n%s:5055\n' "$DEV_BR" > "$SB/dev/.regports"   # 보관소가 두 주소에 열려 있는 보통 상태
   for t; do
     for r in aionit-web aionit-worker; do
       echo "$r:$t" >> "$SB/app/.images"; echo "$r:$t" >> "$SB/dev/.images"; echo "$r:$t" >> "$SB/dev/.registry"
@@ -220,6 +225,16 @@ setup d1d1e46 0ace235 0ace235 d1d1e46
 run x --rolback
 check "결과 코드" "$RC" 1
 check "APP_TAG (그대로)" "$(tag_now)" d1d1e46
+
+echo; echo "■ 12. 보관소가 개발 VM 127.0.0.1 에만 열려 있음 (터널 방식 때 만든 것) ➔ 브리지 주소까지 열어 다시 만듦"
+setup 0ace235 0888742 0888742 0ace235
+echo 127.0.0.1:5055 > "$SB/dev/.regports"
+run d1d1e46
+report
+check "결과 코드" "$RC" 0
+check "보관소 주소" "$(sort "$SB/dev/.regports" | paste -sd' ' -)" "$DEV_BR:5055 127.0.0.1:5055"
+check "APP_TAG" "$(tag_now)" d1d1e46
+check "보관소 (올려 둔 이미지 그대로)" "$(tags_in "$SB/dev/.registry")" "0ace235 d1d1e46"
 
 echo
 if [ "$FAILS" -eq 0 ]; then echo "모두 통과"; else echo "실패 $FAILS 개"; exit 1; fi

@@ -22,12 +22,16 @@ JUMP=user1@10.100.4.52
 DEV=22063 APP=22061 DATA=22062
 vm() { local port=$1; shift; ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$port" user1@127.0.0.1 "$@"; }
 
-# 이미지 보관소(registry): 개발 VM 의 127.0.0.1:5055 에만 연다. 개발 VM 과 앱 VM 은 서로 닿지 않으므로
-# 배포하는 동안 노트북을 거치는 SSH 터널(앱 VM 127.0.0.1:5055 ➔ 노트북 15055 ➔ 개발 VM 5055)로 받아 간다.
-# 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
-REG_PORT=5055 REG_LOCAL=15055
+# 이미지 보관소(registry): 개발 VM 에 둔다. 개발 VM 은 127.0.0.1:5055 로 올리고, 앱 VM 은 브리지 망(사내망)으로
+# 개발 VM 주소:5055 에서 바로 받아 간다. 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
+# 보관소는 자체 인증서(TLS)로 열고, 앱 VM 주소에서만 받게 막아 두었다 (infra/dev-vm/README.md 의 '이미지 보관소').
+DEV_BR=10.100.3.168            # 개발 VM 브리지 주소
+REG_PORT=5055
 REG_IMAGE=registry:2.8.3
-REG=127.0.0.1:$REG_PORT
+REG=127.0.0.1:$REG_PORT        # 개발 VM 안에서 쓰는 주소
+REG_BR=$DEV_BR:$REG_PORT       # 앱 VM 에서 쓰는 주소
+REG_CERTS='$HOME/aionit-registry/certs'           # 개발 VM: registry.crt · registry.key
+APP_CA=/etc/docker/certs.d/$REG_BR/ca.crt         # 앱 VM: 개발 VM 의 registry.crt 사본
 
 # 단계마다 걸린 시간을 찍는다
 START=$SECONDS STEP_AT=
@@ -109,24 +113,20 @@ vm $DEV "cd ~/build/aionit && timeout 20m docker build -q --provenance=false -f 
   && timeout 20m docker build -q --provenance=false -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null" \
   || { echo "이미지 빌드 실패 (또는 20분 넘김). 서버는 그대로입니다." >&2; exit 1; }
 
-step "3/6 이미지 옮기기 (개발 VM ➔ 보관소 ➔ 앱 VM, 바뀐 층만)"
-vm $DEV "docker ps -q -f name=^aionit-registry\$ | grep -q . || docker run -d --restart=always --name aionit-registry \
-  -p 127.0.0.1:$REG_PORT:5000 -v aionit-registry:/var/lib/registry -e REGISTRY_STORAGE_DELETE_ENABLED=true $REG_IMAGE >/dev/null"
-vm $DEV "for i in \$(seq 1 15); do curl -fs http://$REG/v2/ >/dev/null && exit 0; sleep 1; done; exit 1"
+step "3/6 이미지 옮기기 (개발 VM 보관소 ➔ 브리지 망 ➔ 앱 VM, 바뀐 층만)"
+# 보관소가 두 주소(127.0.0.1 · 브리지)에 열려 있지 않으면 다시 만든다. 올려 둔 이미지는 aionit-registry 볼륨에 남는다.
+vm $DEV "docker port aionit-registry 5000/tcp 2>/dev/null | grep -qx '$REG_BR' || { docker rm -f aionit-registry >/dev/null 2>&1; \
+  docker run -d --restart=always --name aionit-registry -p $REG:5000 -p $REG_BR:5000 \
+  -v aionit-registry:/var/lib/registry -v $REG_CERTS:/certs:ro \
+  -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/registry.crt -e REGISTRY_HTTP_TLS_KEY=/certs/registry.key \
+  -e REGISTRY_STORAGE_DELETE_ENABLED=true $REG_IMAGE >/dev/null; }"
+vm $DEV "for i in \$(seq 1 15); do curl -fs --cacert $REG_CERTS/registry.crt https://$REG/v2/ >/dev/null && exit 0; sleep 1; done; exit 1"
 vm $DEV "for img in aionit-web aionit-worker; do docker tag \$img:$TAG $REG/\$img:$TAG && docker push -q $REG/\$img:$TAG >/dev/null \
   && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done"
-# 터널: 노트북 $REG_LOCAL ➔ 개발 VM $REG_PORT, 앱 VM $REG_PORT ➔ 노트북 $REG_LOCAL
-TUNNELS=()
-ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ProxyJump="$JUMP" -p $DEV -L $REG_LOCAL:127.0.0.1:$REG_PORT user1@127.0.0.1 &
-TUNNELS+=($!)
-ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ProxyJump="$JUMP" -p $APP -R $REG_PORT:127.0.0.1:$REG_LOCAL user1@127.0.0.1 &
-TUNNELS+=($!)
-trap 'kill "${TUNNELS[@]}" 2>/dev/null || true' EXIT
-vm $APP "for i in \$(seq 1 20); do curl -fs http://$REG/v2/ >/dev/null && exit 0; sleep 1; done; echo '보관소 터널이 열리지 않습니다' >&2; exit 1"
-vm $APP "for img in aionit-web aionit-worker; do docker pull -q $REG/\$img:$TAG >/dev/null && docker tag $REG/\$img:$TAG \$img:$TAG \
-  && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done"
-kill "${TUNNELS[@]}" 2>/dev/null || true
-trap - EXIT
+vm $APP "for i in \$(seq 1 10); do curl -fs --cacert $APP_CA https://$REG_BR/v2/ >/dev/null && exit 0; sleep 1; done
+  echo '앱 VM 에서 보관소($REG_BR)에 닿지 않습니다. 브리지 랜카드 · 개발 VM 방화벽(aionit-registry-allow) · 인증서($APP_CA)를 확인하세요. 서버는 그대로입니다.' >&2; exit 1"
+vm $APP "for img in aionit-web aionit-worker; do docker pull -q $REG_BR/\$img:$TAG >/dev/null && docker tag $REG_BR/\$img:$TAG \$img:$TAG \
+  && docker rmi $REG_BR/\$img:$TAG >/dev/null || exit 1; done"
 
 step "4/6 서버 설정 반영"
 vm $APP "cat > ~/aionit/compose.yaml" < infra/app-vm/compose.yaml
@@ -169,16 +169,16 @@ vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(w
   docker builder prune -f --filter until=168h >/dev/null
   docker builder prune -f --max-used-space 15gb >/dev/null" || true
 # 보관소: 현재 · 되돌릴 버전 태그만 남기고 지운 뒤 빈 층을 치운다. 같은 내용(digest)을 가리키는 태그는 건드리지 않는다.
-vm $DEV "reg=http://$REG
+vm $DEV "reg=https://$REG ca=\"--cacert $REG_CERTS/registry.crt\"
   acc='-H Accept:application/vnd.oci.image.index.v1+json -H Accept:application/vnd.oci.image.manifest.v1+json -H Accept:application/vnd.docker.distribution.manifest.v2+json -H Accept:application/vnd.docker.distribution.manifest.list.v2+json'
-  digest() { curl -fsI \$acc \$reg/v2/\$1/manifests/\$2 | tr -d '\r' | awk -F': ' 'tolower(\$1)==\"docker-content-digest\"{print \$2}'; }
+  digest() { curl -fsI \$ca \$acc \$reg/v2/\$1/manifests/\$2 | tr -d '\r' | awk -F': ' 'tolower(\$1)==\"docker-content-digest\"{print \$2}'; }
   for repo in aionit-web aionit-worker; do
     keep=\"\$(digest \$repo $TAG) \$(digest \$repo $KEEP_PREV 2>/dev/null || true)\"
-    for t in \$(curl -fs \$reg/v2/\$repo/tags/list | tr -d '\"[]{}' | sed 's/.*tags://' | tr , ' '); do
+    for t in \$(curl -fs \$ca \$reg/v2/\$repo/tags/list | tr -d '\"[]{}' | sed 's/.*tags://' | tr , ' '); do
       [ \"\$t\" = $TAG ] || [ \"\$t\" = $KEEP_PREV ] && continue
       d=\$(digest \$repo \$t) || continue
       case \" \$keep \" in *\" \$d \"*) continue ;; esac
-      curl -fs -X DELETE \$reg/v2/\$repo/manifests/\$d >/dev/null || true
+      curl -fs \$ca -X DELETE \$reg/v2/\$repo/manifests/\$d >/dev/null || true
     done
   done
   docker exec aionit-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1
