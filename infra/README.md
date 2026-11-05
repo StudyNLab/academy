@@ -102,8 +102,7 @@ bash infra/scripts/deploy.sh
 
 ### 두 번째 사본 (NAS F:, 2026-11-05 운영자 결정)
 
-- 호스트 예약 작업 `AIONIT-NAS-copy`: 매일 04:30 `C:\AIONIT
-as-copy.cmd` (`infra/host/nas-copy.cmd`) ➔ `G:\AIONIT-backup` 을 `F:\AIONIT-backup` 으로 robocopy
+- 호스트 예약 작업 `AIONIT-NAS-copy`: 매일 04:30 `C:\AIONIT\nas-copy.cmd` (`infra/host/nas-copy.cmd`) ➔ `G:\AIONIT-backup` 을 `F:\AIONIT-backup` 으로 robocopy
 - **복사만** 한다 (G: 에서 지운 파일을 F: 에서 따라 지우지 않는다). F: 는 200일 지난 파일만 지운다. 기록 `F:\AIONIT-backup\_nas-copy.log`
 - 예약 작업은 user1 이 로그온한 동안만 돈다 (`/it`, 호스트는 VM 화면 때문에 늘 로그온 상태). 처음 복사 260개 · 38.9MB, G: 와 같음
 - 끄려면 `schtasks /delete /tn AIONIT-NAS-copy /f`
