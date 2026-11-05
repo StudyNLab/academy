@@ -37,7 +37,7 @@ export const files = pgTable("files", {
   createdAt: createdAt(),
 });
 
-/** 강사 프로필. M2 는 과정 소유자를 정하는 데만 쓴다 (계약 · 정산 정보는 M8 · M9) */
+/** 강사 프로필 (공개 프로필: 이름 · 소개). 계약 · 정산 정보 · 배분 정책은 instructor.ts */
 export const instructors = pgTable("instructors", {
   id: id(),
   /** 강사 계정. 아직 가입하지 않은 강사(운영자가 대신 올림)는 비어 있다 */
@@ -117,6 +117,10 @@ export const courseVersions = pgTable(
     validationReport: jsonb(),
     reviewNote: text(),
     uploadedBy: uuid().references(() => users.id),
+    /** 강사가 검수를 요청한 때 · 변경 내용 메모 (I-05). 운영자가 올린 버전은 요청 없이 검수한다 */
+    reviewRequestedAt: tz(),
+    reviewRequestedBy: uuid().references(() => users.id),
+    reviewRequestNote: text(),
     reviewedBy: uuid().references(() => users.id),
     reviewedAt: tz(),
     publishedAt: tz(),

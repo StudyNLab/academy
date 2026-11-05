@@ -12,3 +12,4 @@ export * from "./commerce/refund";
 export * from "./commerce/subscription";
 export * from "./support/qna";
 export * from "./support/secrets";
+export * from "./instructor/instructor";

@@ -202,7 +202,8 @@ export async function adminCourseList(db: Db) {
       publishedVersion: sql<
         string | null
       >`(select v.version from course_versions v where v.id = courses.published_version_id)`,
-      waiting: sql<number>`(select count(*)::int from course_versions v where v.course_id = courses.id and v.status in ('ready', 'in_review'))`,
+      // 검수 대기: 강사가 요청했거나 운영자가 올려 검사를 통과한 버전 (강사가 올리고 요청 전인 것은 빼고)
+      waiting: sql<number>`(select count(*)::int from course_versions v where v.course_id = courses.id and (v.status = 'in_review' or (v.status = 'ready' and v.uploaded_by is distinct from instructors.user_id))))`,
     })
     .from(schema.courses)
     .innerJoin(schema.instructors, eq(schema.instructors.id, schema.courses.ownerInstructorId))

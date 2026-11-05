@@ -269,11 +269,11 @@ describe.skipIf(!hasFfmpeg)("자체 서버 영상", () => {
     expect(await hlsKeyFor(t.db, operator, id, staff.token, SECRET)).not.toBeNull();
   });
 
-  it("학습 화면: 수강생은 플레이어 자리, 미리보기는 🔒 카드. 시청 90% ➔ 영상 완료 조건에 든다", async () => {
+  it("학습 화면: 수강생은 플레이어 자리, 미리보기는 잠금 카드. 시청 90% ➔ 영상 완료 조건에 든다", async () => {
     await readyVideo();
     await setPreviewRule(t.db, courseId, { chapterKey: "ch01", scope: "whole", actorId: operatorId });
     const preview = await previewChapter(t.db, "ai-agent-basics", "ch01");
-    expect(preview!.html).toContain("🔒 수강생 전용 영상입니다");
+    expect(preview!.html).toContain("수강생 전용 영상입니다");
     expect(preview!.html).not.toContain("hosted-video");
 
     await grant();

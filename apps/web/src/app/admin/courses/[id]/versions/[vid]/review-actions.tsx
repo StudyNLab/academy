@@ -60,7 +60,12 @@ export function ReviewActions({
       ) : null}
       {reviewable || status === "invalid" ? (
         <div className="flex max-w-[560px] flex-col gap-4 border-t border-line pt-5">
-          <Field label="반려 사유 (필수)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Field
+            label="반려 사유 (필수)"
+            hint="강사가 올린 버전이면 사유가 강사 화면과 메일로 갑니다."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
           <Button
             variant="danger"
             disabled={busy || reason.trim().length < 2}

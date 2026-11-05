@@ -82,6 +82,7 @@ export async function dashboardCounts(db: Db) {
     inquiries: number;
     reports: number;
     stale: number;
+    reviews: number;
   }>(sql`
     select
       (select count(*)::int from users where status <> 'withdrawn') as total,
@@ -94,6 +95,9 @@ export async function dashboardCounts(db: Db) {
       (select count(distinct (target_type, target_id))::int from reports where status = 'open') as reports,
       (select count(*)::int from questions where status = 'open' and answer_count = 0 and hidden_at is null
         and deleted_at is null and created_at <= now() - interval '3 days') as stale,
+      (select count(*)::int from course_versions v join courses c on c.id = v.course_id
+        join instructors i on i.id = c.owner_instructor_id
+        where (v.status = 'in_review' or (v.status = 'ready' and v.uploaded_by is distinct from i.user_id))) as reviews,
       (select coalesce(sum(total_amount), 0)::bigint::int from orders
         where status in ('paid', 'partially_refunded', 'refunded')
           and paid_at >= date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul') as sales`);

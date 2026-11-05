@@ -7,7 +7,7 @@ import { requireStaff } from "@/server/session";
 
 export const metadata: Metadata = { title: "관리자" };
 
-// AD-01 대시보드 (M1 회원, M5 매출 · 환불 요청, M6 구독, M7 문의 · 신고 · 미답변 질문. 검수는 M8)
+// AD-01 대시보드 (M1 회원, M5 매출 · 환불 요청, M6 구독, M7 문의 · 신고 · 미답변 질문, M8 검수 대기)
 export default async function AdminHome() {
   await requireStaff("operator", "/admin");
   const counts = await dashboardCounts(getDb());
@@ -22,6 +22,7 @@ export default async function AdminHome() {
     { label: "답변 기다리는 문의", value: counts.inquiries, href: "/admin/inquiries" },
     { label: "신고된 글", value: counts.reports, href: "/admin/qna" },
     { label: "3일 넘은 미답변 질문", value: counts.stale, href: "/admin/qna" },
+    { label: "검수 대기", value: counts.reviews, href: "/admin/reviews" },
   ];
   return (
     <>

@@ -92,3 +92,16 @@ describe("빌링키 보관", () => {
     expect(() => openBillingKey(secret, `${sealed.slice(0, -2)}AA`)).toThrow();
   });
 });
+
+describe("개인정보 필드 감싸기", () => {
+  const secret = "s".repeat(40);
+  it("쓰임이 다르면 열리지 않고, 같은 값도 감쌀 때마다 다르다", async () => {
+    const { sealPii, openPii } = await import("./index");
+    const sealed = sealPii(secret, "bank-account", "110123456789");
+    expect(sealed).not.toContain("110123456789");
+    expect(sealPii(secret, "bank-account", "110123456789")).not.toBe(sealed);
+    expect(openPii(secret, "bank-account", sealed)).toBe("110123456789");
+    expect(() => openPii(secret, "rrn", sealed)).toThrow();
+    expect(() => openPii("t".repeat(40), "bank-account", sealed)).toThrow();
+  });
+});

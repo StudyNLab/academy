@@ -215,3 +215,29 @@ export function openBillingKey(secret: string, sealed: string): string {
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");
 }
+
+// ---- 개인정보 필드 감싸기 (docs/데이터모델.md 1장: 주민등록번호 · 계좌번호는 앱에서 AES-256-GCM) ----
+
+export const PII_KEY_VERSION = 1;
+
+/** 쓰임(purpose)마다 다른 키로 감싼다. "v1.<iv>.<tag>.<암호문>" (base64url) */
+export function sealPii(secret: string, purpose: string, value: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", deriveKey(secret, `pii/${purpose}/v${PII_KEY_VERSION}`), iv);
+  const body = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return [`v${PII_KEY_VERSION}`, iv, cipher.getAuthTag(), body]
+    .map((p) => (typeof p === "string" ? p : p.toString("base64url")))
+    .join(".");
+}
+
+export function openPii(secret: string, purpose: string, sealed: string): string {
+  const [version, iv, tag, body] = sealed.split(".");
+  if (version !== `v${PII_KEY_VERSION}` || !iv || !tag || !body) throw new Error("모르는 암호문 형식");
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    deriveKey(secret, `pii/${purpose}/v${PII_KEY_VERSION}`),
+    Buffer.from(iv, "base64url"),
+  );
+  decipher.setAuthTag(Buffer.from(tag, "base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");
+}

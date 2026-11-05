@@ -6,6 +6,8 @@ import { SiteHeader } from "@/components/site-chrome";
 const menu = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/courses", label: "과정" },
+  { href: "/admin/reviews", label: "검수 대기" },
+  { href: "/admin/instructors", label: "강사" },
   { href: "/admin/users", label: "회원" },
   { href: "/admin/products", label: "상품 · 가격" },
   { href: "/admin/subscriptions", label: "구독" },

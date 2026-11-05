@@ -2,9 +2,12 @@
 // 영상 연결(AD-05 일부) · 무료 미리보기(AD-06) · 첨부 자료. 모든 작업은 audit_logs 에 남긴다.
 import { createHash, randomUUID } from "node:crypto";
 import { readCourseJson } from "@aionit/content";
+import { isDeliverableEmail } from "@aionit/core";
 import type { CourseField, Db } from "@aionit/db";
 import { and, eq, inArray, ne, schema } from "@aionit/db";
+import type { MailJob } from "@aionit/mail";
 import type { FileStore } from "@aionit/storage";
+import { notify } from "./notifications";
 import { writeAudit } from "./records";
 
 export class CourseError extends Error {
@@ -26,6 +29,12 @@ export interface CourseDeps {
 interface Actor {
   actorId: string;
   headers?: Headers | null;
+}
+
+/** 메일을 보내는 작업에 넘기는 것 (메일 대기열 · 메일 속 주소의 기준) */
+export interface MailDeps {
+  enqueueMail: (job: MailJob) => Promise<void>;
+  baseUrl: string;
 }
 
 const ZIP_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
@@ -226,13 +235,19 @@ async function loadVersion(db: Db, versionId: string) {
   return row;
 }
 
-/** 승인하고 공개: 이 버전 ➔ published, 지금 공개 중인 버전 ➔ archived */
-export async function publishVersion(db: Db, versionId: string, actor: Actor & { note?: string }) {
+/** 승인하고 공개: 이 버전 ➔ published, 지금 공개 중인 버전 ➔ archived. 강사가 올린 버전이면 강사에게 알린다 */
+export async function publishVersion(
+  db: Db,
+  versionId: string,
+  actor: Actor & { note?: string },
+  mail: MailDeps | null = null,
+) {
   const { version, course } = await loadVersion(db, versionId);
   if (version.status !== "ready" && version.status !== "in_review") {
     throw new CourseError("NOT_READY", "검사를 통과한 버전만 공개할 수 있습니다.");
   }
   await switchPublished(db, course, versionId, "content.publish", actor);
+  await notifyReviewResult(db, mail, versionId, "published", null);
 }
 
 /** 되돌리기: 예전에 공개했던 버전(archived)을 다시 공개 */
@@ -288,8 +303,13 @@ async function switchPublished(
   });
 }
 
-/** 반려 (사유 필수). 강사에게 알림은 M8 */
-export async function rejectVersion(db: Db, versionId: string, actor: Actor & { reason: string }) {
+/** 반려 (사유 필수). 사유가 강사 화면(I-02 · I-03)과 메일로 간다 */
+export async function rejectVersion(
+  db: Db,
+  versionId: string,
+  actor: Actor & { reason: string },
+  mail: MailDeps | null = null,
+) {
   const { version } = await loadVersion(db, versionId);
   if (!["ready", "in_review", "invalid"].includes(version.status)) {
     throw new CourseError("NOT_REVIEWABLE", "검수할 수 있는 상태가 아닙니다.");
@@ -306,6 +326,62 @@ export async function rejectVersion(db: Db, versionId: string, actor: Actor & { 
     after: { reason: actor.reason },
     headers: actor.headers,
   });
+  await notifyReviewResult(db, mail, versionId, "rejected", actor.reason);
+}
+
+/**
+ * 운영자가 공개 · 반려한 결과를 그 과정 강사에게 (사이트 알림 + 메일). 반려면 사유를 함께.
+ * 강사가 올렸거나 검수를 요청한 버전만 (운영자가 직접 올려 공개한 것은 알리지 않는다).
+ */
+export async function notifyReviewResult(
+  db: Db,
+  mail: MailDeps | null,
+  versionId: string,
+  result: "published" | "rejected",
+  reason: string | null,
+) {
+  const [row] = await db
+    .select({
+      version: schema.courseVersions,
+      course: schema.courses,
+      userId: schema.instructors.userId,
+      email: schema.users.email,
+      userStatus: schema.users.status,
+    })
+    .from(schema.courseVersions)
+    .innerJoin(schema.courses, eq(schema.courses.id, schema.courseVersions.courseId))
+    .innerJoin(schema.instructors, eq(schema.instructors.id, schema.courses.ownerInstructorId))
+    .leftJoin(schema.users, eq(schema.users.id, schema.instructors.userId))
+    .where(eq(schema.courseVersions.id, versionId));
+  if (!row?.userId || row.userStatus !== "active") return;
+  const fromInstructor =
+    row.version.uploadedBy === row.userId || row.version.reviewRequestedBy === row.userId;
+  if (!fromInstructor) return;
+  const url = `/instructor/courses/${row.course.id}/versions/${versionId}`;
+  await notify(db, {
+    userId: row.userId,
+    kind: "content_review",
+    title:
+      result === "published"
+        ? `공개됨: ${row.course.title} v${row.version.version}`
+        : `반려: ${row.course.title} v${row.version.version}`,
+    body: result === "rejected" ? `사유: ${reason ?? "-"}` : null,
+    url,
+    targetId: versionId,
+  });
+  if (!mail || !isDeliverableEmail(row.email)) return;
+  await mail
+    .enqueueMail({
+      template: "content-review",
+      to: row.email,
+      userId: row.userId,
+      courseTitle: row.course.title,
+      version: row.version.version,
+      result,
+      reason,
+      url: `${mail.baseUrl}${url}`,
+    })
+    .catch((error: unknown) => console.error(`[instructor] 검수 결과 메일 넣기 실패 ${versionId}`, error));
 }
 
 // ---- 영상 연결 (AD-05: 유튜브. 자체 서버 영상은 videos.ts linkHosted) ----

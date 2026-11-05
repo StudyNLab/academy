@@ -7,7 +7,7 @@ import { getStore } from "@/server/storage";
 import { loadViewer } from "@/server/viewer";
 
 // 교재 그림. 공개 중인 버전: 무료 미리보기에 나오는 그림은 누구나, 나머지는 강의를 볼 수 있는 사람(수강권 · 운영자 ·
-// 그 과정 강사)만 (M4, 수강권 판단 함수 하나로). 공개 전 버전(검수 중 등)의 그림은 운영자만.
+// 그 과정 강사)만 (M4, 수강권 판단 함수 하나로). 공개 전 버전(검수 중 등)의 그림은 운영자 · 그 과정 강사만 (M8).
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,7 +24,8 @@ export async function GET(
   let cache = "public, max-age=3600";
   if (!asset.isPublished) {
     const viewer = await loadViewer(getAuth(), db, request.headers);
-    if (!viewer?.roles.includes("operator")) return new Response(null, { status: 404 });
+    if ((await viewAccess(db, viewer, asset.course)).kind !== "staff")
+      return new Response(null, { status: 404 });
     cache = "private, no-store";
   } else if (!(await isPreviewImage(db, asset.course.id, versionId, assetPath))) {
     const viewer = await loadViewer(getAuth(), db, request.headers);

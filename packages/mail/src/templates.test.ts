@@ -171,3 +171,54 @@ describe("Q&A · 1:1 문의 메일 (M7)", () => {
     expect(mail.text).toContain("https://x.test/my/inquiries/i1");
   });
 });
+
+describe("강사 메일 (M8)", () => {
+  it("검수 반려: 사유가 글 · HTML 모두 들어가고, HTML 에서는 이스케이프된다", () => {
+    const mail = renderMail({
+      template: "content-review",
+      to: "t@example.com",
+      userId: null,
+      courseTitle: "AI Agent 개발 · 초급",
+      version: "0.3.0",
+      result: "rejected",
+      reason: "ch04_lab02 영상 연결이 필요합니다 <b>",
+      url: "https://aionit.test/instructor/courses/1",
+    });
+    expect(mail.subject).toBe("[AIONIT] 교재 검수가 반려되었습니다");
+    expect(mail.text).toContain("반려 사유: ch04_lab02 영상 연결이 필요합니다 <b>");
+    expect(mail.html).toContain("ch04_lab02 영상 연결이 필요합니다 &lt;b&gt;");
+    expect(mail.text).toContain("https://aionit.test/instructor/courses/1");
+  });
+
+  it("검수 통과 · 강사 등록 · 계약 동의 요청", () => {
+    const published = renderMail({
+      template: "content-review",
+      to: "t@example.com",
+      userId: null,
+      courseTitle: "AI Agent 개발 · 초급",
+      version: "0.3.0",
+      result: "published",
+      reason: null,
+      url: "https://aionit.test/instructor",
+    });
+    expect(published.subject).toBe("[AIONIT] 교재가 검수를 통과해 공개되었습니다");
+    const registered = renderMail({
+      template: "instructor-notice",
+      to: "t@example.com",
+      userId: null,
+      kind: "registered",
+      displayName: "홍길동",
+      url: "https://aionit.test/instructor",
+    });
+    expect(registered.text).toContain("2단계 인증");
+    const contract = renderMail({
+      template: "instructor-notice",
+      to: "t@example.com",
+      userId: null,
+      kind: "contract",
+      displayName: "홍길동",
+      url: "https://aionit.test/instructor/profile",
+    });
+    expect(contract.subject).toBe("[AIONIT] 강사 계약 내용을 확인해 주세요");
+  });
+});

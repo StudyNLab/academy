@@ -70,6 +70,26 @@ export type MailJob =
       url: string;
     }
   | {
+      /** 강사가 검수를 요청한 교재 버전의 결과 (반려면 사유를 함께) */
+      template: "content-review";
+      to: string;
+      userId: string | null;
+      courseTitle: string;
+      version: string;
+      result: "published" | "rejected";
+      reason: string | null;
+      url: string;
+    }
+  | {
+      /** 운영자가 강사로 등록 · 계약을 만듦 (강사 화면에서 강사 이용약관 동의) */
+      template: "instructor-notice";
+      to: string;
+      userId: string | null;
+      kind: "registered" | "contract";
+      displayName: string;
+      url: string;
+    }
+  | {
       template: "subscription-notice";
       to: string;
       userId: string | null;
@@ -272,6 +292,43 @@ export function renderMail(job: MailJob): RenderedMail {
         ],
         { label: "답변 보기", url: job.url },
       );
+    case "content-review":
+      return job.result === "published"
+        ? layout(
+            "교재가 검수를 통과해 공개되었습니다",
+            [
+              `${job.courseTitle} v${job.version} 이 검수를 통과해 공개되었습니다.`,
+              "수강 중인 사람은 다음에 열 때 새 버전을 봅니다. 진도와 Q&A 는 그대로 이어집니다.",
+            ],
+            { label: "내 강의 보기", url: job.url },
+          )
+        : layout(
+            "교재 검수가 반려되었습니다",
+            [
+              `${job.courseTitle} v${job.version} 의 검수가 반려되었습니다.`,
+              `반려 사유: ${job.reason ?? "-"}`,
+              "사유를 고친 뒤 다시 검수를 요청해 주세요. 교재를 고쳤다면 같은 버전으로 다시 올리면 됩니다.",
+            ],
+            { label: "강사 화면에서 보기", url: job.url },
+          );
+    case "instructor-notice":
+      return job.kind === "registered"
+        ? layout(
+            "AIONIT 강사로 등록되었습니다",
+            [
+              `${job.displayName} 강사님, AIONIT 강사로 등록되었습니다.`,
+              "강사 화면에 들어가려면 2단계 인증(인증 앱)을 켜야 합니다. 처음 들어갈 때 안내를 따라 설정해 주세요.",
+            ],
+            { label: "강사 화면 열기", url: job.url },
+          )
+        : layout(
+            "강사 계약 내용을 확인해 주세요",
+            [
+              `${job.displayName} 강사님, 새 강사 계약이 준비되었습니다.`,
+              "강사 화면의 정산 정보 · 프로필에서 계약 기간과 강사 이용약관을 읽고 동의해 주세요.",
+            ],
+            { label: "계약 확인하기", url: job.url },
+          );
     case "expiry-reminder":
       return layout(
         `수강 기간이 ${job.daysLeft}일 남았습니다`,
