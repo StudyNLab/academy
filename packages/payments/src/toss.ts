@@ -111,6 +111,8 @@ export interface PaymentGateway {
     orderName: string;
     idempotencyKey: string;
   }): Promise<TossPayment>;
+  /** 빌링키 삭제 (구독이 끝났거나 카드를 바꿨을 때). 성공하면 빈 200 */
+  deleteBillingKey(billingKey: string): Promise<void>;
 }
 
 const errorSchema = z.object({ code: z.string(), message: z.string() });
@@ -124,7 +126,12 @@ export function createTossGateway(options: {
   const doFetch = options.fetch ?? fetch;
   const auth = `Basic ${Buffer.from(`${options.secretKey}:`).toString("base64")}`;
 
-  async function request(method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string) {
+  async function request(
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    body?: unknown,
+    idempotencyKey?: string,
+  ) {
     const response = await doFetch(`${base}${path}`, {
       method,
       headers: {
@@ -174,5 +181,8 @@ export function createTossGateway(options: {
         },
         input.idempotencyKey,
       ),
+    deleteBillingKey: async (billingKey) => {
+      await request("DELETE", `/v1/billing/${encodeURIComponent(billingKey)}`);
+    },
   };
 }

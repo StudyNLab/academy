@@ -498,7 +498,14 @@ describe("1:1 문의 (M-05 · AD-13)", () => {
     expect((await adminInquiries(t.db, "all")).map((r) => [r.inquiry.id, r.nickname])).toEqual([[id, null]]);
     await purgeExpiredRecords(t.db);
     expect(await t.db.select().from(schema.inquiries)).toHaveLength(1);
+    // 정리 기준 시각은 DB 시각이라(앞당길 수 없다) 문의를 3년 전으로 옮겨 본다
     await purgeExpiredRecords(t.db, new Date(Date.now() + 3 * 366 * 86_400_000));
+    expect(await t.db.select().from(schema.inquiries)).toHaveLength(1);
+    await t.db
+      .update(schema.inquiries)
+      .set({ lastMessageAt: new Date(Date.now() - 3 * 366 * 86_400_000) })
+      .where(eq(schema.inquiries.id, id));
+    await purgeExpiredRecords(t.db);
     expect(await t.db.select().from(schema.inquiries)).toHaveLength(0);
     expect(await t.db.select().from(schema.inquiryMessages)).toHaveLength(0);
   });

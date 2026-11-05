@@ -355,6 +355,28 @@ export const subscriptions = pgTable(
   ],
 );
 
+/**
+ * 지울 빌링키 (M10). 구독이 끝나거나 카드를 바꾸면 그 트랜잭션 안에서 여기에 옮기고,
+ * worker(구독 자동결제 작업)가 토스 빌링키 삭제 API 를 부른 뒤 키를 비운다. 실패하면 다음 날 다시 (5번까지).
+ */
+export const billingKeyDeletions = pgTable(
+  "billing_key_deletions",
+  {
+    id: id(),
+    subscriptionId: uuid()
+      .notNull()
+      .references(() => subscriptions.id),
+    /** 🔒 지울 빌링키 (AES-256-GCM). 토스에서 지우면 null */
+    keySealed: text(),
+    reason: text().notNull(),
+    attempts: integer().notNull().default(0),
+    lastError: text(),
+    deletedAt: tz(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("billing_key_deletions_pending_idx").on(t.deletedAt)],
+);
+
 /** 회차별 결제. 결제마다 주문(orders) · 결제(payments)도 만들어 결제 내역 · 영수증 · 환불을 단건과 같이 쓴다 */
 export const subscriptionCycles = pgTable(
   "subscription_cycles",

@@ -36,6 +36,8 @@ export const SESSION_POLICY = {
   recentLoginMs: 15 * MINUTE,
 } as const;
 
+// 로그인 · 운영자 작업 · 개인정보 조회 기록과 1:1 문의의 기간은 DB 함수 aionit_purge_protected_records()
+// (packages/db/drizzle/0012_app_role.sql)에도 있다. 바꾸면 새 마이그레이션으로 함수도 바꾼다 (db-roles.test.ts 가 맞는지 본다)
 export const RETENTION = {
   loginLogsMemberMs: 183 * DAY,
   loginLogsPrivilegedMs: 730 * DAY,

@@ -81,15 +81,51 @@ bash infra/scripts/deploy.sh
 
 | 항목 | 내용 |
 |---|---|
-| 무엇 | PostgreSQL 전체 (`pg_dump -Fc`) + sha256, **파일 저장소(Garage 버킷 `aionit`)** — rclone 으로 바뀐 것만 |
-| 언제 | 매일 03:30 KST (data VM cron), 배포 직전 |
-| 어디 | DB: data VM `/srv/data/backup/db/` (7일) ➔ **호스트 `G:\AIONIT-backup\db\`** (공유 폴더, 35일). 파일: `G:\AIONIT-backup\files\aionit\` (바뀌거나 지워진 파일은 `files\changed\<날짜>\` 에 35일) |
-| 기록 | data VM `~/aionit/backup.log` |
+| DB | PostgreSQL 전체 (`pg_dump -Fc`) + sha256 (파일 이름만 적는다) |
+| 파일 | Garage 버킷 **`aionit`(교재 · 그림 · 첨부 · 영상 원본) · `aionit-media`(영상 변환 결과)** — rclone 으로 바뀐 것만 |
+| 설정 | data VM: `.env` · compose · `garage.toml` · Garage 키 파일 · 백업 키 · crontab · **DB 역할(`pg_dumpall --globals-only`)** ➔ 암호화 묶음. **app VM**: `.env` · compose · Caddyfile · `.previous_tag` · Caddy 데이터(인증서) ➔ data VM 이 강제 명령 키로 받아 감 (이미 암호화된 채) |
+| 언제 | 매일 03:30 KST (data VM cron, DB · 파일 · 설정), 배포 직전 (DB 만, `pre-deploy-<태그>`) |
+| 어디 | 호스트 `G:\AIONIT-backup\` (공유 폴더, data VM `/mnt/aionit-backup`): `db\` · `files\aionit\` · `files\aionit-media\` · `files\changed\<날짜>\<버킷>\` · `config\data-<날짜>.cms` · `config\app-<날짜>.cms`. DB 는 VM 안 `/srv/data/backup/db/` 에도 7일 |
+| 보관 | DB 매일 35일 · **매주(일요일) 5주 · 매월(1일) 6개월** · 배포 전 90일. 바뀐 · 지운 파일 35일. 설정 35일 |
+| 기록 | data VM `~/aionit/backup.log`. 매일 백업이 끝나면 감시에 결과를 알린다 (`~/aionit/monitor.env`) |
 
-- 공유 폴더는 systemd mount 단위 `mnt-aionit\x2dbackup.mount` 로 붙인다. 공유 폴더가 없어도 VM 부팅은 막히지 않는다 (백업 스크립트가 경고만 남김).
-- 복구 시험(2026-11-04): 백업을 새 DB 에 `pg_restore` ➔ 테이블 수 원본과 같음(16) ➔ 시험 DB 삭제. **매달 한 번 반복한다.**
-- 파일 백업은 **읽기 전용 키**(`aionit-backup`, data VM `~/aionit/garage-backup.env`, 600)로 한다. 백업 스크립트가 지워져도 저장소를 고칠 수 없다. 이미지 `rclone/rclone:1.75.2`.
-- 아직 안 한 것: NAS(F:) 로 두 번째 사본 · 파일 복구 훈련(M10).
+- 공유 폴더는 systemd mount 단위 `mnt-aionit\x2dbackup.mount` 로 붙인다. 공유 폴더가 없어도 VM 부팅은 막히지 않는다. 매일 백업은 실패로 끝나고(감시에 알림), 배포 전 백업은 배포를 막지 않는다.
+- 파일 백업은 **읽기 전용 키**(`aionit-backup`, data VM `~/aionit/garage-backup.env`, 600)로 한다. 두 버킷 모두 읽기만 (`garage bucket allow --read aionit-media --key aionit-backup`, 2026-11-05). 이미지 `rclone/rclone:1.75.2`.
+- **설정 암호화**: `openssl cms`(AES-256) + 백업 공개 인증서 `~/aionit/backup-recipient.pem`(RSA 4096, 2036-11 까지, SHA-256 지문 `2D:A6:68:43:…:CB:22`). **개인키는 VM · G: 에 두지 않는다** (운영자 보관). 풀기: `openssl cms -decrypt -binary -inform DER -inkey <개인키> -in data-<날짜>.cms | tar xzf - -C <폴더>`.
+- 배포 스크립트가 배포 때마다 `infra/data-vm/backup.sh` 를 data VM 에 덮어쓴다. 서버의 백업 스크립트를 바꾸려면 저장소 파일을 고친다.
+
+### app VM 설정 받기 (2026-11-05 운영자 허락)
+
+- data VM `~/.ssh/aionit_config_pull` (ed25519) 의 공개키를 app VM `~/.ssh/authorized_keys` 에 **강제 명령**으로 등록: `command="/home/user1/aionit/config-backup.sh",from="172.30.0.20",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding`. 그 키로는 `config-backup.sh` 만 돈다 (다른 명령을 보내도 같은 결과, 포트 포워딩 "administratively prohibited" 확인). 예전 파일 `authorized_keys.bak-m10`
+- app VM `config-backup.sh`(700)가 묶음을 `backup-recipient.pem` 으로 암호화해 내보내므로 data VM 은 평문을 보지 않는다
+- 끄려면: app VM `authorized_keys` 의 `aionit-data config pull` 줄을 지운다 (백업 스크립트는 받기 실패 경고만 남긴다)
+
+### 아직 없는 것
+
+| 무엇 | 왜 |
+|---|---|
+| NAS(F:) 두 번째 사본 | 운영자 결정 대기 |
+
+## 복구
+
+**복구 훈련 (2026-11-05, M10)**: 빈 VM 에서 백업만으로 data VM 을 되살렸다. 기록은 `docs/개발기록/M10.md`. **매달 한 번 반복한다** (아래 1 ~ 5, 끝나면 훈련 VM 을 지운다).
+
+1. 빈 VM: 호스트에서 Academy-data 의 설치 직후 스냅샷으로 연결된 복제를 만든다 (훈련 때는 내부망을 떼고 SSH 포트를 바꾼다. 실제 복구는 Academy-data 와 같게: 내부망 academy-int · 172.30.0.20)
+   ```
+   VBoxManage clonevm Academy-data --snapshot base0_clean --options link --name Academy-restore --groups /Academy --register
+   VBoxManage discardstate Academy-restore
+   VBoxManage modifyvm Academy-restore --memory 3072 --nic2 none --natpf1 delete ssh --natpf1 "ssh,tcp,127.0.0.1,22064,,22"
+   VBoxManage sharedfolder add Academy-restore --name aionit-backup --hostpath "G:\AIONIT-backup" --readonly
+   VBoxManage startvm Academy-restore
+   ```
+2. 프로그램: `sudo apt-get install -y docker.io docker-compose-v2 virtualbox-guest-utils`, `sudo usermod -aG docker user1`, 공유 폴더 붙이기 `sudo mount -t vboxsf -o ro,uid=1000,gid=1000 aionit-backup /mnt/aionit-backup`
+3. 설정: 운영자 PC 에서 `config\data-<가장 최근>.cms` 를 개인키로 풀어 VM `~/aionit/` 에 두고, `sudo install -m 600 garage.toml /srv/data/garage/garage.toml`, `/srv/data/postgres` · `/srv/data/garage/{meta,data}` 만들기 (훈련 때는 compose 의 `172.30.0.20:` 을 `127.0.0.1:` 로)
+4. `~/aionit/restore.sh` (`infra/data-vm/restore.sh`): 백업 sha256 확인 ➔ DB · Garage 띄우기 ➔ DB 역할 ➔ `pg_restore` ➔ Garage 배치 · 버킷 · **예전 키 그대로**(app VM `.env` 를 바꾸지 않아도 된다) ➔ 파일 복사 · 대조 ➔ 개수
+5. 확인: 원본(또는 백업 시점)과 테이블별 행 수, 트리거 수, 버킷별 개수, 영상 웹 주소 200
+6. 실제 복구라면: `crontab.txt` 로 매일 백업 다시 걸기, 공유 폴더 mount 단위, app VM 에서 `/api/health`
+
+- app VM 은 상태가 없다 (DB · 파일은 data VM). 새 app VM 은 Docker 설치 ➔ `config\app-<날짜>.cms` 를 풀어 `~/aionit/` 에 `.env` · compose · Caddyfile, Caddy 인증서는 `docker volume create aionit-app_caddy-data` 뒤 `caddy-data.tgz` 를 풀어 넣기 ➔ `deploy.sh --force` 로 되살린다.
+- 개발 VM(이미지 보관소 · 빌드 캐시)은 백업하지 않는다. 다시 만들 수 있다 (`infra/dev-vm/README.md`).
 
 ## 상태 확인
 

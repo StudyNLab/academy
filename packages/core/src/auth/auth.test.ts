@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isDeliverableEmail, placeholderEmail } from "./email";
 import { checkNickname, nextNicknameChangeAt, normalizeNickname } from "./nickname";
 import { checkPassword } from "./password";
+import { checkPasswordStrict } from "./password-server";
 import { isPrivilegedSessionExpired, LOGIN_LOCKOUT, lockedUntil } from "./policy";
 
 describe("checkPassword", () => {
@@ -34,6 +35,28 @@ describe("checkPassword", () => {
 
   it("짧은 이메일 앞부분(3자 이하)은 우연히 겹칠 수 있어 보지 않는다", () => {
     expect(checkPassword("bobsled-river", { email: "bob@example.com" })).toBeNull();
+  });
+});
+
+describe("checkPasswordStrict (서버, 큰 목록)", () => {
+  it("작은 목록에 없지만 큰 목록에 있는 흔한 비밀번호도 거부 (끝 숫자 · 기호를 떼고도)", () => {
+    expect(checkPassword("michelle")).toBeNull();
+    expect(checkPasswordStrict("michelle")).toBe("common");
+    expect(checkPasswordStrict("Mustang2026!")).toBe("common");
+    expect(checkPasswordStrict("Ironman77")).toBe("common");
+  });
+
+  it("화면 규칙의 문제는 그대로 먼저 알린다", () => {
+    expect(checkPasswordStrict("abc12")).toBe("too_short");
+    expect(checkPasswordStrict("minsu.kim2026!", { email: "minsu.kim@example.com" })).toBe(
+      "contains_personal",
+    );
+  });
+
+  it("흔하지 않은 비밀번호는 통과", () => {
+    expect(checkPasswordStrict("Blue-Harbor-Tiger-42")).toBeNull();
+    expect(checkPasswordStrict("가나다라마바사아")).toBeNull();
+    expect(checkPasswordStrict("tiger#Lake")).toBeNull();
   });
 });
 
