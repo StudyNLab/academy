@@ -1,36 +1,24 @@
-// 파비콘 · 앱 아이콘 PNG 를 정사각 마크(SquareMark) 와 같은 모양으로 만든다.
-// 글꼴이 있어야 해서 Playwright 의 Chromium 으로 그려 찍는다.
+// 파비콘 · 앱 아이콘 PNG 를 로고 심볼(packages/ui/src/Logo.tsx 의 LogoMark, src/app/icon.svg)로 만든다.
+// 흰 바탕 정사각 안에 심볼을 가운데 둔다. 모서리는 탭 아이콘(64)만 둥글게 — 홈 화면 아이콘은 기기가 깎는다.
 //   node apps/web/scripts/make-icons.mjs
 // 결과: src/app/icon.png (64) · src/app/apple-icon.png (180) · public/icon-512.png
+// 브라우저 탭은 src/app/icon.svg 를 먼저 쓴다 (다크 탭에서는 밝은 색).
 import { chromium } from "@playwright/test";
-import { readFile, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-const fontDir = dirname(require.resolve("@fontsource/manrope/800.css"));
 
-async function fontData(file) {
-  const buf = await readFile(join(fontDir, "files", file));
-  return `url(data:font/woff2;base64,${buf.toString("base64")}) format("woff2")`;
-}
-
-const f800 = await fontData("manrope-latin-800-normal.woff2");
-const f700 = await fontData("manrope-latin-700-normal.woff2");
+const symbol = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 56 56">
+<path d="M4 13 17 0h14L18 13l9 9-7 7z" fill="#1d3048"/><path d="m20 11 16 16-13 13H9l13-13-9-9z" fill="#507cae"/></svg>`;
 
 function html(size) {
-  const small = size < 24;
-  const fontSize = small ? size * 0.5 : size * 0.35;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{font-family:M;font-weight:800;src:${f800}}
-@font-face{font-family:M;font-weight:700;src:${f700}}
 html,body{margin:0;background:transparent}
-#m{width:${size}px;height:${size}px;background:#18304F;color:#F6F5F1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-font-family:M;font-weight:800;font-size:${fontSize}px;line-height:0.86;letter-spacing:${small ? "-0.08em" : "-0.05em"}}
-#m i{font-style:normal;font-weight:700;font-size:0.82em;letter-spacing:-0.02em;color:#FF6B5E}
-</style></head><body><div id="m"><span>AI</span>${small ? "" : "<i>on</i><span>IT</span>"}</div></body></html>`;
+#m{width:${size}px;height:${size}px;background:#fff;border-radius:${size === 64 ? 12 : 0}px;display:grid;place-items:center}
+#m svg{width:100%;height:100%}
+</style></head><body><div id="m">${symbol}</div></body></html>`;
 }
 
 // 설치된 Chromium 이 Playwright 가 기대하는 판과 다르면 PLAYWRIGHT_CHROMIUM 에 실행 파일 경로를 준다.
@@ -44,7 +32,6 @@ const targets = [
 for (const [size, out] of targets) {
   await page.setViewportSize({ width: size, height: size });
   await page.setContent(html(size));
-  await page.evaluate(() => document.fonts.ready);
   const png = await page.locator("#m").screenshot({ omitBackground: true });
   await writeFile(out, png);
   console.log(`${size}px → ${out}`);

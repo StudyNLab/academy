@@ -1,26 +1,27 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 
-// 채운 버튼은 한 화면에 하나 (docs/디자인시스템.md 4장)
+// 채운 버튼은 한 화면에 하나 (docs/디자인시스템.md 4장).
+// 모양은 시안 AIONIT-Service 의 .btn (apps/web/src/app/site.css): primary 는 파란 그라데이션, outline 은 시안의 secondary.
 type Variant = "primary" | "outline" | "danger";
 type Size = "lg" | "md" | "sm";
 
-const base =
-  "inline-flex items-center justify-center gap-2 rounded-ui border font-semibold no-underline transition-colors duration-150 ease-out disabled:cursor-not-allowed disabled:border-line disabled:bg-line disabled:text-ink-2";
+const base = "btn no-underline disabled:cursor-not-allowed disabled:opacity-55 disabled:transform-none";
 
 const variants: Record<Variant, string> = {
-  primary: "border-primary bg-primary text-on-primary hover:opacity-90",
-  outline: "border-primary bg-transparent text-primary hover:bg-sunken",
-  danger: "border-danger bg-danger text-white hover:opacity-90",
+  primary: "primary",
+  outline: "secondary",
+  danger: "danger",
 };
 
+// lg = 시안 기본 (50px · 16px), md = 시안 small (44px · 15px), sm = 표 · 목록 안의 작은 버튼
 const sizes: Record<Size, string> = {
-  lg: "min-h-[52px] px-7 text-base",
-  md: "min-h-11 px-5 text-[15px]",
-  sm: "min-h-9 px-3.5 text-sm",
+  lg: "",
+  md: "small",
+  sm: "min-h-9 gap-1.5 px-3.5 py-1.5 text-sm",
 };
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra = "") {
-  return `${base} ${variants[variant]} ${sizes[size]} ${extra}`.trim();
+  return `${base} ${variants[variant]} ${sizes[size]} ${extra}`.replace(/\s+/g, " ").trim();
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size };
