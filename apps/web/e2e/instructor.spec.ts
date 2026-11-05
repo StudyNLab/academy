@@ -229,6 +229,7 @@ test("강사가 교재를 올리고 검수를 요청하면, 반려 사유가 강
   }
   await teacher.goto("/instructor/courses");
   await teacher.getByRole("link", { name: title }).click();
+  await expect(teacher.getByText(`Course · ${slug}`)).toBeVisible();
   expect(await noHorizontalScroll(teacher), "과정 관리 가로 스크롤").toBe(true);
   await shoot(teacher, "mobile-course");
 });

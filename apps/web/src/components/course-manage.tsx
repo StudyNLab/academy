@@ -66,7 +66,7 @@ export async function CourseManage({ db, data, base }: { db: Db; data: CourseDat
       <ManageSection title="교재 버전" id="versions">
         {processing ? <AutoRefresh /> : null}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[14px]">
+          <table className="w-full min-w-[520px] border-collapse text-[14px]">
             <thead>
               <tr className="border-y-2 border-line-strong text-left font-mono text-[12px]">
                 <th className="px-2 py-2">버전</th>
@@ -86,10 +86,12 @@ export async function CourseManage({ db, data, base }: { db: Db; data: CourseDat
                         v{v.version}
                       </Link>
                     </td>
-                    <td className="px-2 py-2.5">
+                    <td className="px-2 py-2.5 whitespace-nowrap">
                       <StatusDot tone={status.tone}>{status.label}</StatusDot>
                       {v.status === "rejected" && v.reviewNote ? (
-                        <p className="m-0 mt-1 text-[13px] text-danger">사유: {v.reviewNote}</p>
+                        <p className="m-0 mt-1 text-[13px] whitespace-normal text-danger">
+                          사유: {v.reviewNote}
+                        </p>
                       ) : null}
                     </td>
                     <td className="px-2 py-2.5 whitespace-nowrap text-ink-2">

@@ -188,7 +188,7 @@ export function PreviewRuleForm({
         <span className="text-[15px]">
           <span className="font-mono text-[12px] text-ink-2">{chapterKey}</span> {title}
         </span>
-        <span className="flex items-center gap-3">
+        <span className="flex flex-wrap items-center gap-3">
           <label className="sr-only" htmlFor={`scope-${chapterKey}`}>
             미리보기 범위
           </label>
@@ -202,10 +202,14 @@ export function PreviewRuleForm({
             <option value="whole">챕터 전체</option>
             <option value="sections">일부 Section</option>
           </select>
-          <Button variant="outline" size="md" onClick={() => void save()}>
+          <Button variant="outline" size="md" className="whitespace-nowrap" onClick={() => void save()}>
             저장
           </Button>
-          {initialScope !== "none" ? <Link href={previewHref}>보기 →</Link> : null}
+          {initialScope !== "none" ? (
+            <Link href={previewHref} className="whitespace-nowrap">
+              보기 →
+            </Link>
+          ) : null}
         </span>
       </div>
       {scope === "sections" ? (
