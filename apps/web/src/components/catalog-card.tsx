@@ -6,7 +6,8 @@ import { SvcIcon } from "@/components/icons";
 import type { CatalogItem } from "@/server/catalog";
 import { FIELD_LABEL } from "@/server/catalog";
 
-const COVER: Record<CourseField, { art: string; glyph: string }> = {
+/** 분야별 표지 (시안 .catalog-art 의 글자 그림). 내 강의실 카드도 쓴다 */
+export const COVER: Record<CourseField, { art: string; glyph: string }> = {
   ai: { art: "agent", glyph: "agent.run()" },
   infra: { art: "linux", glyph: ">_" },
   security: { art: "security", glyph: "[ / ]" },

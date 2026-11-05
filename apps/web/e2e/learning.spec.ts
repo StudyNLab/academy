@@ -1,6 +1,8 @@
 // 화면 흐름 (M3): 수강권 없음 ➔ L-05 / 운영자가 회원 상세에서 수강권 발급(AD-08) ➔ 내 강의실(L-01) ➔ 학습 화면(L-02)
 // ➔ 실습 체크 · 읽은 위치 저장 ➔ 다른 브라우저에서 이어진다 ➔ 다크 모드 ➔ 모바일 폭.
 // 과정은 서버 함수로 바로 만든다 (교재 올리기 화면은 content-admin.spec 이 본다).
+import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { and, createDb, eq, schema } from "@aionit/db";
 import { createS3StoreFromEnv } from "@aionit/storage";
@@ -16,6 +18,12 @@ import {
 import { grantOperator, login, resetRateLimits, signUpVerified, totp } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
+
+/** E2E_SCREENSHOTS=폴더 를 주면 화면을 찍어 둔다 (눈으로 확인할 때) */
+async function shoot(page: Page, name: string) {
+  const dir = process.env.E2E_SCREENSHOTS;
+  if (dir) await page.screenshot({ path: join(dir, `${name}.png`), fullPage: true });
+}
 
 async function publishTestCourse(slug: string, title: string, operatorEmail: string) {
   const { db, close } = createDb(process.env.DATABASE_URL!, { max: 2, quiet: true });
@@ -117,6 +125,7 @@ test("운영자가 수강권을 발급하면 수강생이 학습하고, 체크 �
   // 3. 수강생: 내 강의실 ➔ 학습 시작 ➔ 학습 화면
   await learner.goto("/learn");
   await expect(learner.getByRole("link", { name: title })).toBeVisible();
+  await shoot(learner, "classroom");
   await learner.getByRole("link", { name: "학습 시작" }).click();
   await expect(learner).toHaveURL(new RegExp(`/learn/${slug}/ch01$`));
   await expect(learner.getByRole("navigation", { name: "목차" }).first()).toBeVisible();
@@ -124,14 +133,18 @@ test("운영자가 수강권을 발급하면 수강생이 학습하고, 체크 �
   // 워터마크 · 진도 막대
   await expect(learner.getByRole("progressbar", { name: "과정 진도" }).first()).toBeVisible();
 
-  // 실습 체크 ➔ 바로 저장
+  // 실습 체크 ➔ 바로 저장 (화면이 준비되기 전에 누르면 React 가 체크를 되돌리므로, 바뀔 때까지 다시 누른다)
   const check = learner.getByRole("checkbox", { name: "결과가 보인다" });
   const saved = learner.waitForResponse(
     (r) => r.url().endsWith("/api/v1/learn/checks") && r.status() === 200,
   );
-  await check.check();
+  await expect(() => check.check({ timeout: 2_000 })).toPass();
   await saved;
   await expect(learner.locator(".self-check-title")).toContainText("1 / 1");
+  await shoot(learner, "learn");
+  await learner.getByRole("button", { name: /^Q&A,/ }).click();
+  await shoot(learner, "learn-qna");
+  await learner.getByRole("button", { name: /^Q&A,/ }).click();
 
   // 유튜브 재생 ➔ 30초 안에 시청 구간이 학습 신호로 간다
   const watched = learner.waitForRequest(
