@@ -1,5 +1,5 @@
 // 테스트 DB 를 (없으면 만들고) 마이그레이션을 적용한다. TEST_DATABASE_URL 이 없으면 통합 테스트를 할 수 없으므로 멈춘다.
-// TEST_DATABASE_URL 은 vitest.config.ts 가 이 창의 DB 이름으로 바꿔 둔 것이다 (test/test-db.ts).
+// TEST_DATABASE_URL 은 vitest.config.ts 가 이 창의 DB 이름으로 바꿔 둔 것이다.
 import { createDb, sql } from "@aionit/db";
 import { applyMigrations } from "@aionit/db/migrator";
 
