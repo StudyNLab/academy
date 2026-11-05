@@ -30,6 +30,7 @@ import {
   payout,
   settlementOverview,
   statementCsv,
+  statementLines,
 } from "@/server/settlements";
 import { resetDb, setupTestAuth } from "./helpers";
 
@@ -835,6 +836,10 @@ describe("강사 대시보드 이번 달 예상 정산액 (I-01)", () => {
     );
     expect(await t.db.select().from(schema.settlementPeriods)).toHaveLength(0);
     expect((await estimateThisMonth(t.db, teacherB, now)).gross).toBe(0);
+    // 조정도 예상에 들어간다 (화면에 "조정 · 이월" 칸으로).
+    await adjust(t.db, { instructorId: teacherA.id, amount: 1_000, reason: "이의 신청 반영", ...actor() });
+    // 조정은 만든 시각(지금) 이후의 예상에 들어간다 (달이 바뀌어도 깨지지 않게 조정만 본다)
+    expect((await estimateThisMonth(t.db, teacherA, new Date())).adjustment).toBe(1_000);
   });
 });
 
@@ -843,5 +848,40 @@ describe("운영자 조정 · 자동 계산", () => {
     await adjust(t.db, { instructorId: teacherB.id, amount: -3_000, reason: "수수료 정정", ...actor() });
     const { result } = await calculateMonth(t.db, "2026-11", { now: kst("2026-12-02T05:00:00") });
     expect(result.instructors.find((i) => i.instructorId === teacherB.id)!.statement.adjustment).toBe(-3_000);
+  });
+});
+
+describe("명세 줄 순서 (테스트 서버 확인에서 찾음)", () => {
+  it("단건 ➔ 구독 배분 ➔ 환불 차감 ➔ 조정, 그 안에서는 날짜 순 (CSV 도 같은 순서)", () => {
+    const row = (kind: "single" | "subscription" | "refund" | "adjustment", day: string) =>
+      ({
+        id: `${kind}-${day}`,
+        settlementId: "s",
+        kind,
+        courseId: null,
+        orderItemId: null,
+        refundId: null,
+        adjustmentId: null,
+        policyId: null,
+        occurredAt: kst(`2026-10-${day}T10:00:00`),
+        baseAmount: 1,
+        rateBp: null,
+        amount: 1,
+        detail: {},
+      }) as typeof schema.settlementLines.$inferSelect;
+    const lines = statementLines([
+      row("adjustment", "02"),
+      row("refund", "20"),
+      row("single", "12"),
+      row("subscription", "01"),
+      row("single", "03"),
+    ]);
+    expect(lines.map((l) => l.id)).toEqual([
+      "single-03",
+      "single-12",
+      "subscription-01",
+      "refund-20",
+      "adjustment-02",
+    ]);
   });
 });

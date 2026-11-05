@@ -44,6 +44,10 @@ export default async function InstructorSettlements() {
             { label: "단건 매출", value: num(estimate.single) },
             { label: "구독 배분 (지금까지)", value: num(estimate.subscription) },
             { label: "환불 차감", value: num(estimate.refund) },
+            // 이의 신청 반영 등 조정 · 지난달에서 넘어온 금액도 합계에 들어가므로 있으면 보인다
+            ...(estimate.adjustment + estimate.carriedIn !== 0
+              ? [{ label: "조정 · 이월", value: num(estimate.adjustment + estimate.carriedIn) }]
+              : []),
             { label: "강사 몫 합계 (세전)", value: won(estimate.gross) },
           ].map((tile) => (
             <div key={tile.label} className="flex min-w-0 flex-col gap-1 border-b border-line py-4 pr-4">
