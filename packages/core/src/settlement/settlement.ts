@@ -72,19 +72,23 @@ export function canObject(publishedAt: Date | null, now: Date): boolean {
 
 export type PeriodStatus = "calculated" | "confirmed";
 
-export type CalculateBlock = "NOT_CLOSED" | "CONFIRMED" | "LATER_CONFIRMED" | "OTHER_OPEN" | "NOT_NEXT";
+export type CalculateBlock =
+  "NOT_CLOSED" | "BEFORE_POLICY" | "CONFIRMED" | "LATER_CONFIRMED" | "OTHER_OPEN" | "NOT_NEXT";
 
 /**
  * 이 달을 계산할 수 있나. 달이 끝났고, 확정한 달의 바로 다음 달이어야 한다 (빠뜨리는 달이 없게).
  * 확정하지 않은 다른 달이 있으면 그 달을 먼저 확정한다 (확정 뒤 환불 · 조정이 어느 달로 갈지 하나로 정해지게).
- * 확정한 달은 다시 계산하지 않는다.
+ * 확정한 달은 다시 계산하지 않는다. 기본 정책이 시행되기 전 달(firstPolicyMonth 앞)은 정산할 매출이 없으므로 계산하지 않는다
+ * (실수로 계산해 두면 다음 달 계산이 막힌다).
  */
 export function calculateBlock(
   month: string,
   periods: readonly { month: string; status: PeriodStatus }[],
   now: Date,
+  firstPolicyMonth: string | null = null,
 ): CalculateBlock | null {
   if (monthRange(month).to > now) return "NOT_CLOSED";
+  if (!firstPolicyMonth || month < firstPolicyMonth) return "BEFORE_POLICY";
   const confirmed = periods
     .filter((p) => p.status === "confirmed")
     .map((p) => p.month)
@@ -99,6 +103,7 @@ export function calculateBlock(
 
 export const CALCULATE_BLOCK_MESSAGE: Record<CalculateBlock, string> = {
   NOT_CLOSED: "아직 끝나지 않은 달은 계산할 수 없습니다 (매월 말일 마감).",
+  BEFORE_POLICY: "기본 배분 정책이 시행되기 전 달이라 정산할 매출이 없습니다.",
   CONFIRMED: "확정한 달은 다시 계산할 수 없습니다. 고칠 것은 다음 달 조정으로 넣어 주세요.",
   LATER_CONFIRMED: "그 뒤의 달이 이미 확정되었습니다.",
   OTHER_OPEN: "확정하지 않은 다른 달이 있습니다. 그 달을 먼저 확정해 주세요.",

@@ -615,6 +615,15 @@ async function periodRows(db: Db) {
     .from(schema.settlementPeriods);
 }
 
+/** 기본 정책이 처음 시행된 달 (그 앞 달은 계산하지 않는다) */
+export async function firstPolicyMonth(db: Db): Promise<string | null> {
+  const [row] = await db
+    .select({ from: sql<string | null>`min(${schema.revenuePolicies.effectiveFrom})` })
+    .from(schema.revenuePolicies)
+    .where(eq(schema.revenuePolicies.scope, "default"));
+  return row?.from ? kstMonth(new Date(row.from)) : null;
+}
+
 /** 운영자(AD-16) · worker: 한 달을 계산해 저장한다. 확정하지 않은 달이면 지우고 다시 계산한다 */
 export async function calculateMonth(
   db: Db,
@@ -622,7 +631,7 @@ export async function calculateMonth(
   options: { actorId?: string | null; now?: Date } = {},
 ) {
   const now = options.now ?? new Date();
-  const block = calculateBlock(month, await periodRows(db), now);
+  const block = calculateBlock(month, await periodRows(db), now, await firstPolicyMonth(db));
   if (block) throw new SettlementError(409, block, CALCULATE_BLOCK_MESSAGE[block]);
   const result = await computeMonth(db, month, now);
   const allPolicyIds = [
@@ -630,7 +639,12 @@ export async function calculateMonth(
   ];
   const periodId = await db.transaction(async (tx) => {
     await tx.execute(LOCK);
-    const again = calculateBlock(month, await periodRows(tx as unknown as Db), now);
+    const again = calculateBlock(
+      month,
+      await periodRows(tx as unknown as Db),
+      now,
+      await firstPolicyMonth(tx as unknown as Db),
+    );
     if (again) throw new SettlementError(409, again, CALCULATE_BLOCK_MESSAGE[again]);
     const values = {
       subscriptionBase: result.pool.base,
@@ -722,7 +736,7 @@ export async function confirmMonth(db: Db, month: string, options: { actorId: st
     const period = periods.find((p) => p.month === month);
     if (!period) throw new SettlementError(404, "NOT_CALCULATED", "아직 계산하지 않은 달입니다.");
     if (period.status === "confirmed") throw new SettlementError(409, "CONFIRMED", "이미 확정한 달입니다.");
-    const block = calculateBlock(month, periods, now);
+    const block = calculateBlock(month, periods, now, await firstPolicyMonth(tx as unknown as Db));
     if (block) throw new SettlementError(409, block, CALCULATE_BLOCK_MESSAGE[block]);
     const until = objectionDeadline(now);
     const payOn = [settlementSchedule(month).payOn, until].sort().at(-1)!;
@@ -878,7 +892,7 @@ export async function addAdjustment(
 /** worker: 매월 2일 새벽, 지난달을 계산한다 (마지막 날 학습 시간 집계가 끝난 뒤). 순서가 맞지 않으면 건너뛴다 */
 export async function calculateLastMonth(db: Db, now = new Date()) {
   const month = addMonths(kstMonth(now), -1);
-  const block = calculateBlock(month, await periodRows(db), now);
+  const block = calculateBlock(month, await periodRows(db), now, await firstPolicyMonth(db));
   if (block) return { month, skipped: block };
   const { result } = await calculateMonth(db, month, { now });
   return { month, instructors: result.instructors.length, skippedNoPolicy: result.skippedNoPolicy };

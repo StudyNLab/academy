@@ -25,6 +25,7 @@ import {
   computeMonth,
   confirmMonth,
   fileObjection,
+  firstPolicyMonth,
   loadPolicies,
   recordPayout,
   SettlementError,
@@ -274,8 +275,12 @@ export async function settlementOverview(db: Db, now = new Date()) {
   const simple = list.map((p) => ({ month: p.month, status: p.status }));
   const open = list.find((p) => p.status === "calculated");
   const latest = list.find((p) => p.status === "confirmed");
-  const suggested = open?.month ?? (latest ? addMonths(latest.month, 1) : addMonths(kstMonth(now), -1));
-  const block = calculateBlock(suggested, simple, now);
+  // 처음이면 지난달, 단 기본 정책이 시행된 달보다 앞이면 그 달
+  const first = await firstPolicyMonth(db);
+  const lastMonth = addMonths(kstMonth(now), -1);
+  const suggested =
+    open?.month ?? (latest ? addMonths(latest.month, 1) : first && first > lastMonth ? first : lastMonth);
+  const block = calculateBlock(suggested, simple, now, first);
   return {
     periods: list,
     suggested,

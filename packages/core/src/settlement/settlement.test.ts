@@ -569,15 +569,20 @@ describe("9.4 주기 · 지급", () => {
 
   it("계산 순서: 끝난 달만, 확정한 달의 바로 다음 달, 확정하지 않은 다른 달이 있으면 그 달 먼저, 확정한 달은 다시 계산하지 않는다", () => {
     const now = kst("2027-01-02T04:00:00");
-    expect(calculateBlock("2027-01", [], now)).toBe("NOT_CLOSED");
-    expect(calculateBlock("2026-12", [], now)).toBeNull();
-    expect(calculateBlock("2026-12", [{ month: "2026-11", status: "confirmed" }], now)).toBeNull();
-    expect(calculateBlock("2026-12", [{ month: "2026-12", status: "calculated" }], now)).toBeNull();
-    expect(calculateBlock("2026-12", [{ month: "2026-12", status: "confirmed" }], now)).toBe("CONFIRMED");
-    expect(calculateBlock("2026-11", [{ month: "2026-12", status: "confirmed" }], now)).toBe(
+    const calculateBlockV1 = (month: string, periods: Parameters<typeof calculateBlock>[1], at: Date) =>
+      calculateBlock(month, periods, at, "2026-11");
+    expect(calculateBlockV1("2027-01", [], now)).toBe("NOT_CLOSED");
+    // 기본 정책 시행 전 달은 계산하지 않는다 (정책이 없으면 어느 달도)
+    expect(calculateBlockV1("2026-10", [], now)).toBe("BEFORE_POLICY");
+    expect(calculateBlock("2026-12", [], now, null)).toBe("BEFORE_POLICY");
+    expect(calculateBlockV1("2026-12", [], now)).toBeNull();
+    expect(calculateBlockV1("2026-12", [{ month: "2026-11", status: "confirmed" }], now)).toBeNull();
+    expect(calculateBlockV1("2026-12", [{ month: "2026-12", status: "calculated" }], now)).toBeNull();
+    expect(calculateBlockV1("2026-12", [{ month: "2026-12", status: "confirmed" }], now)).toBe("CONFIRMED");
+    expect(calculateBlockV1("2026-11", [{ month: "2026-12", status: "confirmed" }], now)).toBe(
       "LATER_CONFIRMED",
     );
-    expect(calculateBlock("2026-12", [{ month: "2026-11", status: "calculated" }], now)).toBe("OTHER_OPEN");
-    expect(calculateBlock("2026-12", [{ month: "2026-10", status: "confirmed" }], now)).toBe("NOT_NEXT");
+    expect(calculateBlockV1("2026-12", [{ month: "2026-11", status: "calculated" }], now)).toBe("OTHER_OPEN");
+    expect(calculateBlockV1("2026-12", [{ month: "2026-10", status: "confirmed" }], now)).toBe("NOT_NEXT");
   });
 });
