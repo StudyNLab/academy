@@ -42,6 +42,10 @@ const paths = {
   menu: "M4 6h16M4 12h16M4 18h16",
   bell: "M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3V9m4 12h4",
   user: "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M4 21v-3a8 8 0 0 1 16 0v3",
+  play: "m9 5 11 7-11 7V5",
+  code: "m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16",
+  search: "M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0m-2 5 6 6",
+  lock: "M6 11h12v10H6V11m3 0V7a3 3 0 0 1 6 0v4",
 } as const;
 
 export type IconName = keyof typeof paths;
