@@ -26,6 +26,7 @@ vm() { local port=$1; shift; ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$port
 # 개발 VM 주소:5055 에서 바로 받아 간다. 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
 # 보관소는 자체 인증서(TLS)로 열고, 앱 VM 주소에서만 받게 막아 두었다 (infra/dev-vm/README.md 의 '이미지 보관소').
 DEV_BR=10.20.30.63            # 개발 VM 브리지 주소
+DEV_MIN_FREE_GB=15            # 개발 VM 빈 자리가 이보다 적으면 배포 끝에 빌드 캐시를 모두 비운다
 REG_PORT=5055
 REG_IMAGE=registry:2.8.3
 REG=127.0.0.1:$REG_PORT        # 개발 VM 안에서 쓰는 주소
@@ -166,8 +167,10 @@ fi
 vm $APP "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$KEEP_PREV)$' | xargs -r docker rmi -f >/dev/null" || true
 vm $DEV "docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^aionit-(web|worker):' | grep -vE ':($TAG|$KEEP_PREV)$' | xargs -r docker rmi -f >/dev/null
   docker image prune -f >/dev/null
-  docker builder prune -f --filter until=168h >/dev/null
-  docker builder prune -f --max-used-space 15gb >/dev/null" || true
+  # 빌드 캐시는 크기 · 기간으로 조금씩 정리하지 않는다. 그러면 바닥 층(corepack · 패키지 설치 · ffmpeg)부터 지워져
+  # 다음 빌드가 처음부터 돈다 (2026-11-05: --max-used-space 15gb 로 빌드 46초 ➔ 150초). 빈 자리가 모자랄 때만 모두 비운다.
+  [ \$(df --output=avail -BG / | tail -1 | tr -dc 0-9) -ge $DEV_MIN_FREE_GB ] || { docker builder prune -af >/dev/null
+    echo '개발 VM 빈 자리가 ${DEV_MIN_FREE_GB}GB 밑이라 빌드 캐시를 모두 비웠습니다. 다음 배포의 빌드는 처음부터 해서 느립니다.' >&2; }" || true
 # 보관소: 현재 · 되돌릴 버전 태그만 남기고 지운 뒤 빈 층을 치운다. 같은 내용(digest)을 가리키는 태그는 건드리지 않는다.
 vm $DEV "reg=https://$REG ca=\"--cacert $REG_CERTS/registry.crt\"
   acc='-H Accept:application/vnd.oci.image.index.v1+json -H Accept:application/vnd.oci.image.manifest.v1+json -H Accept:application/vnd.docker.distribution.manifest.v2+json -H Accept:application/vnd.docker.distribution.manifest.list.v2+json'

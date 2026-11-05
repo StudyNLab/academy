@@ -51,6 +51,7 @@ case $1 in
   port) cat "$HOME/.regports" 2>/dev/null ;;
   rm) rm -f "$HOME/.regports" ;;
   ps) echo fake ;;
+  builder) echo "[$FAKE_VM] $*" >> "$FAKE_SB/builder.log" ;;
   inspect) echo "${FAKE_HEALTH:-healthy}" ;;
   image) [ "$2" = inspect ] || exit 0; shift 2; for i; do grep -qxF "$i" "$img" || exit 1; done ;;
   compose) [ "$2" = up ] || exit 0
@@ -92,6 +93,11 @@ case "$*" in
 esac
 EOF
 
+# 개발 VM 빈 자리 (GB). 정리 조건 시험용
+printf '#!/usr/bin/env bash
+echo Avail; echo " ${FAKE_DF_GB:-40}G"
+' > "$BIN/df"
+
 # 상태 확인 대기(sleep 2 × 45)를 기다리지 않는다
 printf '#!/usr/bin/env bash\nexit 0\n' > "$BIN/sleep"
 chmod +x "$BIN"/*
@@ -104,13 +110,13 @@ export FAKE_SB=$SB PATH="$BIN:$PATH"
 # setup <지금 태그> <.previous_tag(없으면 '')> <앱·개발 VM · 보관소에 있는 태그들...>
 setup() {
   local now=$1 prev=$2 t; shift 2
-  rm -rf "$SB/app" "$SB/data" "$SB/dev" "$SB/repo" "$SB/log"
+  rm -rf "$SB/app" "$SB/data" "$SB/dev" "$SB/repo" "$SB/log" "$SB/builder.log"
   mkdir -p "$SB/app/aionit" "$SB/data/aionit" "$SB/dev" "$SB/repo/infra/app-vm" "$SB/repo/infra/data-vm"
   cp "$REPO/infra/app-vm/compose.yaml" "$REPO/infra/app-vm/Caddyfile" "$SB/repo/infra/app-vm/"
   printf '#!/usr/bin/env bash\necho "가짜 백업 $1"\n' > "$SB/repo/infra/data-vm/backup.sh"
   printf 'CADDY_TAG=2\nAPP_TAG=%s\n' "$now" > "$SB/app/aionit/.env"
   [ -z "$prev" ] || echo "$prev" > "$SB/app/aionit/.previous_tag"
-  touch "$SB/log" "$SB/app/.images" "$SB/dev/.images" "$SB/dev/.registry"
+  touch "$SB/log" "$SB/builder.log" "$SB/app/.images" "$SB/dev/.images" "$SB/dev/.registry"
   printf '127.0.0.1:5055\n%s:5055\n' "$DEV_BR" > "$SB/dev/.regports"   # 보관소가 두 주소에 열려 있는 보통 상태
   for t; do
     for r in aionit-web aionit-worker; do
@@ -147,6 +153,7 @@ check "APP_TAG" "$(tag_now)" d1d1e46
 check "앱 VM 이미지" "$(tags_in "$SB/app/.images")" "0ace235 d1d1e46"
 check "개발 VM 이미지" "$(tags_in "$SB/dev/.images")" "0ace235 d1d1e46"
 check "보관소" "$(tags_in "$SB/dev/.registry")" "0ace235 d1d1e46"
+check "빌드 캐시 정리 (빈 자리 넉넉 ➔ 안 함)" "$(grep -c prune "$SB/builder.log")" 0
 
 echo; echo "■ 2. 같은 태그 다시 배포 (2026-11-05 상황): 서버 d1d1e46, 되돌릴 버전 0ace235"
 setup d1d1e46 0ace235 0ace235 d1d1e46
@@ -235,6 +242,14 @@ check "결과 코드" "$RC" 0
 check "보관소 주소" "$(sort "$SB/dev/.regports" | paste -sd' ' -)" "$DEV_BR:5055 127.0.0.1:5055"
 check "APP_TAG" "$(tag_now)" d1d1e46
 check "보관소 (올려 둔 이미지 그대로)" "$(tags_in "$SB/dev/.registry")" "0ace235 d1d1e46"
+
+echo; echo "■ 13. 개발 VM 빈 자리 8GB (기준 15GB 밑) ➔ 배포 끝에 빌드 캐시를 모두 비우고 알림"
+setup 0ace235 0888742 0888742 0ace235
+FAKE_DF_GB=8 run d1d1e46
+check "결과 코드" "$RC" 0
+check "APP_TAG" "$(tag_now)" d1d1e46
+check "빌드 캐시 모두 비움" "$(cat "$SB/builder.log")" "[dev] builder prune -af"
+check "알림" "$(echo "$OUT" | grep -c '빌드 캐시를 모두 비웠습니다')" 1
 
 echo
 if [ "$FAILS" -eq 0 ]; then echo "모두 통과"; else echo "실패 $FAILS 개"; exit 1; fi
