@@ -16,6 +16,7 @@ const menu = [
   { href: "/admin/inquiries", label: "1:1 문의" },
   { href: "/admin/qna", label: "Q&A 관리" },
   { href: "/admin/notices", label: "공지 · FAQ" },
+  { href: "/admin/policies", label: "정책 문서" },
   { href: "/admin/logs", label: "기록" },
 ];
 

@@ -171,7 +171,14 @@ export const userRoles = pgTable(
   ],
 );
 
-export const POLICY_KINDS = ["terms", "privacy", "marketing", "refund", "instructor_terms"] as const;
+export const POLICY_KINDS = [
+  "terms",
+  "privacy",
+  "privacy_policy",
+  "marketing",
+  "refund",
+  "instructor_terms",
+] as const;
 export type PolicyKind = (typeof POLICY_KINDS)[number];
 
 /** 약관 · 개인정보 수집 · 이용 동의 · 마케팅 수신 동의 등. 고치지 않고 새 버전을 만든다. */

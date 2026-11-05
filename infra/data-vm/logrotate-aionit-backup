@@ -1,0 +1,11 @@
+# /etc/logrotate.d/aionit-backup (Academy-data, M10). 백업 기록 ~/aionit/backup.log 를 매주 돌려 12주 보관
+/home/user1/aionit/backup.log {
+	weekly
+	rotate 12
+	compress
+	delaycompress
+	missingok
+	notifempty
+	copytruncate
+	su user1 user1
+}

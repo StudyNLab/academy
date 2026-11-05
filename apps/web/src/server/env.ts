@@ -20,6 +20,13 @@ const schema = z.object({
   TOSS_BILLING_SECRET_KEY: z.string().optional(),
   /** "1" 이면 개발 서버에서 가짜 결제 (화면 흐름 테스트용, 운영 빌드에서는 무시) */
   TOSS_FAKE: z.string().optional(),
+  /** 바닥글 사업자 정보 (P-10, 전자상거래법 표시 의무). 비어 있으면 "[운영자 입력]" 으로 보인다 */
+  BUSINESS_NAME: z.string().optional(),
+  BUSINESS_OWNER: z.string().optional(),
+  BUSINESS_REG_NO: z.string().optional(),
+  BUSINESS_MAIL_ORDER_NO: z.string().optional(),
+  BUSINESS_ADDRESS: z.string().optional(),
+  BUSINESS_CONTACT: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

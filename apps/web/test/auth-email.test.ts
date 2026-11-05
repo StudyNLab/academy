@@ -1,6 +1,7 @@
 // 이메일 가입 ➔ 인증 메일 ➔ 로그인 ➔ 로그아웃 ➔ 비밀번호 재설정, 가입 동의 기록 (개발계획 M1)
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { eq, schema, sql } from "@aionit/db";
+import { currentPolicies } from "@/server/consents";
 import {
   Browser,
   createVerifiedUser,
@@ -156,10 +157,12 @@ describe("가입 입력 검사", () => {
     }>(sql`
       select p.kind, p.version, c.agreed, c.ip from user_consents c join policy_documents p on p.id = c.policy_document_id
       order by p.kind`);
+    // 그때 시행 중인 버전에 동의한다 (버전 이름은 정책 문서를 새로 올리면 바뀐다)
+    const current = await currentPolicies(t.db, ["marketing", "privacy", "terms"]);
     expect(rows.map((r) => [r.kind, r.version, r.agreed])).toEqual([
-      ["marketing", "2026-11-04-draft", true],
-      ["privacy", "2026-11-04-draft", true],
-      ["terms", "2026-11-04-draft", true],
+      ["marketing", current.get("marketing")!.version, true],
+      ["privacy", current.get("privacy")!.version, true],
+      ["terms", current.get("terms")!.version, true],
     ]);
     expect(rows[0]!.ip).toBe(browser.ip);
     const [user] = await t.db.select().from(schema.users);
