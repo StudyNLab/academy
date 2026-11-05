@@ -13,13 +13,28 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
+		-Via
 	}
+	# API 응답(JSON · 파일)은 페이지로 그려질 일이 없다: 무엇도 불러오거나 틀에 넣지 못하게 (M10 보안 점검).
+	# 화면의 CSP(nonce)는 web 의 proxy.ts 가 건다
+	@api path /api/*
+	header @api Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
 }
 
 https://localhost {
 	tls internal
 	import security_headers
 	encode zstd gzip
+	# 요청 크기 상한 (M10 보안 점검): 앱은 Content-Length 로 먼저 거르지만, 길이를 밝히지 않은(chunked) 요청도 여기서 끊는다.
+	# 업로드(교재 패키지 200MB · 첨부 100MB · 영상 조각 16MB)는 운영자 · 강사 API 에만 있다. 나머지는 2MB
+	@staff_api path /api/v1/admin/* /api/v1/instructor/*
+	request_body @staff_api {
+		max_size 202MB
+	}
+	@other_requests not path /api/v1/admin/* /api/v1/instructor/*
+	request_body @other_requests {
+		max_size 2MB
+	}
 	# 관리자 화면 접속 IP 제한 (docs/기술설계.md 3.2). 외부 공개 때 사무실 · VPN 대역으로 바꾸고 주석을 푼다.
 	# @admin_outside {
 	# 	path /admin* /api/v1/admin*
@@ -50,5 +65,6 @@ https://localhost {
 }
 
 http://localhost {
+	header -Server
 	redir https://{host}{uri} permanent
 }
