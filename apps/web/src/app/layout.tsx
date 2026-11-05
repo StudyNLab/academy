@@ -1,28 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
-import "@fontsource/ibm-plex-sans-kr/300.css";
+// 글꼴 굵기는 시안과 같은 두 벌씩만: 400 · 600 을 부르면 브라우저가 700 · 800 을 600 으로, 500 을 400 으로 그린다
+// (Manrope 는 500 · 700 두 벌. 시안 assets 의 medium · bold 파일과 같은 짜임)
 import "@fontsource/ibm-plex-sans-kr/400.css";
-import "@fontsource/ibm-plex-sans-kr/500.css";
 import "@fontsource/ibm-plex-sans-kr/600.css";
-import "@fontsource/ibm-plex-sans-kr/700.css";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
-// 로고 전용 (Wordmark)
+import "@fontsource/manrope/500.css";
 import "@fontsource/manrope/700.css";
-import "@fontsource/manrope/800.css";
+import "@fontsource/ibm-plex-mono/400.css";
 import "./globals.css";
 import "./reader.css";
 
 export const metadata: Metadata = {
   title: { default: "AIONIT", template: "%s · AIONIT" },
-  description: "인프라 · 보안 · AI 를 현업 강사에게. 영상, 교재, 실습 기준으로 끝까지.",
+  description: "교재를 읽고, 코드로 이해하고, 실습으로 완성하는 IT 교육. 인프라부터 보안, AI 에이전트까지.",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8fa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e131b" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#101722" },
   ],
 };
 
