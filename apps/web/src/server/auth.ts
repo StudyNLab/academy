@@ -7,7 +7,6 @@ import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 import type { Db } from "@aionit/db";
 import { and, eq, schema } from "@aionit/db";
 import {
-  checkPassword,
   IP_RATE_LIMITS,
   LOGIN_LOCKOUT,
   lockedUntil,
@@ -18,6 +17,7 @@ import {
   placeholderEmail,
   SESSION_POLICY,
 } from "@aionit/core";
+import { checkPasswordStrict } from "@aionit/core/password-server";
 import type { MailJob } from "@aionit/mail";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -534,7 +534,7 @@ function assertPasswordAllowed(
   context: { email?: string | null; nickname?: string | null },
 ) {
   if (typeof password !== "string") return; // 형식 오류는 Better Auth 가 처리한다
-  const problem = checkPassword(password, context);
+  const problem = checkPasswordStrict(password, context);
   if (problem) fail("BAD_REQUEST", "WEAK_PASSWORD", PASSWORD_MESSAGES[problem]);
 }
 

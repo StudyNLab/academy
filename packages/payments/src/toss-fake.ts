@@ -16,7 +16,7 @@ interface FakePayment {
 
 export function createFakeToss() {
   const payments = new Map<string, FakePayment>();
-  const calls = { confirm: 0, cancel: 0, get: 0, issue: 0, charge: 0 };
+  const calls = { confirm: 0, cancel: 0, get: 0, issue: 0, charge: 0, deleteKey: 0 };
   /** 카드 등록창을 마쳐 생긴 authKey ➔ 고객 키 · 카드 이름 */
   const billingAuths = new Map<string, { customerKey: string; card: string }>();
   /** 발급한 빌링키 ➔ 고객 키 · 카드 이름 */
@@ -107,6 +107,12 @@ export function createFakeToss() {
         cardNumber: "43301234****123*",
         card: { issuerCode: "4V", number: "43301234****123*" },
       };
+    },
+    async deleteBillingKey(billingKey) {
+      calls.deleteKey += 1;
+      if (!billingKeys.delete(billingKey))
+        throw new GatewayError("NOT_FOUND_BILLING", "존재하지 않는 빌링키입니다.", 404);
+      declined.delete(billingKey);
     },
     async chargeBilling(input) {
       calls.charge += 1;

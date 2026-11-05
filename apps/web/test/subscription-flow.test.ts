@@ -10,7 +10,10 @@ import {
   activateSubscription,
   agreePriceChange,
   changeCard,
+  BILLING_KEY_DELETE_ATTEMPTS,
   createFakeToss,
+  deleteRetiredBillingKeys,
+  GatewayError,
   runSubscriptionBilling,
   scheduleCancel,
   startSubscription,
@@ -341,6 +344,18 @@ describe("매일 자동결제 (worker, 시각을 앞당겨)", () => {
     const now = await loadSub(sub.id);
     expect(now).toMatchObject({ status: "active", currentCycle: 2, cardLabel: "국민카드 •••• 123*" });
     expect((await entOf(sub.entitlementId!)).endsAt).toEqual(kst("2027-01-05T00:00:00"));
+
+    // 바꾸기 전 카드의 빌링키는 다음 날 작업에서 토스에서 지운다. 새 카드 키는 그대로
+    const oldKey = openBillingKey(SECRET, sub.billingKeySealed!);
+    expect(toss.billingKeys.has(oldKey)).toBe(true);
+    expect(await runSubscriptionBilling(deps, kst("2026-12-05T06:00:00"))).toMatchObject({
+      billingKeysDeleted: 1,
+    });
+    expect(toss.billingKeys.has(oldKey)).toBe(false);
+    expect(toss.billingKeys.has(openBillingKey(SECRET, now.billingKeySealed!))).toBe(true);
+    const [retired] = await t.db.select().from(schema.billingKeyDeletions);
+    expect(retired).toMatchObject({ subscriptionId: sub.id, reason: "카드 변경", keySealed: null });
+    expect(retired!.deletedAt).not.toBeNull();
   });
 
   it("해지 예약 ➔ 결제일에 결제하지 않고 기간 끝에 끝. 끝나기 전에는 해지를 취소할 수 있다", async () => {
@@ -367,8 +382,48 @@ describe("매일 자동결제 (worker, 시각을 앞당겨)", () => {
     });
     expect(canLearn(await viewAccess(t.db, me, included, kst("2026-12-05T06:00:00")))).toBe(false);
     expect(toss.calls.charge).toBe(1);
+    // 끝난 구독의 빌링키는 같은 작업 끝에 토스에서도 지운다. 실패하면 다음 날 다시, 이미 없으면(404) 지운 것으로 본다
+    expect(toss.calls.deleteKey).toBe(1);
+    expect(toss.billingKeys.size).toBe(0);
+    const deletions = await t.db.select().from(schema.billingKeyDeletions);
+    expect(deletions).toHaveLength(1);
+    expect(deletions[0]).toMatchObject({ reason: "해지 예약", keySealed: null, attempts: 1 });
     // 끝난 뒤에는 다시 구독할 수 있다 (진도는 그대로)
     await startAndActivate(yearly, kst("2026-12-06T10:00:00"));
+  });
+});
+
+describe("빌링키 삭제 (M10)", () => {
+  it("토스가 실패하면 다음에 다시, 5번 실패하면 멈춘다. 이미 없다는 응답(404)은 지운 것으로 본다", async () => {
+    const sub = await startAndActivate();
+    await scheduleCancel(deps, { userId: me.userId, subscriptionId: sub.id }, kst("2026-11-12T10:00:00"));
+    let answer: "down" | "gone" = "down";
+    const flaky = {
+      ...deps,
+      gateway: {
+        ...toss.gateway,
+        deleteBillingKey: async () => {
+          throw answer === "down"
+            ? new GatewayError("PROVIDER_ERROR", "토스 응답 500", 500)
+            : new GatewayError("NOT_FOUND_BILLING", "존재하지 않는 빌링키입니다.", 404);
+        },
+      },
+    };
+    await runSubscriptionBilling(flaky, kst("2026-12-05T06:00:00"));
+    let [row] = await t.db.select().from(schema.billingKeyDeletions);
+    expect(row).toMatchObject({ attempts: 1, lastError: "토스 응답 500", deletedAt: null });
+    expect(row!.keySealed).not.toBeNull();
+
+    for (let i = 1; i < BILLING_KEY_DELETE_ATTEMPTS; i += 1) await deleteRetiredBillingKeys(flaky);
+    [row] = await t.db.select().from(schema.billingKeyDeletions);
+    expect(row!.attempts).toBe(BILLING_KEY_DELETE_ATTEMPTS);
+    expect(await deleteRetiredBillingKeys(flaky)).toEqual({ deleted: 0, failed: 0 }); // 멈춤
+
+    await t.db.update(schema.billingKeyDeletions).set({ attempts: 0 }); // 운영자가 다시 시도하게 하면
+    answer = "gone";
+    expect(await deleteRetiredBillingKeys(flaky)).toEqual({ deleted: 1, failed: 0 });
+    [row] = await t.db.select().from(schema.billingKeyDeletions);
+    expect(row).toMatchObject({ keySealed: null, lastError: null });
   });
 });
 

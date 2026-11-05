@@ -17,7 +17,7 @@ import {
 } from "@aionit/core";
 import { openBillingKey, sealBillingKey } from "@aionit/core/media";
 import type { Db } from "@aionit/db";
-import { and, desc, eq, inArray, isNull, lte, schema } from "@aionit/db";
+import { and, desc, eq, inArray, isNull, lt, lte, schema } from "@aionit/db";
 import type { MailJob } from "@aionit/mail";
 import type { PaymentGateway, TossPayment } from "./toss";
 import { GatewayError, trimPayment } from "./toss";
@@ -516,12 +516,13 @@ async function failCycle(
 
 /** 구독을 끝낸다: 자동결제 중지(빌링키 지움), 구독 수강권은 지금 끝, 진도는 남긴다 */
 async function endSubscription(
-  tx: Pick<Db, "update">,
+  tx: Pick<Db, "update" | "select" | "insert">,
   sub: Subscription,
   reason: string,
   now: Date,
   status: "ended" | "canceled" = "ended",
 ) {
+  await retireBillingKey(tx, sub.id, reason);
   await tx
     .update(schema.subscriptions)
     .set({ status, endedAt: now, endReason: reason, billingKeySealed: null })
@@ -531,6 +532,62 @@ async function endSubscription(
       .update(schema.entitlements)
       .set({ endsAt: now })
       .where(and(eq(schema.entitlements.id, sub.entitlementId)));
+}
+
+/** 지금 빌링키를 "지울 빌링키" 로 옮긴다 (같은 트랜잭션). 토스 삭제 API 는 worker 가 나중에 부른다 */
+async function retireBillingKey(tx: Pick<Db, "select" | "insert">, subscriptionId: string, reason: string) {
+  const [row] = await tx
+    .select({ key: schema.subscriptions.billingKeySealed })
+    .from(schema.subscriptions)
+    .where(eq(schema.subscriptions.id, subscriptionId));
+  if (row?.key)
+    await tx.insert(schema.billingKeyDeletions).values({ subscriptionId, keySealed: row.key, reason });
+}
+
+export const BILLING_KEY_DELETE_ATTEMPTS = 5;
+
+/**
+ * 지울 빌링키를 토스에서 지운다 (매일 구독 자동결제 작업 끝에). 이미 없다는 응답(404)도 지운 것으로 본다.
+ * 실패하면 다음 날 다시, 5번 실패하면 멈추고 운영자가 기록(last_error)을 본다
+ */
+export async function deleteRetiredBillingKeys(
+  deps: Pick<SubscriptionDeps, "db" | "gateway" | "secret">,
+  now = new Date(),
+): Promise<{ deleted: number; failed: number }> {
+  const pending = await deps.db
+    .select()
+    .from(schema.billingKeyDeletions)
+    .where(
+      and(
+        isNull(schema.billingKeyDeletions.deletedAt),
+        lt(schema.billingKeyDeletions.attempts, BILLING_KEY_DELETE_ATTEMPTS),
+      ),
+    );
+  const result = { deleted: 0, failed: 0 };
+  for (const row of pending) {
+    if (!row.keySealed) continue;
+    try {
+      await deps.gateway.deleteBillingKey(openBillingKey(deps.secret, row.keySealed));
+    } catch (error) {
+      if (!(error instanceof GatewayError && error.httpStatus === 404)) {
+        result.failed += 1;
+        await deps.db
+          .update(schema.billingKeyDeletions)
+          .set({
+            attempts: row.attempts + 1,
+            lastError: error instanceof Error ? error.message.slice(0, 300) : String(error),
+          })
+          .where(eq(schema.billingKeyDeletions.id, row.id));
+        continue;
+      }
+    }
+    result.deleted += 1;
+    await deps.db
+      .update(schema.billingKeyDeletions)
+      .set({ deletedAt: now, keySealed: null, attempts: row.attempts + 1, lastError: null })
+      .where(eq(schema.billingKeyDeletions.id, row.id));
+  }
+  return result;
 }
 
 // ---- 구독 관리 (M-03) ----
@@ -635,11 +692,15 @@ export async function changeCard(
       throw new SubscriptionError(400, "CARD_FAILED", `카드를 등록하지 못했습니다: ${error.message}`);
     throw error;
   }
-  const [updated] = await deps.db
-    .update(schema.subscriptions)
-    .set({ billingKeySealed: sealBillingKey(deps.secret, auth.billingKey), cardLabel: cardLabelOf(auth) })
-    .where(eq(schema.subscriptions.id, sub.id))
-    .returning();
+  const updated = await deps.db.transaction(async (tx) => {
+    await retireBillingKey(tx, sub.id, "카드 변경");
+    const [row] = await tx
+      .update(schema.subscriptions)
+      .set({ billingKeySealed: sealBillingKey(deps.secret, auth.billingKey), cardLabel: cardLabelOf(auth) })
+      .where(eq(schema.subscriptions.id, sub.id))
+      .returning();
+    return row;
+  });
   if (updated!.status === "past_due") {
     const result = await chargeCycle(deps, updated!, updated!.currentCycle + 1, now);
     return { retried: true, ok: result.ok, message: result.ok ? null : result.message };
@@ -648,7 +709,7 @@ export async function changeCard(
 }
 
 /** 환불(즉시 해지)이 끝났을 때: 구독을 바로 끝내고 그 회차를 환불로 표시 (web refunds.applyCancel 이 부른다) */
-export async function endByRefund(tx: Pick<Db, "update" | "select">, orderId: string, now: Date) {
+export async function endByRefund(tx: Pick<Db, "update" | "select" | "insert">, orderId: string, now: Date) {
   const [cycle] = await tx
     .select()
     .from(schema.subscriptionCycles)
@@ -674,6 +735,7 @@ export interface BillingRunResult {
   ended: number;
   renewalNotices: number;
   priceNotices: number;
+  billingKeysDeleted: number;
 }
 
 /**
@@ -683,13 +745,21 @@ export interface BillingRunResult {
  *   3. 갱신 안내 (연간 30일 · 월간 7일 전)
  *   4. 결제일이 된 구독 ➔ 다음 회차 결제 (가격 인상에 동의하지 않았으면 결제하지 않고 기간 끝에 끝냄)
  *   5. 재시도할 때가 된 past_due ➔ 다시 결제
+ *   6. 지울 빌링키 ➔ 토스 빌링키 삭제 API
  */
 export async function runSubscriptionBilling(
   deps: SubscriptionDeps,
   now = new Date(),
 ): Promise<BillingRunResult> {
   const { db } = deps;
-  const result: BillingRunResult = { charged: 0, failed: 0, ended: 0, renewalNotices: 0, priceNotices: 0 };
+  const result: BillingRunResult = {
+    charged: 0,
+    failed: 0,
+    ended: 0,
+    renewalNotices: 0,
+    priceNotices: 0,
+    billingKeysDeleted: 0,
+  };
   const today = kstDate(now);
 
   // 1. 기간이 끝난 해지 예약
@@ -848,6 +918,9 @@ export async function runSubscriptionBilling(
       if (charged.ended) result.ended += 1;
     }
   }
+
+  // 6. 끝난 구독 · 바꾼 카드의 빌링키를 토스에서 지운다
+  result.billingKeysDeleted = (await deleteRetiredBillingKeys(deps, now)).deleted;
   return result;
 }
 

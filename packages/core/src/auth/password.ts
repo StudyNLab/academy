@@ -27,9 +27,7 @@ export function checkPassword(password: string, context: PasswordContext = {}): 
   if (length > PASSWORD_MAX_LENGTH) return "too_long";
 
   const lower = password.toLowerCase();
-  // 끝에 붙인 숫자 · 기호를 떼어도 흔한 비밀번호면 거부 ("qwerty123!" ➔ "qwerty")
-  const stem = lower.replace(/[\d\W_]+$/u, "");
-  if (COMMON_PASSWORDS.has(lower) || (stem.length > 0 && COMMON_PASSWORDS.has(stem))) return "common";
+  if (inPasswordList(COMMON_PASSWORDS, password)) return "common";
 
   if (isSimplePattern(lower)) return "simple_pattern";
 
@@ -39,6 +37,13 @@ export function checkPassword(password: string, context: PasswordContext = {}): 
   if (nickname.length >= 3 && lower.includes(nickname)) return "contains_personal";
 
   return null;
+}
+
+/** 목록에 있나. 끝에 붙인 숫자 · 기호를 떼어도 흔한 비밀번호면 있는 것으로 본다 ("qwerty123!" ➔ "qwerty") */
+export function inPasswordList(list: ReadonlySet<string>, password: string): boolean {
+  const lower = password.toLowerCase();
+  const stem = lower.replace(/[\d\W_]+$/u, "");
+  return list.has(lower) || (stem.length > 0 && list.has(stem));
 }
 
 /** 한 글자 반복(aaaaaaaa) 또는 한 방향으로 1씩 늘거나 줄어드는 글자(12345678, abcdefgh, 87654321) */

@@ -7,18 +7,12 @@ const ago = (ms: number, now: Date) => new Date(now.getTime() - ms).toISOString(
 
 export async function purgeExpiredRecords(db: Db, now = new Date()) {
   return db.transaction(async (tx) => {
-    // 덧붙이기만 하는 기록 테이블은 이 설정이 있어야 지울 수 있다 (0002 마이그레이션의 트리거)
-    await tx.execute(sql`set local aionit.retention_purge = 'on'`);
-    const loginMember = await tx.execute(
-      sql`delete from login_logs where privileged = 'no' and at < ${ago(RETENTION.loginLogsMemberMs, now)}`,
+    // 기록 테이블(로그인 · 운영자 작업 · 개인정보 조회 기록, 1:1 문의)은 앱 계정에 지울 권한이 없다.
+    // 소유자 권한 함수가 DB 시각 기준으로만 지운다 (0012 마이그레이션). 그래서 `now` 를 넘겨도 이 넷은 앞당겨지지 않는다
+    const [row] = await tx.execute<{ purged: Record<string, number> }>(
+      sql`select aionit_purge_protected_records() as purged`,
     );
-    const loginPrivileged = await tx.execute(
-      sql`delete from login_logs where privileged = 'yes' and at < ${ago(RETENTION.loginLogsPrivilegedMs, now)}`,
-    );
-    const audit = await tx.execute(sql`delete from audit_logs where at < ${ago(RETENTION.auditLogsMs, now)}`);
-    const pii = await tx.execute(
-      sql`delete from pii_access_logs where at < ${ago(RETENTION.piiAccessLogsMs, now)}`,
-    );
+    const protectedCounts = row!.purged;
     const nowIso = now.toISOString();
     const sessions = await tx.execute(sql`delete from sessions where expires_at < ${nowIso}`);
     const verifications = await tx.execute(sql`delete from verifications where expires_at < ${nowIso}`);
@@ -31,24 +25,20 @@ export async function purgeExpiredRecords(db: Db, now = new Date()) {
       sql`delete from notifications where (read_at is not null and created_at < ${ago(RETENTION.notificationsReadMs, now)})
           or created_at < ${ago(RETENTION.notificationsMs, now)}`,
     );
-    // 1:1 문의: 마지막 글부터 3년 (전자상거래법 소비자 불만 · 분쟁 기록)
-    const oldInquiries = sql`select id from inquiries where last_message_at < ${ago(RETENTION.inquiriesMs, now)}`;
-    await tx.execute(sql`delete from inquiry_messages where inquiry_id in (${oldInquiries})`);
-    const inquiries = await tx.execute(sql`delete from inquiries where id in (${oldInquiries})`);
     // 횟수 제한 카운터는 하루 지나면 의미가 없다
     const rateLimits = await tx.execute(
       sql`delete from rate_limits where last_request < ${now.getTime() - 86_400_000}`,
     );
     return {
-      loginLogs: loginMember.count + loginPrivileged.count,
-      auditLogs: audit.count,
-      piiAccessLogs: pii.count,
+      loginLogs: protectedCounts.loginLogs ?? 0,
+      auditLogs: protectedCounts.auditLogs ?? 0,
+      piiAccessLogs: protectedCounts.piiAccessLogs ?? 0,
       sessions: sessions.count,
       verifications: verifications.count,
       rateLimits: rateLimits.count,
       learningHeartbeats: heartbeats.count,
       notifications: notifications.count,
-      inquiries: inquiries.count,
+      inquiries: protectedCounts.inquiries ?? 0,
     };
   });
 }
