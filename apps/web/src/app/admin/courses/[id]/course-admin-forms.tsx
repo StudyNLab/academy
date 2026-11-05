@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Field, inputClass, Notice } from "@aionit/ui";
+import type { ManageBase } from "@/components/manage-base";
 import { api, apiDelete } from "@/lib/client-api";
 
 /** 교재 · 영상이 처리되는 동안 3초마다 화면을 새로 그린다 */
@@ -25,7 +26,15 @@ export function AutoRefresh({
   );
 }
 
-export function UploadPackageForm({ courseId, slug }: { courseId: string; slug: string }) {
+export function UploadPackageForm({
+  courseId,
+  slug,
+  base = "/admin",
+}: {
+  courseId: string;
+  slug: string;
+  base?: ManageBase;
+}) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +47,10 @@ export function UploadPackageForm({ courseId, slug }: { courseId: string; slug: 
     setError(null);
     const form = new FormData();
     form.set("package", file);
-    const result = await api<{ id: string }>(`/admin/courses/${courseId}/versions`, form);
+    const result = await api<{ id: string }>(`${base}/courses/${courseId}/versions`, form);
     setBusy(false);
     if (!result.ok) return setError(result.error.message);
-    router.push(`/admin/courses/${courseId}/versions/${result.data.id}`);
+    router.push(`${base}/courses/${courseId}/versions/${result.data.id}`);
   }
 
   return (
@@ -58,8 +67,8 @@ export function UploadPackageForm({ courseId, slug }: { courseId: string; slug: 
         />
       </label>
       <p className="m-0 text-[13px] text-ink-2">
-        같은 버전을 다시 올리면 덮어씁니다 (공개 전까지). 올리면 구조 · 허용 목록 · 그림 검사를 하고 검수
-        대기로 바뀝니다.
+        같은 버전을 다시 올리면 덮어씁니다 (공개 전까지). 올리면 구조 · 허용 목록 · 그림 검사를 하고{" "}
+        {base === "/admin" ? "검수 대기로 바뀝니다." : "통과하면 검수를 요청할 수 있습니다."}
       </p>
       <Button type="submit" disabled={busy || !file} className="self-start">
         {busy ? "올리는 중…" : "올리기"}
@@ -73,11 +82,13 @@ export function VideoSlotForm({
   label,
   videoKey,
   youtubeVideoId,
+  base = "/admin",
 }: {
   slotId: string;
   label: string;
   videoKey: string;
   youtubeVideoId: string | null;
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [url, setUrl] = useState(youtubeVideoId ? `https://youtu.be/${youtubeVideoId}` : "");
@@ -87,7 +98,7 @@ export function VideoSlotForm({
   async function save(next: string | null) {
     setBusy(true);
     setError(null);
-    const result = await api(`/admin/video-slots/${slotId}`, { url: next });
+    const result = await api(`${base}/video-slots/${slotId}`, { url: next });
     setBusy(false);
     if (!result.ok) return setError(result.error.message);
     if (next === null) setUrl("");
@@ -143,6 +154,7 @@ export function PreviewRuleForm({
   initialScope,
   initialSections,
   previewHref,
+  base = "/admin",
 }: {
   courseId: string;
   chapterKey: string;
@@ -151,6 +163,7 @@ export function PreviewRuleForm({
   initialScope: "whole" | "sections" | "none";
   initialSections: string[];
   previewHref: string;
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [scope, setScope] = useState(initialScope);
@@ -158,7 +171,7 @@ export function PreviewRuleForm({
   const [message, setMessage] = useState<{ tone: "done" | "danger"; text: string } | null>(null);
 
   async function save() {
-    const result = await api(`/admin/courses/${courseId}/previews`, {
+    const result = await api(`${base}/courses/${courseId}/previews`, {
       chapterKey,
       scope,
       sectionIds: picked,
@@ -225,9 +238,11 @@ export function PreviewRuleForm({
 export function AttachmentForm({
   courseId,
   chapters,
+  base = "/admin",
 }: {
   courseId: string;
   chapters: { key: string; title: string }[];
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -245,7 +260,7 @@ export function AttachmentForm({
     form.set("file", file);
     form.set("title", title);
     form.set("chapterKey", chapterKey);
-    const result = await api(`/admin/courses/${courseId}/attachments`, form);
+    const result = await api(`${base}/courses/${courseId}/attachments`, form);
     setBusy(false);
     if (!result.ok) return setError(result.error.message);
     setTitle("");
@@ -298,7 +313,13 @@ export function AttachmentForm({
   );
 }
 
-export function AttachmentRemove({ attachmentId }: { attachmentId: string }) {
+export function AttachmentRemove({
+  attachmentId,
+  base = "/admin",
+}: {
+  attachmentId: string;
+  base?: ManageBase;
+}) {
   const router = useRouter();
   return (
     <button
@@ -306,7 +327,7 @@ export function AttachmentRemove({ attachmentId }: { attachmentId: string }) {
       className="min-h-11 border-0 bg-transparent p-0 text-[14px] text-danger underline"
       onClick={async () => {
         if (!window.confirm("이 첨부 자료를 지울까요?")) return;
-        const result = await apiDelete(`/admin/attachments/${attachmentId}`);
+        const result = await apiDelete(`${base}/attachments/${attachmentId}`);
         if (result.ok) router.refresh();
         else window.alert(result.error.message);
       }}

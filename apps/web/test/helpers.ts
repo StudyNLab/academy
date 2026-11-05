@@ -35,8 +35,9 @@ export async function resetDb(db: TestAuth["db"]) {
           attachment_downloads, products, product_items, prices, subscriber_discount_policies, orders,
           order_items, payments, refunds, payment_webhooks, subscriptions, subscription_cycles,
           subscription_notices, questions, answers, reports, inquiries, inquiry_messages, notices, faqs,
-          notifications, notification_prefs cascade`,
+          notifications, notification_prefs, instructor_contracts, payout_profiles cascade`,
     );
+    await tx.execute(sql`delete from revenue_policies where scope <> 'default'`);
   });
 }
 

@@ -32,7 +32,8 @@ describe("계정 잠금 (15분 안에 10번 틀리면 15분)", () => {
     });
     expect(locked.status).toBe(429);
     expect(locked.body.code).toBe("ACCOUNT_LOCKED");
-    expect(locked.body.message).toContain("15분 뒤");
+    // DB(개발 VM) 시계가 이 PC 보다 조금 빠르면 실패 시각이 앞서 "16분" 으로 올림된다
+    expect(locked.body.message).toMatch(/1[56]분 뒤/);
 
     const logs = await loginLogs();
     expect(logs.filter((l) => l.result === "fail_password")).toHaveLength(10);

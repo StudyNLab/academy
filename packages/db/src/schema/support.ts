@@ -197,6 +197,8 @@ export const NOTIFICATION_KINDS = [
   "qna_hidden",
   "inquiry_answer",
   "expiry",
+  "content_review",
+  "instructor_contract",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 

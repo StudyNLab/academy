@@ -1,21 +1,22 @@
 "use client";
 
-// AD-05 자체 서버 영상: 올리기(16MB 조각, 3개씩 동시에, 끊기면 이어 올리기) · 자막 · 다시 변환 · 지우기 · 영상 자리 연결
+// AD-05 · I-04 자체 서버 영상: 올리기(16MB 조각, 3개씩 동시에, 끊기면 이어 올리기) · 자막 · 다시 변환 · 지우기 · 영상 자리 연결
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Button, Field, inputClass, Notice, ProgressBar } from "@aionit/ui";
 import { HostedVideo } from "@/components/learn/hosted-video";
+import type { ManageBase } from "@/components/manage-base";
 import { api, apiDelete } from "@/lib/client-api";
 import type { Playback } from "@/server/videos";
 
 const PARALLEL = 3;
 const RETRIES = 4;
 
-async function putPart(assetId: string, n: number, body: Blob): Promise<string | null> {
+async function putPart(base: ManageBase, assetId: string, n: number, body: Blob): Promise<string | null> {
   for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
     try {
-      const response = await fetch(`/api/v1/admin/videos/${assetId}/parts/${n}`, {
+      const response = await fetch(`/api/v1${base}/videos/${assetId}/parts/${n}`, {
         method: "PUT",
         body,
         credentials: "same-origin",
@@ -35,6 +36,7 @@ async function putPart(assetId: string, n: number, body: Blob): Promise<string |
 
 /** 빠진 조각만 올리고 마무리한다 (처음 올리기 · 이어 올리기 같은 흐름) */
 async function sendParts(
+  base: ManageBase,
   assetId: string,
   file: File,
   partBytes: number,
@@ -51,25 +53,25 @@ async function sendParts(
     Array.from({ length: Math.min(PARALLEL, todo.length) }, async () => {
       while (!failure && next < todo.length) {
         const n = todo[next++]!;
-        const error = await putPart(assetId, n, file.slice((n - 1) * partBytes, n * partBytes));
+        const error = await putPart(base, assetId, n, file.slice((n - 1) * partBytes, n * partBytes));
         if (error) failure = error;
         else onProgress(++finished / total);
       }
     }),
   );
   if (failure) return failure;
-  const result = await api(`/admin/videos/${assetId}/complete`);
+  const result = await api(`${base}/videos/${assetId}/complete`);
   return result.ok ? null : result.error.message;
 }
 
-async function sendSubtitle(assetId: string, srt: File): Promise<string | null> {
+async function sendSubtitle(base: ManageBase, assetId: string, srt: File): Promise<string | null> {
   const form = new FormData();
   form.set("file", srt);
-  const result = await api(`/admin/videos/${assetId}/subtitles`, form);
+  const result = await api(`${base}/videos/${assetId}/subtitles`, form);
   return result.ok ? null : result.error.message;
 }
 
-export function VideoUploadForm({ courseId }: { courseId: string }) {
+export function VideoUploadForm({ courseId, base = "/admin" }: { courseId: string; base?: ManageBase }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -82,7 +84,7 @@ export function VideoUploadForm({ courseId }: { courseId: string }) {
     if (!file) return;
     setError(null);
     setProgress(0);
-    const started = await api<{ id: string; partBytes: number }>(`/admin/courses/${courseId}/videos`, {
+    const started = await api<{ id: string; partBytes: number }>(`${base}/courses/${courseId}/videos`, {
       title,
       fileName: file.name,
       size: file.size,
@@ -92,8 +94,8 @@ export function VideoUploadForm({ courseId }: { courseId: string }) {
       return setError(started.error.message);
     }
     const failed =
-      (await sendParts(started.data.id, file, started.data.partBytes, new Set(), setProgress)) ??
-      (srt ? await sendSubtitle(started.data.id, srt) : null);
+      (await sendParts(base, started.data.id, file, started.data.partBytes, new Set(), setProgress)) ??
+      (srt ? await sendSubtitle(base, started.data.id, srt) : null);
     setProgress(null);
     if (failed) setError(failed);
     else {
@@ -159,11 +161,13 @@ export function ResumeUpload({
   size,
   fileName,
   partBytes,
+  base = "/admin",
 }: {
   assetId: string;
   size: number;
   fileName: string;
   partBytes: number;
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [progress, setProgress] = useState<number | null>(null);
@@ -173,10 +177,10 @@ export function ResumeUpload({
     if (file.size !== size) return setError(`처음 고른 파일(${fileName})과 크기가 다릅니다.`);
     setError(null);
     setProgress(0);
-    const status = await fetch(`/api/v1/admin/videos/${assetId}`, { credentials: "same-origin" })
+    const status = await fetch(`/api/v1${base}/videos/${assetId}`, { credentials: "same-origin" })
       .then((r) => r.json() as Promise<{ parts?: number[] }>)
       .catch(() => null);
-    const failed = await sendParts(assetId, file, partBytes, new Set(status?.parts ?? []), setProgress);
+    const failed = await sendParts(base, assetId, file, partBytes, new Set(status?.parts ?? []), setProgress);
     setProgress(null);
     if (failed) setError(failed);
     router.refresh();
@@ -209,10 +213,12 @@ export function VideoActions({
   assetId,
   canRetranscode,
   canRemove,
+  base = "/admin",
 }: {
   assetId: string;
   canRetranscode: boolean;
   canRemove: boolean;
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -239,7 +245,7 @@ export function VideoActions({
             const srt = e.target.files?.[0];
             if (srt)
               void run(async () => {
-                const failed = await sendSubtitle(assetId, srt);
+                const failed = await sendSubtitle(base, assetId, srt);
                 return failed ? { ok: false, error: { message: failed } } : { ok: true };
               });
           }}
@@ -251,7 +257,7 @@ export function VideoActions({
           variant="outline"
           size="md"
           disabled={busy}
-          onClick={() => void run(() => api(`/admin/videos/${assetId}/retranscode`))}
+          onClick={() => void run(() => api(`${base}/videos/${assetId}/retranscode`))}
         >
           다시 변환
         </Button>
@@ -263,7 +269,7 @@ export function VideoActions({
           disabled={busy}
           onClick={() => {
             if (window.confirm("이 영상을 지울까요? 원본과 변환한 파일이 모두 지워집니다."))
-              void run(() => apiDelete(`/admin/videos/${assetId}`));
+              void run(() => apiDelete(`${base}/videos/${assetId}`));
           }}
         >
           지우기
@@ -278,11 +284,19 @@ export function VideoActions({
   );
 }
 
-/** 운영자 화면에서 변환 결과 보기 (수강생 화면과 같은 플레이어 · 워터마크) */
-export function AdminVideoPlayer({ assetId, title }: { assetId: string; title: string }) {
+/** 관리 화면에서 변환 결과 보기 (수강생 화면과 같은 플레이어 · 워터마크) */
+export function AdminVideoPlayer({
+  assetId,
+  title,
+  base = "/admin",
+}: {
+  assetId: string;
+  title: string;
+  base?: ManageBase;
+}) {
   return (
     <div className="aspect-video w-full">
-      <HostedVideo title={title} load={() => api<Playback>(`/admin/videos/${assetId}/playback`)} />
+      <HostedVideo title={title} load={() => api<Playback>(`${base}/videos/${assetId}/playback`)} />
     </div>
   );
 }
@@ -293,11 +307,13 @@ export function HostedSlotForm({
   slotKey,
   current,
   assets,
+  base = "/admin",
 }: {
   slotId: string;
   slotKey: string;
   current: string | null;
   assets: { id: string; title: string }[];
+  base?: ManageBase;
 }) {
   const router = useRouter();
   const [picked, setPicked] = useState(current ?? "");
@@ -307,7 +323,7 @@ export function HostedSlotForm({
   async function save(assetId: string | null) {
     setBusy(true);
     setError(null);
-    const result = await api(`/admin/video-slots/${slotId}`, { assetId });
+    const result = await api(`${base}/video-slots/${slotId}`, { assetId });
     setBusy(false);
     if (!result.ok) return setError(result.error.message);
     if (!assetId) setPicked("");

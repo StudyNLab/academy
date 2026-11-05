@@ -53,7 +53,7 @@ function TextArea({
   );
 }
 
-/** 과정 정보 입력 (등록 · 수정 공용). 과정 ID 는 등록 때만 */
+/** 과정 정보 입력 (등록 · 수정 공용). 과정 ID 는 등록 때만. instructors 가 없으면 강사 화면(소유 강사 · 구독 포함은 운영자 몫) */
 function CourseFields({
   values,
   set,
@@ -61,7 +61,7 @@ function CourseFields({
 }: {
   values: CourseFormValues;
   set: (patch: Partial<CourseFormValues>) => void;
-  instructors: { id: string; name: string }[];
+  instructors: { id: string; name: string }[] | null;
 }) {
   return (
     <>
@@ -90,19 +90,21 @@ function CourseFields({
           hint="예: 초급"
         />
       </div>
-      <Select
-        label="소유 강사"
-        value={values.ownerInstructorId}
-        onChange={(e) => set({ ownerInstructorId: e.target.value })}
-        required
-      >
-        <option value="">고르세요</option>
-        {instructors.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.name}
-          </option>
-        ))}
-      </Select>
+      {instructors ? (
+        <Select
+          label="소유 강사"
+          value={values.ownerInstructorId}
+          onChange={(e) => set({ ownerInstructorId: e.target.value })}
+          required
+        >
+          <option value="">고르세요</option>
+          {instructors.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
       <Field label="한 줄 소개" value={values.summary} onChange={(e) => set({ summary: e.target.value })} />
       <TextArea
         label="소개 (마크다운)"
@@ -120,9 +122,11 @@ function CourseFields({
         onChange={(e) => set({ requirementsMd: e.target.value })}
         hint="예: LLM API 키 (사용 요금 본인 부담)"
       />
-      <Checkbox checked={values.inSubscription} onChange={(e) => set({ inSubscription: e.target.checked })}>
-        구독에 포함 (끄면 프리미엄 강의)
-      </Checkbox>
+      {instructors ? (
+        <Checkbox checked={values.inSubscription} onChange={(e) => set({ inSubscription: e.target.checked })}>
+          구독에 포함 (끄면 프리미엄 강의)
+        </Checkbox>
+      ) : null}
     </>
   );
 }
@@ -252,5 +256,63 @@ export function InstructorRemove({ instructorId, name }: { instructorId: string;
     >
       지우기
     </button>
+  );
+}
+
+/**
+ * 강사 화면 (I-02): 과정 만들기 · 기본 정보 고치기. 소유 강사는 나, 구독 포함 · 가격 · 공개는 운영자가 정한다.
+ * courseId 가 없으면 새 과정 (과정 ID 를 받는다)
+ */
+export function InstructorCourseForm({
+  courseId,
+  initial,
+}: {
+  courseId?: string;
+  initial?: Omit<CourseFormValues, "ownerInstructorId" | "inSubscription">;
+}) {
+  const router = useRouter();
+  const [slug, setSlug] = useState("");
+  const [values, setValues] = useState<CourseFormValues>({ ...empty, ...initial });
+  const [message, setMessage] = useState<{ tone: "done" | "danger"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (patch: Partial<CourseFormValues>) => setValues((v) => ({ ...v, ...patch }));
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    const { ownerInstructorId: _owner, inSubscription: _sub, ...basic } = values;
+    const result = courseId
+      ? await api(`/instructor/courses/${courseId}`, basic)
+      : await api<{ id: string }>("/instructor/courses", { slug, ...basic });
+    setBusy(false);
+    if (!result.ok) return setMessage({ tone: "danger", text: result.error.message });
+    if (!courseId) return router.push(`/instructor/courses/${(result.data as { id: string }).id}`);
+    setMessage({ tone: "done", text: "저장했습니다. 공개 중인 과정이면 강의 상세에 바로 보입니다." });
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      {courseId ? null : (
+        <Field
+          label="과정 ID"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value.trim())}
+          hint="교재 패키지 course.json 의 course_id 와 같게. 영문 소문자 · 숫자 · - (예: zero-trust-basics). 정하면 바꿀 수 없습니다."
+          required
+        />
+      )}
+      <CourseFields values={values} set={set} instructors={null} />
+      <Button
+        type="submit"
+        variant={courseId ? "outline" : "primary"}
+        disabled={busy || !values.title || (!courseId && !slug)}
+        className="self-start"
+      >
+        {courseId ? "저장" : "과정 만들기"}
+      </Button>
+    </form>
   );
 }

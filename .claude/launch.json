@@ -47,6 +47,16 @@
         "NEXT_DIST_DIR": ".next-3400"
       },
       "port": 3400
+    },
+    {
+      "name": "web-3500",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@aionit/web", "exec", "next", "dev", "--port", "3500"],
+      "env": {
+        "BETTER_AUTH_URL": "http://localhost:3500",
+        "NEXT_DIST_DIR": ".next-3500"
+      },
+      "port": 3500
     }
   ]
 }

@@ -31,7 +31,7 @@ function Block({ label, title, children }: { label: string; title: string; child
   );
 }
 
-// P-03 강의 상세. 구독(M6) · 강사 소개(M8)는 해당 단계에서 채운다
+// P-03 강의 상세 (강사 소개는 M8: 강사가 강사 화면 I-09 에서 쓴 공개 프로필)
 export default async function CoursePage({ params }: { params: Params }) {
   const detail = await courseDetail(getDb(), (await params).slug);
   if (!detail) notFound();
@@ -60,8 +60,8 @@ export default async function CoursePage({ params }: { params: Params }) {
             <p className="m-0 text-[19px] leading-[1.7] font-light text-ink-2">{course.summary}</p>
           ) : null}
           <p className="m-0 text-[14px] text-ink-2">
-            강사 {instructor.displayName} · {chapters.length} CHAPTER · 실습 {labs}개 · 무료 공개 영상{" "}
-            {freeVideos.length}개
+            강사 <Link href={`/instructors/${instructor.id}`}>{instructor.displayName}</Link> ·{" "}
+            {chapters.length} CHAPTER · 실습 {labs}개 · 무료 공개 영상 {freeVideos.length}개
           </p>
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {firstPreview ? (
@@ -171,6 +171,18 @@ export default async function CoursePage({ params }: { params: Params }) {
             <SimpleMarkdown source={course.descriptionMd} />
           </Block>
         ) : null}
+
+        <Block label="Instructor" title="강사 소개">
+          <p className="m-0 mb-3 text-[19px] font-semibold tracking-[-0.02em]">{instructor.displayName}</p>
+          {instructor.bioMd ? (
+            <SimpleMarkdown source={instructor.bioMd} />
+          ) : (
+            <p className="m-0 text-ink-2">강사 소개를 준비하고 있습니다.</p>
+          )}
+          <Link href={`/instructors/${instructor.id}`} className="mt-4 inline-flex min-h-11 items-center">
+            이 강사의 강의 보기 →
+          </Link>
+        </Block>
 
         <Block label="Refund" title="환불 규정 요약">
           <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[15px] leading-[1.7]">

@@ -1,24 +1,121 @@
 import type { Metadata } from "next";
-import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import Link from "next/link";
+import { INSTRUCTOR_VERSION_STATUS, instructorCourseState } from "@aionit/core";
+import { Notice, StatusDot } from "@aionit/ui";
 import { PageTitle } from "@/components/page-title";
-import { requireStaff } from "@/server/session";
+import { instructorPage } from "@/server/instructor-page";
+import { contractsOf, instructorDashboard } from "@/server/instructors";
+import { COURSE_STATE, won } from "./labels";
 
 export const metadata: Metadata = { title: "강사 화면" };
 
-// I-01 강사 대시보드 자리. M1 은 들어오는 조건(강사 역할 + 2단계 인증)만, 내용은 M8 에서
+// I-01 강사 대시보드: 미답변 질문, 이번 달 수강생 · 판매, 검수 상태. 정산(예상 정산액 · 명세)은 M9
 export default async function InstructorHome() {
-  const viewer = await requireStaff("instructor", "/instructor");
+  const { db, instructor } = await instructorPage("/instructor");
+  const data = await instructorDashboard(db, instructor);
+  const unsigned = (await contractsOf(db, instructor.id)).filter((c) => !c.contract.signedAt);
+  const [year, month] = data.month.split("-");
+  const tiles = [
+    { label: "미답변 질문", value: data.unanswered, href: "/instructor/qna" },
+    { label: `${Number(month)}월 새 수강생`, value: data.newLearners },
+    { label: `${Number(month)}월 판매`, value: `${data.sales}건` },
+    { label: `${Number(month)}월 매출 (환불 뺌)`, value: won(data.net) },
+  ];
+
   return (
     <>
-      <SiteHeader />
-      <main className="mx-auto max-w-[1296px] px-5 pt-16 md:px-14">
-        <PageTitle label="Instructor" title={`${viewer.nickname} 강사님`}>
-          <p className="m-0">
-            내 강의 · Q&A 답변 · 판매 현황 · 정산 내역은 다음 단계(M8)에서 이곳에 생깁니다.
+      <PageTitle label="Instructor" title={`${instructor.displayName} 강사님`}>
+        <p className="m-0">
+          {year}년 {Number(month)}월 현황입니다. 수강생 개인정보(이메일 · 결제 정보)는 보이지 않고 숫자로만
+          보입니다.
+        </p>
+      </PageTitle>
+      <div className="flex flex-col gap-3">
+        {instructor.status !== "active" ? (
+          <Notice
+            tone="warn"
+            title={instructor.status === "suspended" ? "강사 활동이 정지되었습니다" : "계약이 끝났습니다"}
+          >
+            교재 · 영상 · 강의 정보를 고칠 수 없고, 현황 · Q&A 는 볼 수 있습니다. 궁금한 점은 1:1 문의로 남겨
+            주세요.
+          </Notice>
+        ) : null}
+        {unsigned.length > 0 ? (
+          <Notice tone="info" title="동의할 강사 계약이 있습니다">
+            <Link href="/instructor/profile#contract">
+              계약 기간과 강사 이용약관을 확인하고 동의해 주세요 →
+            </Link>
+          </Notice>
+        ) : null}
+      </div>
+
+      <dl className="m-0 mt-6 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="flex flex-col gap-1 border-b border-line py-5 pr-4">
+            <dt className="text-[13px] text-ink-2">{tile.label}</dt>
+            <dd className="m-0 text-[28px] font-semibold tabular-nums tracking-[-0.03em] md:text-[32px]">
+              {tile.href ? (
+                <Link href={tile.href} className="text-ink no-underline">
+                  {tile.value}
+                </Link>
+              ) : (
+                tile.value
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-[13px] text-ink-2">
+        매출은 결제액 합계에서 이번 달 끝난 환불을 뺀 값입니다. 예상 정산액 · 월별 정산 명세는 정산 기능이
+        열리면 이 화면에 생깁니다.
+      </p>
+
+      <section className="mt-12 border-t border-line-strong pt-6">
+        <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">검수 상태</h2>
+        {data.courses.length === 0 ? (
+          <p className="text-ink-2">
+            아직 강의가 없습니다. <Link href="/instructor/courses">내 강의</Link>에서 첫 과정을 만드세요.
           </p>
-        </PageTitle>
-      </main>
-      <SiteFooter />
+        ) : (
+          <ul className="m-0 flex list-none flex-col p-0">
+            {data.courses.map(({ course, latest }) => {
+              const state =
+                COURSE_STATE[
+                  instructorCourseState({
+                    courseStatus: course.status,
+                    latestVersionStatus: latest?.status ?? null,
+                  })
+                ];
+              return (
+                <li
+                  key={course.id}
+                  className="flex flex-col gap-1 border-b border-line py-3 sm:flex-row sm:items-baseline sm:justify-between"
+                >
+                  <span className="flex flex-wrap items-baseline gap-x-3">
+                    <Link href={`/instructor/courses/${course.id}`} className="text-[15px]">
+                      {course.title}
+                    </Link>
+                    <StatusDot tone={state.tone}>{state.label}</StatusDot>
+                  </span>
+                  <span className="text-[13px] text-ink-2">
+                    {latest ? (
+                      <>
+                        최근 버전 <span className="font-mono">v{latest.version}</span> ·{" "}
+                        {INSTRUCTOR_VERSION_STATUS[latest.status].label}
+                        {latest.status === "rejected" && latest.reviewNote ? (
+                          <span className="block text-danger sm:inline"> · 사유: {latest.reviewNote}</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      "교재를 올리기 전"
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </>
   );
 }

@@ -50,15 +50,18 @@ test("운영자가 교재를 올려 검수 · 공개하면 강의 목록 · 상�
   await page.getByRole("button", { name: "하던 일로 돌아가기" }).click();
   await expect(page.getByRole("heading", { name: "과정", exact: true })).toBeVisible();
 
-  // 잘못 만든 강사는 아래 강사 목록에서 지운다 (맡은 과정이 없을 때만)
+  // 잘못 만든 강사는 강사 관리(AD-15)에서 지운다 (맡은 과정 · 이어진 회원이 없을 때만)
   const typo = `오타강사${stamp}`.slice(0, 20);
   await page.getByLabel("강사가 목록에 없으면 새로 추가").fill(typo);
   await page.getByRole("button", { name: "강사 추가" }).click();
-  const typoRow = page.getByRole("listitem").filter({ hasText: typo });
+  await expect(page.getByLabel("소유 강사")).not.toHaveValue("");
+  await page.goto("/admin/instructors");
+  const typoRow = page.getByRole("row").filter({ hasText: typo });
   await expect(typoRow).toBeVisible();
   page.once("dialog", (dialog) => void dialog.accept());
   await typoRow.getByRole("button", { name: "지우기" }).click();
   await expect(typoRow).toHaveCount(0);
+  await page.goto("/admin/courses");
 
   // 2. 과정 등록 (강사 추가 포함)
   await page.getByLabel("과정 ID").fill(slug);
@@ -75,7 +78,7 @@ test("운영자가 교재를 올려 검수 · 공개하면 강의 목록 · 상�
   await page.getByLabel(/zip 파일 \(course_id/).setInputFiles(packagePath);
   await page.getByRole("button", { name: "올리기", exact: true }).click();
   await expect(page.getByText("구조 · 허용 목록 · 그림 검사 통과")).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByText("검수 대기")).toBeVisible();
+  await expect(page.getByRole("main").getByText("검수 대기", { exact: true })).toBeVisible();
   await expect(page.getByText(/영상 자리 \d+개가 아직 연결되지 않았습니다/)).toBeVisible();
 
   // 운영자 미리보기: 그림이 우리 주소로, 연결 안 된 영상 자리는 "영상 연결 필요"
