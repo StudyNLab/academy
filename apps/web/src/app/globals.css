@@ -58,12 +58,48 @@
 
 /* 시안 화면 안의 링크는 글자색을 이어받는다 (시안 style.css: a { color: inherit }). :where 로 시안과 같은 우선순위 */
 @layer components {
-  :where(.site-header, .site-footer, .dialog, .is-home) a {
+  :where(
+      .site-header,
+      .site-footer,
+      .dialog,
+      .is-home,
+      .page-main,
+      .course-hero,
+      .breadcrumb,
+      .detail-nav,
+      .detail-layout
+    )
+    a {
     color: inherit;
     text-decoration: none;
   }
-  :where(.site-header, .site-footer, .dialog, .is-home) a:hover {
+  :where(
+      .site-header,
+      .site-footer,
+      .dialog,
+      .is-home,
+      .page-main,
+      .course-hero,
+      .breadcrumb,
+      .detail-nav,
+      .detail-layout
+    )
+    a:hover {
     color: var(--brand);
+  }
+  /* 바닥글 위 여백: 아직 시안으로 바꾸지 않은 화면은 예전처럼 띄운다. 시안 화면은 본문 아래 여백이 시안에 있다 */
+  .site-footer {
+    margin-top: 96px;
+  }
+  body:has(.is-home, .page-main, .detail-layout) .site-footer {
+    margin-top: 0;
+  }
+  /* 시안의 select 요소 규칙. 사이트 전체 select 를 바꾸지 않게 시안 부품(.select-label) 안에만 쓴다 */
+  .select-label select {
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
   }
   /* 위험한 행동 버튼 (시안에 없어 토큰으로 만든 것) */
   .btn.danger {

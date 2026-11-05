@@ -16,7 +16,7 @@
 | 서비스 | 이미지 | VM 안 주소 | 노트북 터널 주소 |
 |---|---|---|---|
 | PostgreSQL | `postgres:18.6` | 127.0.0.1:5432 | `localhost:15432` (DB `aionit`, 사용자 `aionit`) |
-| Garage S3 API | `dxflrs/garage:v2.5.0` | 127.0.0.1:3900 | `localhost:13900` (버킷 `aionit-dev` · 영상 `aionit-dev-media`, 지역 `garage`) |
+| Garage S3 API | `dxflrs/garage:v2.5.0` | 127.0.0.1:3900 | `localhost:23900` (버킷 `aionit-dev` · 영상 `aionit-dev-media`, 지역 `garage`) |
 | Garage 관리 API | 〃 | 127.0.0.1:3903 | (필요할 때만) |
 | Mailpit SMTP | `axllent/mailpit:v1.33.0` | 127.0.0.1:1025 | `localhost:11025` |
 | Mailpit 웹 화면 | 〃 | 127.0.0.1:8025 | http://localhost:18025 |
@@ -61,10 +61,12 @@ docker compose exec -T postgres dropdb -U aionit aionit_<이름>_test
 ## 노트북에서 터널 열기
 
 ```bash
-ssh -N -o ExitOnForwardFailure=yes -o ProxyJump=user1@10.100.4.52 -p 22063 -L 15432:127.0.0.1:5432 -L 13900:127.0.0.1:3900 -L 11025:127.0.0.1:1025 -L 18025:127.0.0.1:8025 user1@127.0.0.1
+ssh -N -o ExitOnForwardFailure=yes -o ProxyJump=user1@10.100.4.52 -p 22063 -L 15432:127.0.0.1:5432 -L 23900:127.0.0.1:3900 -L 11025:127.0.0.1:1025 -L 18025:127.0.0.1:8025 user1@127.0.0.1
 ```
 
-(M0 에서 `pnpm dev:tunnel` 같은 명령으로 묶는다.)
+`pnpm dev:tunnel` 이 같은 일을 한다 (`tunnel.mjs`).
+
+노트북 포트는 Windows 예약 범위를 피한다. S3 는 처음에 13900 이었는데 Windows 가 13816–14015 를 예약해 `bind: Permission denied` 로 터널이 안 열려서 **23900** 으로 옮겼다 (2026-11-06). 예약 범위 보기: `netsh interface ipv4 show excludedportrange protocol=tcp`. 포트를 바꾸면 `.env` 의 `S3_ENDPOINT` 도 같이 바꾼다.
 
 ## VM 에서 관리
 
