@@ -39,6 +39,25 @@
 - 앱 VM 주소가 바뀌면 `aionit-registry-allow.service` 의 `APP_BR` 을, 개발 VM 주소가 바뀌면 `deploy.sh` 의 `DEV_BR` · 인증서(IP 가 들어 있음) · 앱 VM `certs.d` 폴더 이름을 함께 바꾼다.
 - 인증서를 새로 만들면(`openssl req -x509 … -addext subjectAltName=IP:10.20.30.63,IP:127.0.0.1`) 앱 VM 의 `ca.crt` 도 바꾸고 보관소를 다시 띄운다 (`docker restart aionit-registry`).
 
+## 시험 DB (통합 테스트)
+
+여러 작업 창이 한 시험 DB 를 같이 쓰면 서로 표를 비워 테스트가 깨진다 (2026-11-05 M8 · M9). 그래서 창마다 나눈다 (`apps/web/vitest.config.ts`).
+
+| 어디서 | 시험 DB 이름 |
+|---|---|
+| 본 폴더 | `TEST_DATABASE_URL` 의 이름 그대로 (`aionit_test`) |
+| 작업 창 (`.claude/worktrees/<이름>/`) | `aionit_<이름>_test` (`-` 는 `_`, 예: `m8-instructor-eba35f` ➔ `aionit_m8_instructor_eba35f_test`) |
+| `TEST_DB_NAME` 을 주면 | 그 이름 (소문자 · 숫자 · `_`, `_test` 로 끝남). `pnpm test` 로도 넘어간다 (`turbo.json` passThroughEnv) |
+
+- 서버 · 계정 · 비밀번호는 루트 `.env` 의 `TEST_DATABASE_URL` 것을 쓴다. 작업 창은 본 폴더의 `.env` 를 그대로 복사해 오면 된다.
+- DB 가 없으면 테스트 시작 때 만들고 마이그레이션을 적용한다 (`apps/web/test/global-setup.ts`, 첫 줄에 `통합 테스트 DB: …` 를 찍는다).
+- 다 쓴 창의 DB 는 지워도 된다 (진짜 데이터 없음). VM 에서:
+
+```bash
+cd ~/aionit-dev && docker compose exec -T postgres psql -U aionit -d aionit -Atc "select datname from pg_database where datname like '%\_test'"
+docker compose exec -T postgres dropdb -U aionit aionit_<이름>_test
+```
+
 ## 노트북에서 터널 열기
 
 ```bash
