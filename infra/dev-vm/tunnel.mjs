@@ -1,9 +1,11 @@
 // 개발 VM(Academy-dev)의 서비스로 SSH 터널을 연다. `pnpm dev:tunnel` 로 실행하고 Ctrl+C 로 닫는다.
+// 노트북 쪽 포트는 Windows 가 예약해 둔 범위(`netsh interface ipv4 show excludedportrange protocol=tcp`,
+// 2026-11 기준 13816–14015 등)를 피한다. 예약 범위에 걸리면 `bind: Permission denied` 로 터널 전체가 안 열린다.
 import { spawn } from "node:child_process";
 
 const forwards = [
   ["15432", "5432", "PostgreSQL"],
-  ["13900", "3900", "Garage S3"],
+  ["23900", "3900", "Garage S3"],
   ["11025", "1025", "Mailpit SMTP"],
   ["18025", "8025", "Mailpit 웹 화면 http://localhost:18025"],
 ];

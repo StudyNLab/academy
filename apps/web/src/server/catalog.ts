@@ -31,6 +31,7 @@ export async function listCatalog(db: Db, filter: { field?: CourseField } = {}) 
       summary: schema.courses.summary,
       inSubscription: schema.courses.inSubscription,
       instructor: schema.instructors.displayName,
+      createdAt: schema.courses.createdAt,
       chapters: sql<number>`(select count(*)::int from chapters c where c.course_version_id = courses.published_version_id)`,
       freeVideos: sql<number>`(select count(*)::int from video_slots v where v.course_id = courses.id and v.source = 'youtube')`,
       labs: sql<number>`(select coalesce(sum(jsonb_array_length(c.labs)), 0)::int from chapters c where c.course_version_id = courses.published_version_id)`,
