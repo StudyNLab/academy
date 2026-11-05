@@ -299,6 +299,7 @@ export async function myClassroom(db: Db, userId: string, now = new Date()) {
         id: course.id,
         slug: course.slug,
         title: course.title,
+        field: course.field,
         instructor,
         active: access.ok,
         endsAt: access.ok ? access.entitlement.endsAt : (access.lastEndedAt ?? null),
@@ -308,6 +309,7 @@ export async function myClassroom(db: Db, userId: string, now = new Date()) {
           progress.filter((p) => p.completedAt).map((p) => p.chapterKey),
         ),
         chapterCount: chapters.length,
+        doneChapters: progress.filter((p) => p.completedAt && keys.includes(p.chapterKey)).length,
         resume,
         lastStudiedAt: last?.updatedAt ?? null,
       };

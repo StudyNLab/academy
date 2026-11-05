@@ -6,13 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MonoLabel, ProgressBar } from "@aionit/ui";
+import { LogoMark, LogoWord } from "@aionit/ui";
 import { Reader } from "@/components/reader";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/client-api";
 import type { Playback } from "@/server/videos";
 import type { LearnResult } from "@/server/learning";
-import { MenuIcon } from "@/components/icons";
+import { SvcIcon } from "@/components/icons";
 import { HostedVideo } from "./hosted-video";
 import { QnaPanel } from "./qna-panel";
 import type { Beat, ChapterStatus } from "./learn-sync";
@@ -75,6 +75,19 @@ export function LearnScreen({
   );
 
   const onMount = useCallback((el: HTMLDivElement) => setRoot(el), []);
+
+  // 실습 체크는 화면을 다 불러온 뒤에 켠다. 불러오는 중(느린 망 · 휴대폰)에 누른 체크는 화면이 받지 못해 사라지므로
+  // 그동안은 누를 수 없게 두고 "불러오는 중"이라고 알린다
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (document.readyState === "complete") {
+      setReady(true);
+      return;
+    }
+    const onLoad = () => setReady(true);
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
 
   // 알림 · 메일의 링크(?qna=질문id)로 오면 그 질문을 연다
   useEffect(() => {
@@ -251,201 +264,226 @@ export function LearnScreen({
       labs={labs}
       current={current}
       completed={status.completed}
+      percent={percent}
       onNavigate={() => setTocOpen(false)}
     />
   );
 
-  return (
-    <div className="min-h-screen bg-bg pb-20 lg:pb-0">
-      <header className="sticky top-0 z-20 border-b border-line bg-bg">
-        <div className="flex min-h-[60px] items-center gap-x-4 px-4 md:px-8">
-          <Link href="/learn" className="hidden shrink-0 text-[14px] text-ink no-underline md:inline">
-            ← 내 강의실
-          </Link>
-          <Link href="/learn" aria-label="내 강의실" className="text-ink no-underline md:hidden">
-            ←
-          </Link>
-          <span className="hidden h-5 w-px bg-line md:block" />
-          <Link
-            href={`/courses/${course.slug}`}
-            className="min-w-0 truncate text-[15px] font-semibold text-ink no-underline"
-          >
-            <span className="hidden md:inline">{course.title}</span>
-            <span className="md:hidden">
-              {chapter.label || chapter.key} {chapter.title}
-            </span>
-          </Link>
-          <div className="ml-auto flex shrink-0 items-center gap-3">
-            <div className="hidden w-[180px] flex-col gap-1 sm:flex">
-              <span className="text-right text-[12px] tabular-nums text-ink-2">진도 {percent}%</span>
-              <ProgressBar value={percent} label="과정 진도" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setQna((v) => ({ open: !v.open, id: null }))}
-              aria-expanded={qna.open}
-              aria-label={`Q&A, 이 챕터의 미해결 질문 ${qnaCount}개`}
-              className="inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold text-ink"
-            >
-              <span>Q&amp;A</span>
-              <span className="min-w-5 border border-line-strong px-1 text-center font-mono text-[12px] leading-5 tabular-nums">
-                {qnaCount}
-              </span>
-            </button>
-            <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => setTocOpen(true)}
-              aria-label="목차 열기"
-              className="inline-flex h-11 w-11 items-center justify-center text-ink lg:hidden"
-            >
-              <MenuIcon />
-            </button>
-          </div>
-        </div>
-        <div className="sm:hidden">
-          <ProgressBar value={percent} label="과정 진도" />
-        </div>
-        {!online ? (
-          <p role="status" className="m-0 bg-warn px-4 py-2 text-center text-[13px] text-on-primary">
-            연결이 끊겼습니다. 진도는 다시 연결되면 저장됩니다.
-          </p>
-        ) : null}
-      </header>
+  const sections = chapter.toc.filter((t) => t.level === 1);
+  const openQna = () => setQna((v) => ({ open: !v.open, id: null }));
 
-      <div
-        className={`mx-auto grid ${qna.open ? "max-w-[1680px] lg:grid-cols-[1fr_400px] xl:grid-cols-[280px_1fr_400px]" : "max-w-[1296px] lg:grid-cols-[280px_1fr]"}`}
-      >
-        {/* Q&A 를 열면 1280px 아래에서는 목차를 접어 본문 폭을 지킨다 */}
-        <aside className={`hidden border-r border-line ${qna.open ? "xl:block" : "lg:block"}`}>
-          <div className="sticky top-[61px] max-h-[calc(100vh-61px)] overflow-y-auto px-6 py-8">{toc}</div>
+  return (
+    <div className={`pb-16 md:pb-0 ${qna.open ? "qa-open" : ""}`}>
+      <header className="reader-header">
+        <div className="reader-header-left">
+          <Link className="logo" href="/" aria-label="AIONIT 홈">
+            <LogoMark />
+            <LogoWord />
+          </Link>
+          <span className="reader-divider" />
+          <Link href={`/courses/${course.slug}`} className="reader-course-name">
+            {course.title}
+          </Link>
+        </div>
+        <div className="reader-header-actions">
+          <span className="reader-save" role="status">
+            {online ? (
+              <>
+                <SvcIcon name="check" /> 진도 저장 중
+              </>
+            ) : (
+              "연결이 끊겼습니다"
+            )}
+          </span>
+          <ThemeToggle className="icon-btn theme-btn" />
+          <button
+            type="button"
+            className="btn secondary small"
+            onClick={openQna}
+            aria-expanded={qna.open}
+            aria-label={`Q&A, 이 챕터의 미해결 질문 ${qnaCount}개`}
+          >
+            <SvcIcon name="chat" /> Q&amp;A <span>{qnaCount}</span>
+          </button>
+          <Link className="icon-btn" href="/learn" aria-label="내 강의실">
+            <SvcIcon name="user" />
+          </Link>
+        </div>
+      </header>
+      {!online ? (
+        <p role="status" className="reader-state-banner m-0">
+          연결이 끊겼습니다. 진도는 다시 연결되면 저장됩니다.
+        </p>
+      ) : null}
+
+      <div className="reader-shell">
+        <aside className="toc" aria-label="강의 목차">
+          {toc}
         </aside>
 
         <main
-          className="min-w-0 px-5 pt-10 md:px-14"
+          className="reader-workspace"
           style={{ backgroundImage: watermark(nickname), backgroundRepeat: "repeat" }}
         >
-          <div className="max-w-[720px]">
-            {data.staff ? (
-              <p className="m-0 mb-6 border-t-2 border-signal pt-2 text-[13px] text-ink-2">
-                운영자 · 강사 보기: 진도는 남지만 학습 시간 정산에서는 빠집니다.
-              </p>
-            ) : data.daysLeft !== null && data.daysLeft <= 30 ? (
-              <p className="m-0 mb-6 border-t-2 border-warn pt-2 text-[13px] text-ink-2">
-                수강 기간이 {data.daysLeft}일 남았습니다.
-              </p>
-            ) : null}
-            {banner ? (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t-2 border-signal bg-surface px-4 py-3 text-[14px]">
-                <span>
-                  마지막으로 읽은 곳: <strong className="font-semibold">{banner.title}</strong>
-                </span>
-                <a href={`#${banner.id}`} onClick={() => setBanner(null)}>
-                  이동
+          <div className="reading-layout">
+            <article className="reading-main">
+              {data.staff ? (
+                <div className="notice mb-6 text-[13px]">
+                  운영자 · 강사 보기: 진도는 남지만 학습 시간 정산에서는 빠집니다.
+                </div>
+              ) : data.daysLeft !== null && data.daysLeft <= 30 ? (
+                <div className="notice warn mb-6 text-[13px]">수강 기간이 {data.daysLeft}일 남았습니다.</div>
+              ) : null}
+              {banner ? (
+                <div className="resume-banner">
+                  <span>
+                    마지막으로 읽은 곳: <strong>{banner.title}</strong>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <a href={`#${banner.id}`} onClick={() => setBanner(null)}>
+                      이동 <SvcIcon name="arrow" />
+                    </a>
+                    <button type="button" onClick={() => setBanner(null)} aria-label="닫기">
+                      <SvcIcon name="close" />
+                    </button>
+                  </span>
+                </div>
+              ) : null}
+              <Reader html={data.html} onMount={onMount} />
+              {hostedSlots.map(({ el, key }) => {
+                const video = data.videos.find((v) => v.key === key);
+                return video
+                  ? createPortal(
+                      <HostedVideo
+                        title={video.title}
+                        startAt={data.startAt[key]}
+                        load={() =>
+                          api<Playback>("/learn/videos/playback", { courseId: course.id, videoKey: key })
+                        }
+                        onVideo={(el) =>
+                          hostedTracks.current.set(key, new VideoTrack(key, chapter.key, html5Player(el)))
+                        }
+                      />,
+                      el,
+                      key,
+                    )
+                  : null;
+              })}
+              {slots.map(({ el, sectionId }) => {
+                const lab = labs.find((l) => l.sectionId === sectionId);
+                return lab
+                  ? createPortal(<SelfCheck lab={lab} ready={ready} onToggle={toggleCheck} />, el, sectionId)
+                  : null;
+              })}
+
+              <section aria-label="이 챕터 정리" className="chapter-end" id="finish">
+                <div className="eyebrow muted">{status.completed ? "CHAPTER COMPLETE" : "THIS CHAPTER"}</div>
+                <h3>{status.completed ? "이 챕터를 마쳤습니다." : "오늘의 배움을 정리해 볼까요?"}</h3>
+                <div className="completion-row">
+                  <span>교재 끝까지 읽기</span>
+                  <span>{status.textDone ? "✓ 완료" : "본문 끝에 도달하면 완료"}</span>
+                </div>
+                {data.videos.length > 0 ? (
+                  <div className="completion-row">
+                    <span>영상 90% 이상 보기</span>
+                    <span>
+                      {videosDone} / {data.videos.length}
+                    </span>
+                  </div>
+                ) : null}
+                {checksTotal > 0 ? (
+                  <div className="completion-row">
+                    <span>스스로 확인 모두 체크</span>
+                    <span>
+                      {checksDone} / {checksTotal}
+                    </span>
+                  </div>
+                ) : null}
+                <p className="mt-3 mb-0 text-[13px] text-muted">
+                  {status.completed ? "✓ 이 챕터 완료" : "진행 중"} · 시험이나 퀴즈는 없습니다.
+                </p>
+                {data.attachments.length > 0 ? (
+                  <ul className="mt-5 mb-0 flex list-none flex-col gap-2 p-0">
+                    {data.attachments.map((a) => (
+                      <li key={a.id}>
+                        <a
+                          href={`/api/v1/learn/attachments/${a.id}`}
+                          download
+                          className="btn secondary small"
+                        >
+                          <SvcIcon name="code" /> {a.title}{" "}
+                          <span className="text-muted">{sizeText(a.size)}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <nav aria-label="이전 · 다음 챕터" className="mt-8 grid grid-cols-2 gap-4">
+                  {data.prev ? (
+                    <Link
+                      href={`/learn/${course.slug}/${data.prev.key}`}
+                      className="surface block p-5 no-underline"
+                    >
+                      <small className="block text-muted">이전 챕터</small>
+                      <strong>{data.prev.title}</strong>
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  {data.next ? (
+                    <Link
+                      href={`/learn/${course.slug}/${data.next.key}`}
+                      className="surface block p-5 text-right no-underline"
+                    >
+                      <small className="block text-muted">다음 챕터</small>
+                      <strong>{data.next.title} →</strong>
+                    </Link>
+                  ) : null}
+                </nav>
+              </section>
+            </article>
+
+            <aside className="reading-rail" aria-label="이 페이지에서">
+              <h3>ON THIS PAGE</h3>
+              {sections.map((t) => (
+                <a key={t.id} href={`#${t.id}`} className={current === t.id ? "active" : undefined}>
+                  {t.title}
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setBanner(null)}
-                  className="ml-auto text-ink-2"
-                  aria-label="닫기"
-                >
-                  ×
+              ))}
+              <div className="rail-qa">
+                <p>
+                  혼자 고민하고 있나요?
+                  <br />
+                  교재 옆에서 질문하세요.
+                </p>
+                <button type="button" onClick={openQna}>
+                  <SvcIcon name="chat" /> Q&amp;A <span className="tag tag-outline">{qnaCount}</span>
                 </button>
               </div>
-            ) : null}
+            </aside>
           </div>
-          <div className="mt-4">
-            <Reader html={data.html} onMount={onMount} />
-          </div>
-          {hostedSlots.map(({ el, key }) => {
-            const video = data.videos.find((v) => v.key === key);
-            return video
-              ? createPortal(
-                  <HostedVideo
-                    title={video.title}
-                    startAt={data.startAt[key]}
-                    load={() =>
-                      api<Playback>("/learn/videos/playback", { courseId: course.id, videoKey: key })
-                    }
-                    onVideo={(el) =>
-                      hostedTracks.current.set(key, new VideoTrack(key, chapter.key, html5Player(el)))
-                    }
-                  />,
-                  el,
-                  key,
-                )
-              : null;
-          })}
-          {slots.map(({ el, sectionId }) => {
-            const lab = labs.find((l) => l.sectionId === sectionId);
-            return lab ? createPortal(<SelfCheck lab={lab} onToggle={toggleCheck} />, el, sectionId) : null;
-          })}
-
-          <section aria-label="이 챕터 정리" className="mt-16 max-w-[720px] border-t border-line-strong pt-6">
-            <MonoLabel className="text-xs text-ink-2">이 챕터</MonoLabel>
-            <p className="mt-2 mb-0 text-[15px]">
-              {status.completed ? <strong className="font-semibold text-done">✓ 완료</strong> : "진행 중"}
-              {" · "}교재 {status.textDone ? "✓" : "읽는 중"}
-              {data.videos.length > 0 ? ` · 영상 ${videosDone}/${data.videos.length}` : ""}
-              {checksTotal > 0 ? ` · 실습 체크 ${checksDone}/${checksTotal}` : ""}
-            </p>
-            {!status.completed ? (
-              <p className="mt-1 mb-0 text-[13px] text-ink-2">
-                끝까지 읽고{data.videos.length > 0 ? " 영상을 90% 이상 보고" : ""}
-                {checksTotal > 0 ? " 스스로 확인을 모두 체크하면" : "으면"} 완료됩니다.
-              </p>
-            ) : null}
-            {data.attachments.length > 0 ? (
-              <ul className="mt-6 mb-0 flex list-none flex-col gap-2 p-0">
-                {data.attachments.map((a) => (
-                  <li key={a.id}>
-                    <a href={`/api/v1/learn/attachments/${a.id}`} download className="text-[15px]">
-                      {a.title}
-                    </a>{" "}
-                    <span className="text-[13px] text-ink-2">{sizeText(a.size)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <nav aria-label="이전 · 다음 챕터" className="mt-10 flex justify-between gap-6">
-              {data.prev ? (
-                <Link href={`/learn/${course.slug}/${data.prev.key}`} className="max-w-[45%] text-[15px]">
-                  ← {data.prev.title}
-                </Link>
-              ) : (
-                <span />
-              )}
-              {data.next ? (
-                <Link
-                  href={`/learn/${course.slug}/${data.next.key}`}
-                  className="max-w-[45%] text-right text-[15px]"
-                >
-                  {data.next.title} →
-                </Link>
-              ) : null}
-            </nav>
-          </section>
         </main>
-        {qna.open ? (
-          // 데스크톱: 오른쪽 칸 (본문을 밀어낸다) / 좁은 화면: 전체 화면
-          <aside className="fixed inset-0 z-40 bg-bg lg:sticky lg:top-[61px] lg:z-auto lg:h-[calc(100vh-61px)] lg:border-l lg:border-line">
-            <QnaPanel
-              courseId={course.id}
-              chapterKey={chapter.key}
-              chapterName={`${chapter.label.replace(/^CHAPTER\s*/i, "CH") || chapter.key} ${chapter.title}`}
-              section={currentSection}
-              openId={qna.id}
-              onClose={() => setQna({ open: false, id: null })}
-              onChanged={() => router.refresh()}
-            />
-          </aside>
-        ) : null}
       </div>
 
-      {/* 좁은 화면: 아래 고정 막대 + 목차 시트 */}
+      {qna.open ? (
+        // 데스크톱: 오른쪽 칸 (시안 .qa-panel, 본문을 밀어낸다) / 좁은 화면: 전체 화면
+        <aside className="qa-panel max-md:inset-0 max-md:w-full">
+          <QnaPanel
+            courseId={course.id}
+            chapterKey={chapter.key}
+            chapterName={`${chapter.label.replace(/^CHAPTER\s*/i, "CH") || chapter.key} ${chapter.title}`}
+            section={currentSection}
+            openId={qna.id}
+            onClose={() => setQna({ open: false, id: null })}
+            onChanged={() => router.refresh()}
+          />
+        </aside>
+      ) : null}
+
+      {/* 좁은 화면: 아래 고정 막대 + 목차 시트 (시안은 좁은 화면에서 머리글의 Q&A · 목차를 숨긴다) */}
       <nav
         aria-label="챕터 이동"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-line bg-bg text-[14px] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface text-[14px] md:hidden"
       >
         {data.prev ? (
           <Link
@@ -460,6 +498,9 @@ export function LearnScreen({
         <button type="button" onClick={() => setTocOpen(true)} className="min-h-12 text-ink">
           목차
         </button>
+        <button type="button" onClick={openQna} className="min-h-12 text-ink">
+          Q&amp;A {qnaCount}
+        </button>
         {data.next ? (
           <Link
             href={`/learn/${course.slug}/${data.next.key}`}
@@ -472,16 +513,23 @@ export function LearnScreen({
         )}
       </nav>
       {tocOpen ? (
-        <div className="fixed inset-0 z-30 lg:hidden" role="dialog" aria-label="목차">
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-label="목차">
+          {/* 바깥을 눌러도 닫힌다 (화면 읽기 프로그램에는 아래 [닫기] 하나만) */}
           <button
             type="button"
-            aria-label="목차 닫기"
+            aria-hidden="true"
+            tabIndex={-1}
             className="absolute inset-0 bg-ink/40"
             onClick={() => setTocOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto bg-bg px-5 pt-4 pb-8 shadow-float">
+          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-paper px-5 pt-4 pb-8 shadow-float">
             <div className="mb-3 flex justify-end">
-              <button type="button" onClick={() => setTocOpen(false)} className="min-h-11 px-2 text-ink-2">
+              <button
+                type="button"
+                onClick={() => setTocOpen(false)}
+                aria-label="목차 닫기"
+                className="min-h-11 px-2 text-muted"
+              >
                 닫기
               </button>
             </div>
@@ -493,82 +541,92 @@ export function LearnScreen({
   );
 }
 
+/** 목차 (시안 .toc): 내 강의실로 · 과정 이름 · 진도 · 챕터 목록 (지금 챕터는 구역 · 실습 체크 수까지) */
 function Toc({
   data,
   labs,
   current,
   completed,
+  percent,
   onNavigate,
 }: {
   data: Data;
   labs: Lab[];
   current: string | null;
   completed: boolean;
+  percent: number;
   onNavigate: () => void;
 }) {
   const { course, chapter } = data;
   const main = data.videos.find((v) => v.kind === "main");
+  const doneCount = data.chapters.filter((c) => (c.key === chapter.key ? completed : c.done)).length;
   return (
-    <nav aria-label="목차" className="flex flex-col text-[14px]">
-      <MonoLabel className="mb-3 text-xs text-ink-2">목차</MonoLabel>
-      <ol className="m-0 flex list-none flex-col gap-1 p-0">
-        {data.chapters.map((c) => {
+    <>
+      <Link className="toc-back" href="/learn">
+        <SvcIcon name="back" /> 내 강의실
+      </Link>
+      <div className="toc-title">
+        <span className="eyebrow muted">YOUR FIELD GUIDE</span>
+        <h2>{course.title}</h2>
+        <div className="toc-progress">
+          <span>나의 학습 진도</span>
+          <strong>{percent}%</strong>
+        </div>
+        <div
+          className="progress-track"
+          role="progressbar"
+          aria-label="과정 진도"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <span style={{ width: `${percent}%` }} />
+        </div>
+        <div className="toc-progress">
+          <span>
+            {doneCount} / {data.chapters.length} 챕터 완료
+          </span>
+        </div>
+      </div>
+      <nav aria-label="목차">
+        {data.chapters.map((c, i) => {
           const here = c.key === chapter.key;
           const done = here ? completed : c.done;
           return (
-            <li key={c.key}>
+            <div key={c.key}>
               <Link
                 href={`/learn/${course.slug}/${c.key}`}
                 onClick={onNavigate}
                 aria-current={here ? "page" : undefined}
-                className={`flex min-h-10 items-baseline gap-2 py-1.5 no-underline ${here ? "font-semibold text-ink" : "text-ink-2"}`}
+                className={`toc-item ${here ? "current" : ""}`}
               >
-                <MonoLabel className="w-10 shrink-0 text-[11px] text-signal">
-                  {c.label.replace(/^CHAPTER\s*/i, "CH") || c.key}
-                </MonoLabel>
-                <span className="flex-1">{c.title}</span>
-                {done ? (
-                  <span className="text-done" aria-label="완료">
-                    ✓
-                  </span>
-                ) : null}
+                <SvcIcon name={done ? "check" : "book"} />
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                <span>{c.title}</span>
+                {done ? <span className="sr-only">완료</span> : null}
               </Link>
               {here ? (
-                <ul className="m-0 mb-2 flex list-none flex-col border-l border-line p-0 pl-3">
+                <div className="toc-sub">
                   {main ? (
-                    <li>
-                      <a
-                        href={`#video-${main.key}`}
-                        className="block py-1 text-ink-2 no-underline"
-                        onClick={onNavigate}
-                      >
-                        <MonoLabel className="mr-1.5 text-[10px] text-signal">영상</MonoLabel>
-                        {main.title}
-                      </a>
-                    </li>
+                    <a href={`#video-${main.key}`} onClick={onNavigate}>
+                      영상 · {main.title}
+                    </a>
                   ) : null}
                   {chapter.toc
                     .filter((t) => t.level === 1)
                     .map((t) => {
                       const lab = labs.find((l) => l.sectionId === t.id);
-                      const checked = lab?.items.filter((i) => i.checked).length ?? 0;
+                      const checked = lab?.items.filter((item) => item.checked).length ?? 0;
                       return (
-                        <li key={t.id}>
+                        <span key={t.id} className="contents">
                           <a
                             href={`#${t.id}`}
                             onClick={onNavigate}
-                            className={`-ml-[13px] flex items-baseline gap-2 border-l-2 py-1 pl-[11px] no-underline ${
-                              current === t.id
-                                ? "border-signal font-semibold text-ink"
-                                : "border-transparent text-ink-2"
-                            }`}
+                            className={current === t.id ? "active" : undefined}
                           >
-                            <span className="flex-1">{t.title}</span>
+                            {t.title}
                             {lab ? (
-                              <span
-                                className={`text-[12px] tabular-nums ${checked === lab.items.length ? "text-done" : ""}`}
-                              >
-                                {checked === lab.items.length ? "✓ " : ""}
+                              <span className="toc-count">
                                 {checked}/{lab.items.length}
                               </span>
                             ) : null}
@@ -576,34 +634,30 @@ function Toc({
                           {data.videos
                             .filter((v) => v.kind !== "main" && v.sectionId === t.id)
                             .map((v) => (
-                              <a
-                                key={v.key}
-                                href={`#video-${v.key}`}
-                                onClick={onNavigate}
-                                className="block py-1 pl-2 text-[13px] text-ink-2 no-underline"
-                              >
-                                <MonoLabel className="mr-1.5 text-[10px] text-signal">영상</MonoLabel>
-                                {v.title}
+                              <a key={v.key} href={`#video-${v.key}`} onClick={onNavigate}>
+                                영상 · {v.title}
                               </a>
                             ))}
-                        </li>
+                        </span>
                       );
                     })}
-                </ul>
+                </div>
               ) : null}
-            </li>
+            </div>
           );
         })}
-      </ol>
-    </nav>
+      </nav>
+    </>
   );
 }
 
 function SelfCheck({
   lab,
+  ready,
   onToggle,
 }: {
   lab: Lab;
+  ready: boolean;
   onToggle: (sectionId: string, itemId: string, checked: boolean) => void;
 }) {
   const done = lab.items.filter((i) => i.checked).length;
@@ -611,9 +665,7 @@ function SelfCheck({
     <div className="self-check">
       <p className="self-check-title">
         <span>스스로 확인</span>
-        <span className="tabular-nums">
-          {done} / {lab.items.length}
-        </span>
+        <span className="tabular-nums">{ready ? `${done} / ${lab.items.length}` : "불러오는 중…"}</span>
       </p>
       <ul>
         {lab.items.map((item) => (
@@ -622,6 +674,7 @@ function SelfCheck({
               <input
                 type="checkbox"
                 checked={item.checked}
+                disabled={!ready}
                 onChange={(e) => onToggle(lab.sectionId, item.id, e.target.checked)}
               />
               <span>{item.text}</span>
