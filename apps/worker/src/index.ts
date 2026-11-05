@@ -11,6 +11,7 @@ import { PgBoss } from "pg-boss";
 import { processCourseVersion } from "./content";
 import { aggregateRecentDays } from "./learning";
 import { sendMailJob } from "./mail";
+import { pushWorkerHeartbeat } from "./monitor";
 import { sendExpiryReminders } from "./reminders";
 import { purgeExpiredRecords } from "./retention";
 import { transcodeVideo } from "./video";
@@ -33,13 +34,15 @@ boss.on("error", (error) => console.error("pg-boss 오류", error));
 
 await boss.start();
 
-// 상태 확인용: 매시 정각에 한 번 돈다. 대기열이 살아 있는지 확인하는 용도.
+// 상태 확인용: 매시 정각에 한 번 돈다. 대기열이 살아 있는지 확인하고 감시(Gatus)에 알린다 (M10).
 const HEARTBEAT = "system.heartbeat";
 await boss.createQueue(HEARTBEAT);
 await boss.schedule(HEARTBEAT, "0 * * * *", {}, { tz: "Asia/Seoul" });
 await boss.work(HEARTBEAT, async () => {
-  console.warn(`[worker] heartbeat ${new Date().toISOString()}`);
+  console.warn(`[worker] heartbeat ${new Date().toISOString()} 감시 ${await pushWorkerHeartbeat()}`);
 });
+// 켜질 때도 한 번 (배포 직후 감시가 바로 초록이 되게)
+void pushWorkerHeartbeat();
 
 // 메일: 실패하면 30초부터 늘려 가며 5번 다시 시도. 링크(토큰)가 든 작업은 끝나고 1시간 뒤 지운다.
 await boss.createQueue(MAIL_QUEUE, {

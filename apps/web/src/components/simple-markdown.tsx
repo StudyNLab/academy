@@ -1,5 +1,5 @@
 // 정책 문서용 아주 작은 마크다운 표시기. HTML 을 그대로 넣지 않고(React 가 글자를 이스케이프) 블록만 나눈다.
-// 지원: 문단, "> " 인용(안내), "1. " 번호 목록, "- " 목록, "| " 표, **굵게**
+// 지원: "## " · "### " 제목, 문단, "> " 인용(안내), "1. " 번호 목록, "- " 목록, "| " 표, **굵게**
 import type { ReactNode } from "react";
 
 function inline(text: string): ReactNode[] {
@@ -16,6 +16,18 @@ export function SimpleMarkdown({ source }: { source: string }) {
     <div className="flex flex-col gap-5 text-[16px] leading-[1.85]">
       {blocks.map((block, i) => {
         const lines = block.split("\n");
+        const heading = lines.length === 1 ? /^(#{2,3})\s+(.+)$/.exec(lines[0]!) : null;
+        if (heading) {
+          return heading[1] === "##" ? (
+            <h2 key={i} className="m-0 mt-4 text-[21px] font-semibold tracking-[-0.02em] text-ink">
+              {inline(heading[2]!)}
+            </h2>
+          ) : (
+            <h3 key={i} className="m-0 mt-2 text-[17px] font-semibold text-ink">
+              {inline(heading[2]!)}
+            </h3>
+          );
+        }
         if (lines.every((l) => l.startsWith(">"))) {
           return (
             <p key={i} className="m-0 border-t-2 border-warn bg-surface px-4 py-3 text-[14px] text-ink-2">

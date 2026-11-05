@@ -13,7 +13,7 @@
 - data VM 의 PostgreSQL(5432) · Garage(3900 S3 API · 3902 웹 주소)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
 - Garage 웹 주소(3902, `garage.toml` 의 `[s3_web]`, root_domain `.web.garage`)는 **영상 버킷 `aionit-media` 만** 웹 공개 설정(`garage bucket website --allow aionit-media`)이다. app VM Caddy 가 `/media/*` 요청마다 web 에 재생 토큰을 확인한 뒤 Host `aionit-media.web.garage` 로 프록시한다. 다른 버킷은 웹 공개하지 않는다.
 - 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
-- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4). 토스페이먼츠 결제위젯 연동 키 `TOSS_CLIENT_KEY` `TOSS_SECRET_KEY`(M5: 토스 문서용 공개 테스트 키 `test_gck_docs_…` / `test_gsk_docs_…`, 실오픈 때 운영자 상점 키). 구독 자동결제 API 개별 연동 키 `TOSS_BILLING_CLIENT_KEY` `TOSS_BILLING_SECRET_KEY`(M6, 운영자 본인 테스트 키. 없으면 구독 신청 · worker 자동결제가 꺼진다). `TOSS_FAKE` 는 개발 서버 전용이라 서버에 두지 않는다.
+- app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4). 토스페이먼츠 결제위젯 연동 키 `TOSS_CLIENT_KEY` `TOSS_SECRET_KEY`(M5: 토스 문서용 공개 테스트 키 `test_gck_docs_…` / `test_gsk_docs_…`, 실오픈 때 운영자 상점 키). 구독 자동결제 API 개별 연동 키 `TOSS_BILLING_CLIENT_KEY` `TOSS_BILLING_SECRET_KEY`(M6, 운영자 본인 테스트 키. 없으면 구독 신청 · worker 자동결제가 꺼진다). `TOSS_FAKE` 는 개발 서버 전용이라 서버에 두지 않는다. 감시 푸시 `MONITOR_WORKER_PUSH_URL` · `MONITOR_WORKER_PUSH_TOKEN`(M10, 토큰은 `~/aionit-monitor/.env` 의 `WORKER_PUSH_TOKEN` 과 같음). 바닥글 사업자 정보 `BUSINESS_NAME` `BUSINESS_OWNER` `BUSINESS_REG_NO` `BUSINESS_MAIL_ORDER_NO` `BUSINESS_ADDRESS` `BUSINESS_CONTACT`(M10, 비면 "[운영자 입력]").
 
 ## 사이트 보기 (도메인 전)
 
@@ -91,7 +91,7 @@ bash infra/scripts/deploy.sh
 
 - 공유 폴더는 systemd mount 단위 `mnt-aionit\x2dbackup.mount` 로 붙인다. 공유 폴더가 없어도 VM 부팅은 막히지 않는다. 매일 백업은 실패로 끝나고(감시에 알림), 배포 전 백업은 배포를 막지 않는다.
 - 파일 백업은 **읽기 전용 키**(`aionit-backup`, data VM `~/aionit/garage-backup.env`, 600)로 한다. 두 버킷 모두 읽기만 (`garage bucket allow --read aionit-media --key aionit-backup`, 2026-11-05). 이미지 `rclone/rclone:1.75.2`.
-- **설정 암호화**: `openssl cms`(AES-256) + 백업 공개 인증서 `~/aionit/backup-recipient.pem`(RSA 4096, 2036-11 까지, SHA-256 지문 `2D:A6:68:43:…:CB:22`). **개인키는 VM · G: 에 두지 않는다** (운영자 보관). 풀기: `openssl cms -decrypt -binary -inform DER -inkey <개인키> -in data-<날짜>.cms | tar xzf - -C <폴더>`.
+- **설정 암호화**: `openssl cms`(AES-256) + 백업 공개 인증서 `~/aionit/backup-recipient.pem`(RSA 4096, 2036-11 까지, SHA-256 지문 `2D:A6:68:43:…:CB:22`). **개인키는 VM · G: 에 두지 않는다** — 운영자 PC `E:\온라인아카데미_비밀보관\AIONIT_설정백업_개인키.pem`. 풀기: `openssl cms -decrypt -binary -inform DER -inkey <개인키> -in data-<날짜>.cms | tar xzf - -C <폴더>`.
 - 배포 스크립트가 배포 때마다 `infra/data-vm/backup.sh` 를 data VM 에 덮어쓴다. 서버의 백업 스크립트를 바꾸려면 저장소 파일을 고친다.
 
 ### app VM 설정 받기 (2026-11-05 운영자 허락)
@@ -103,7 +103,7 @@ bash infra/scripts/deploy.sh
 ### 두 번째 사본 (NAS F:, 2026-11-05 운영자 결정)
 
 - 호스트 예약 작업 `AIONIT-NAS-copy`: 매일 04:30 `C:\AIONIT\nas-copy.cmd` (`infra/host/nas-copy.cmd`) ➔ `G:\AIONIT-backup` 을 `F:\AIONIT-backup` 으로 robocopy
-- **복사만** 한다 (G: 에서 지운 파일을 F: 에서 따라 지우지 않는다). F: 는 200일 지난 파일만 지운다. 기록 `F:\AIONIT-backup\_nas-copy.log`
+- **복사만** 한다 (G: 에서 지운 파일을 F: 에서 따라 지우지 않는다: G: 가 망가지거나 지워져도 F: 는 남게). F: 는 200일 지난 파일만 지운다 (G: 의 가장 긴 보관인 월간 186일보다 길게). 복사 뒤 F: 의 DB 백업마다 sha256 을 다시 계산해 `.sha256` 과 비교한다 (다르면 기록에 "검증 실패" 와 실패 코드). 기록 `F:\AIONIT-backup\_nas-copy.log`
 - 예약 작업은 user1 이 로그온한 동안만 돈다 (`/it`, 호스트는 VM 화면 때문에 늘 로그온 상태). 처음 복사 260개 · 38.9MB, G: 와 같음
 - 끄려면 `schtasks /delete /tn AIONIT-NAS-copy /f`
 
@@ -121,12 +121,45 @@ bash infra/scripts/deploy.sh
    ```
 2. 프로그램: `sudo apt-get install -y docker.io docker-compose-v2 virtualbox-guest-utils`, `sudo usermod -aG docker user1`, 공유 폴더 붙이기 `sudo mount -t vboxsf -o ro,uid=1000,gid=1000 aionit-backup /mnt/aionit-backup`
 3. 설정: 운영자 PC 에서 `config\data-<가장 최근>.cms` 를 개인키로 풀어 VM `~/aionit/` 에 두고, `sudo install -m 600 garage.toml /srv/data/garage/garage.toml`, `/srv/data/postgres` · `/srv/data/garage/{meta,data}` 만들기 (훈련 때는 compose 의 `172.30.0.20:` 을 `127.0.0.1:` 로)
+   - 개인키: `E:\온라인아카데미_비밀보관\AIONIT_설정백업_개인키.pem` (2026-11-05 운영자 결정, 키 내용은 어디에도 적지 않는다). 풀기 (Git Bash): `openssl cms -decrypt -binary -inform DER -inkey "E:/온라인아카데미_비밀보관/AIONIT_설정백업_개인키.pem" -in data-<날짜>.cms | tar xzf - -C <빈 폴더>`
 4. `~/aionit/restore.sh` (`infra/data-vm/restore.sh`): 백업 sha256 확인 ➔ DB · Garage 띄우기 ➔ DB 역할 ➔ `pg_restore` ➔ Garage 배치 · 버킷 · **예전 키 그대로**(app VM `.env` 를 바꾸지 않아도 된다) ➔ 파일 복사 · 대조 ➔ 개수
 5. 확인: 원본(또는 백업 시점)과 테이블별 행 수, 트리거 수, 버킷별 개수, 영상 웹 주소 200
 6. 실제 복구라면: `crontab.txt` 로 매일 백업 다시 걸기, 공유 폴더 mount 단위, app VM 에서 `/api/health`
 
 - app VM 은 상태가 없다 (DB · 파일은 data VM). 새 app VM 은 Docker 설치 ➔ `config\app-<날짜>.cms` 를 풀어 `~/aionit/` 에 `.env` · compose · Caddyfile, Caddy 인증서는 `docker volume create aionit-app_caddy-data` 뒤 `caddy-data.tgz` 를 풀어 넣기 ➔ `deploy.sh --force` 로 되살린다.
 - 개발 VM(이미지 보관소 · 빌드 캐시)은 백업하지 않는다. 다시 만들 수 있다 (`infra/dev-vm/README.md`).
+
+## 감시 (Gatus, M10)
+
+app VM `~/aionit-monitor/` (`infra/monitor/`: compose · 감시 항목 `config.yaml`, 비밀값 `.env` 600). **앱 배포와 다른 compose 프로젝트**라 `deploy.sh` 가 건드리지 않는다. 고칠 때는 저장소 파일을 고쳐 VM 에 복사하고 `cd ~/aionit-monitor && docker compose up -d` (설정만 바꿨으면 `docker compose restart gatus`).
+
+| 감시 | 어떻게 | 알림 |
+|---|---|---|
+| 사이트 | `http://web:3000/api/health` 1분마다 (200 · `status ok` · 3초 안) | 3번 연속 실패하면 메일, 2번 연속 성공하면 풀림 메일 |
+| Caddy · PostgreSQL · Garage S3 · Garage 웹 | TCP 연결 1분마다 (caddy:443, 172.30.0.20:5432 · 3900 · 3902) | 같음 |
+| Mailpit | TCP 5분마다 | 화면에만 |
+| 매일 백업 | data VM `backup.sh` 가 끝에 푸시 (`~/aionit/monitor.env`). 실패를 보내거나 25시간 오지 않으면 실패 | 바로 메일 |
+| worker | worker 가 매시 정각 푸시 (`.env` 의 `MONITOR_WORKER_PUSH_*`). 2시간 오지 않으면 실패 | 바로 메일. **M10 ② 배포 전에는 꺼 둠** (`config.yaml` 의 `enabled: false`) |
+
+- 감시 화면 (노트북): `ssh -N -o ProxyJump=user1@10.100.4.52 -p 22061 -L 18085:127.0.0.1:8085 user1@127.0.0.1` ➔ http://localhost:18085 (보기만, 계정 없음)
+- 알림 메일: 메일 발송 서비스 전에는 테스트 서버 Mailpit(`ops@aionit.local`)에 쌓인다. 정해지면 `~/aionit-monitor/.env` 의 `MONITOR_SMTP_HOST` · `PORT` · `USER` · `PASSWORD` · `MONITOR_MAIL_FROM` · `MONITOR_MAIL_TO` 를 바꾸고 `docker compose up -d`
+- 푸시 토큰은 `openssl rand -hex 24` 로 VM 에서 만들었다. 토큰 없는 푸시는 401
+- 인증서 만료 감시는 도메인이 생기면 사이트 감시를 `https://<도메인>/api/health` 로 바꾸고 조건 `[CERTIFICATE_EXPIRATION] > 720h`(30일)를 더한다
+
+### 알림 메일 실제로 받기 (운영자)
+
+1. SMTP 고르기: 메일 발송 서비스(사이트 메일과 같은 것, 정해지면 그 SMTP 주소 · 계정) 또는 우선 **Gmail 앱 비밀번호** (구글 계정 2단계 인증 ➔ 보안 ➔ 앱 비밀번호, `smtp.gmail.com` · 587, 보내는 주소 = 그 Gmail)
+2. app VM 에서 `~/aionit-monitor/.env` 를 고친다 (600 그대로): `MONITOR_SMTP_HOST` · `MONITOR_SMTP_PORT` · `MONITOR_SMTP_USER` · `MONITOR_SMTP_PASSWORD` · `MONITOR_MAIL_FROM` · `MONITOR_MAIL_TO`(받을 주소, 여럿이면 쉼표)
+3. `cd ~/aionit-monitor && docker compose up -d` (설정을 다시 읽는다)
+4. 시험 알림: data VM 에서 `. ~/aionit/monitor.env && curl -X POST -H "Authorization: Bearer $BACKUP_PUSH_TOKEN" "$BACKUP_PUSH_URL?success=false&error=test"` ➔ 바로 "Alert triggered" 메일 ➔ 같은 명령을 `success=true` 로 ➔ "Alert resolved" 메일
+- 알림 훈련 (2026-11-05): web 을 멈추고 2분 13초 뒤 "Alert triggered", 다시 켜고 2분 뒤 "Alert resolved" 메일. 백업 실패 푸시 ➔ 바로 알림 ➔ 성공 푸시 ➔ 풀림
+
+## 로그
+
+- 컨테이너: compose 의 json-file 10MB × 5 (감시는 × 3)
+- 시스템 저널: 세 VM 모두 `/etc/systemd/journald.conf.d/aionit.conf` (`infra/vm-common/journald-aionit.conf`) — 500MB · 3개월
+- 백업 기록: data VM `/etc/logrotate.d/aionit-backup` (`infra/data-vm/logrotate-aionit-backup`) — 매주, 12주
+- NAS 복사 기록: 호스트 `F:\AIONIT-backup\_nas-copy.log`
 
 ## 상태 확인
 

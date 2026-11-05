@@ -20,6 +20,7 @@ import {
   myOrders,
   updateProduct,
 } from "@/server/commerce";
+import { currentPolicies } from "@/server/consents";
 import { createCourse, createInstructor, publishVersion, uploadPackage } from "@/server/courses";
 import { canLearn, grantEntitlement, viewAccess } from "@/server/entitlements";
 import {
@@ -275,7 +276,10 @@ describe("주문서 ➔ 토스 승인 ➔ 수강권 (C-01 ~ C-03)", () => {
       .select()
       .from(schema.policyDocuments)
       .where(eq(schema.policyDocuments.id, item!.refundPolicyDocumentId!));
-    expect(refundDoc).toMatchObject({ kind: "refund", version: "2026-11-04-draft.2" });
+    expect(refundDoc).toMatchObject({
+      kind: "refund",
+      version: (await currentPolicies(t.db, ["refund"])).get("refund")!.version,
+    });
     expect(mails).toEqual([
       expect.objectContaining({ template: "payment-receipt", to: buyer.email, paidAmount: 59_000 }),
     ]);

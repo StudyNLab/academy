@@ -1,0 +1,108 @@
+# AIONIT 감시 항목 (Gatus). docs/기술설계.md 10장, infra/README.md 감시.
+# ~/aionit-monitor/.env 의 이름:
+#   MONITOR_MAIL_FROM  MONITOR_MAIL_TO      알림 메일 (보내는 · 받는 주소)
+#   MONITOR_SMTP_HOST  MONITOR_SMTP_PORT    메일 서버 (메일 발송 서비스 전: mailpit · 1025 ➔ 테스트 서버 Mailpit 에 쌓임)
+#   MONITOR_SMTP_USER  MONITOR_SMTP_PASSWORD 메일 서버 로그인 (Mailpit 은 비움)
+#   BACKUP_PUSH_TOKEN  WORKER_PUSH_TOKEN    푸시 토큰 (openssl rand -hex 24). 같은 값을 data VM ~/aionit/monitor.env · app VM ~/aionit/.env 에
+# 알림: 3번 연속 실패하면 메일, 2번 연속 성공하면 "풀림" 메일
+storage:
+  type: sqlite
+  path: /data/data.db
+
+ui:
+  title: AIONIT 감시
+  header: AIONIT 테스트 서버 감시
+
+alerting:
+  email:
+    from: "${MONITOR_MAIL_FROM}"
+    username: "${MONITOR_SMTP_USER}"
+    password: "${MONITOR_SMTP_PASSWORD}"
+    host: "${MONITOR_SMTP_HOST}"
+    port: ${MONITOR_SMTP_PORT}
+    to: "${MONITOR_MAIL_TO}"
+    default-alert:
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+  - name: 사이트 (web 상태 확인)
+    group: app
+    url: "http://web:3000/api/health"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
+      - "[RESPONSE_TIME] < 3000"
+    alerts:
+      - type: email
+
+  - name: Caddy (https)
+    group: app
+    url: "tcp://caddy:443"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: 메일 받는 곳 (Mailpit)
+    group: app
+    url: "tcp://mailpit:1025"
+    interval: 5m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: PostgreSQL
+    group: data
+    url: "tcp://172.30.0.20:5432"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: 파일 저장소 (Garage S3)
+    group: data
+    url: "tcp://172.30.0.20:3900"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: 영상 웹 주소 (Garage web)
+    group: data
+    url: "tcp://172.30.0.20:3902"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+external-endpoints:
+  # data VM backup.sh 가 매일 03:30 백업 끝에 결과를 보낸다. 25시간 동안 오지 않아도 실패
+  # 푸시 주소: POST /api/v1/endpoints/backup_daily-backup/external?success=true (Bearer 토큰)
+  - name: daily-backup
+    group: backup
+    token: "${BACKUP_PUSH_TOKEN}"
+    heartbeat:
+      interval: 25h
+    alerts:
+      - type: email
+        failure-threshold: 1
+        success-threshold: 1
+
+  # worker 가 매시 정각 작업 때 보낸다 (M10 ② 코드, 푸시 주소 app_worker). 2시간 동안 오지 않으면 실패.
+  # ② 를 배포하기 전에는 worker 가 보내지 않으므로 꺼 둔다 ➔ 배포 뒤 enabled 를 지운다
+  - name: worker
+    group: app
+    enabled: false
+    token: "${WORKER_PUSH_TOKEN}"
+    heartbeat:
+      interval: 2h
+    alerts:
+      - type: email
+        failure-threshold: 1
+        success-threshold: 1

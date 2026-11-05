@@ -7,7 +7,7 @@
 #   files/    파일 저장소 Garage 버킷 사본 (aionit · aionit-media, 바뀐 것만)
 #   config/   설정 묶음 (data VM · app VM, 암호화)
 # 보관 (docs/기술설계.md 9장): 매일 35일, 매주(일요일) 5주, 매월(1일) 6개월, 배포 전 90일. 설정 35일
-# 매일 백업은 끝나면 감시(Uptime Kuma)에 결과를 알린다 (~/aionit/monitor.env 의 BACKUP_PUSH_URL, 없으면 건너뜀)
+# 매일 백업은 끝나면 감시(Gatus)에 결과를 알린다 (~/aionit/monitor.env, 없으면 건너뜀)
 set -euo pipefail
 
 LABEL="${1:-daily-$(date +%Y%m%d-%H%M)}"
@@ -29,19 +29,18 @@ warn() {
   WARNINGS=$((WARNINGS + 1))
 }
 
-# 감시(Uptime Kuma 푸시 감시)에 결과를 알린다. 매일 백업만. 알리지 않으면 감시가 25시간 뒤 "실패" 로 본다
+# 감시(Gatus external-endpoint backup_daily-backup)에 결과를 알린다. 매일 백업만. 25시간 동안 오지 않아도 감시가 실패로 본다
+# ~/aionit/monitor.env: BACKUP_PUSH_URL(http://172.30.0.10:8085/api/v1/endpoints/backup_daily-backup/external) · BACKUP_PUSH_TOKEN
 push_monitor() {
   [[ "$LABEL" == daily-* ]] || return 0
   [ -f monitor.env ] || return 0
   # shellcheck disable=SC1091
   . ./monitor.env
-  [ -n "${BACKUP_PUSH_URL:-}" ] || return 0
-  local status=up msg=OK
-  if [ "$WARNINGS" -gt 0 ]; then
-    status=down
-    msg="warnings-$WARNINGS"
-  fi
-  curl -fsS -m 10 "${BACKUP_PUSH_URL}?status=${status}&msg=${msg}" >/dev/null || echo "경고: 감시에 알리지 못했습니다" >&2
+  [ -n "${BACKUP_PUSH_URL:-}" ] && [ -n "${BACKUP_PUSH_TOKEN:-}" ] || return 0
+  local query="success=true"
+  [ "$WARNINGS" -gt 0 ] && query="success=false&error=warnings-$WARNINGS"
+  curl -fsS -m 10 -X POST -H "Authorization: Bearer $BACKUP_PUSH_TOKEN" "${BACKUP_PUSH_URL}?${query}" >/dev/null ||
+    echo "경고: 감시에 알리지 못했습니다" >&2
 }
 
 # pg_dump 사용자 지정 형식(-Fc): 압축 + pg_restore 로 골라서 복구 가능. 실패하면 반쪽 파일을 남기지 않는다.

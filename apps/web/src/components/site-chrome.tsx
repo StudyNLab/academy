@@ -86,6 +86,20 @@ export async function SiteHeader() {
   );
 }
 
+/**
+ * P-10 사업자 정보 (서버 설정 BUSINESS_*, server/env.ts). 정하기 전에는 빈칸 표시.
+ * 빌드 때 미리 그리는 화면에도 들어가므로 getEnv(필수 값 검사) 대신 process.env 를 바로 읽는다
+ */
+function businessLine(): string[] {
+  const env = process.env;
+  const blank = "[운영자 입력]";
+  return [
+    `${env.BUSINESS_NAME || blank} · 대표 ${env.BUSINESS_OWNER || blank}`,
+    `사업자등록번호 ${env.BUSINESS_REG_NO || blank} · 통신판매업 신고 ${env.BUSINESS_MAIL_ORDER_NO || blank}`,
+    `${env.BUSINESS_ADDRESS || `주소 ${blank}`} · ${env.BUSINESS_CONTACT || `연락처 ${blank}`}`,
+  ];
+}
+
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-line py-12">
@@ -94,7 +108,11 @@ export function SiteFooter() {
           <span className="text-lg text-ink">
             <Wordmark />
           </span>
-          <span>[상호] · 대표 [이름] · 사업자등록번호 [번호] · 통신판매업 신고 [번호]</span>
+          <span className="flex flex-col">
+            {businessLine().map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </span>
         </div>
         <nav aria-label="정책" className="flex flex-wrap items-start gap-x-5 gap-y-2">
           <Link href="/notices" className="text-ink-2">
@@ -106,7 +124,7 @@ export function SiteFooter() {
           <Link href="/policies/terms" className="text-ink-2">
             이용약관
           </Link>
-          <Link href="/policies/privacy" className="font-semibold text-ink">
+          <Link href="/policies/privacy_policy" className="font-semibold text-ink">
             개인정보처리방침
           </Link>
           <Link href="/policies/refund" className="text-ink-2">
