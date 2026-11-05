@@ -13,7 +13,8 @@ import { DELETE as instructorAttachmentDelete } from "@/app/api/v1/instructor/at
 import { POST as instructorRequestReview } from "@/app/api/v1/instructor/versions/[id]/request-review/route";
 import { POST as instructorSlot } from "@/app/api/v1/instructor/video-slots/[id]/route";
 import { GET as instructorVideo } from "@/app/api/v1/instructor/videos/[id]/route";
-import { courseDetail } from "@/server/catalog";
+import { dashboardCounts } from "@/server/admin-queries";
+import { adminCourseList, courseDetail } from "@/server/catalog";
 import type { MailDeps } from "@/server/courses";
 import {
   addAttachment,
@@ -352,8 +353,15 @@ describe("강사 업로드 ➔ 검수 요청 ➔ 운영자 검수 (I-03 · I-05 
     expect(ready!.status).toBe("ready");
     // 운영자가 올린 버전(B)은 대기에 있고, 강사가 올리고 요청 전인 버전은 없다
     expect((await reviewQueue(t.db)).map((r) => r.id)).toEqual([versionB]);
+    // 과정 목록(AD-02) · 대시보드의 검수 대기 수도 같은 규칙
+    const waiting = async () =>
+      Object.fromEntries((await adminCourseList(t.db)).map((c) => [c.id, c.waiting]));
+    expect(await waiting()).toEqual({ [courseA]: 0, [courseB]: 1 });
+    expect((await dashboardCounts(t.db)).reviews).toBe(1);
 
     await requestReview(t.db, teacherA, version, { note: "CH2 예제 수정" });
+    expect(await waiting()).toEqual({ [courseA]: 1, [courseB]: 1 });
+    expect((await dashboardCounts(t.db)).reviews).toBe(2);
     await expect(requestReview(t.db, teacherA, version, { note: "" })).rejects.toMatchObject({
       code: "NOT_REQUESTABLE",
     });
