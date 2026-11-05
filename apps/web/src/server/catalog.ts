@@ -50,6 +50,16 @@ export async function listCatalog(db: Db, filter: { field?: CourseField } = {}) 
 
 export type CatalogItem = Awaited<ReturnType<typeof listCatalog>>[number];
 
+/** "먼저 읽어 보기" 링크: 목록 첫 강의의 첫 무료 미리보기 챕터 (없으면 그 강의 상세, 공개 강의가 없으면 null) */
+export async function firstLook(db: Db): Promise<{ href: string; preview: boolean } | null> {
+  const [first] = await listCatalog(db);
+  if (!first) return null;
+  const key = (await courseDetail(db, first.slug))?.chapters.find((c) => c.preview)?.key;
+  return key
+    ? { href: `/courses/${first.slug}/preview/${key}`, preview: true }
+    : { href: `/courses/${first.slug}`, preview: false };
+}
+
 /** 강의 상세. 공개 중이 아니면 null (운영자 미리보기는 allowUnpublished) */
 export async function courseDetail(db: Db, slug: string, options: { allowUnpublished?: boolean } = {}) {
   const [course] = await db

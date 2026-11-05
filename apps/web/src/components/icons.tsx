@@ -46,6 +46,7 @@ const paths = {
   code: "m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16",
   search: "M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0m-2 5 6 6",
   lock: "M6 11h12v10H6V11m3 0V7a3 3 0 0 1 6 0v4",
+  mail: "M5 3h9l5 5v13H5V3m9 0v6h5M8 13h8M8 17h6",
 } as const;
 
 export type IconName = keyof typeof paths;

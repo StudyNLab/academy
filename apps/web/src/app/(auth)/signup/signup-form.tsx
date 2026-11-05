@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { checkNickname, checkPassword, NICKNAME_MESSAGES, PASSWORD_MESSAGES } from "@aionit/core";
 import { Button, Checkbox, Field, Notice } from "@aionit/ui";
+import { SvcIcon } from "@/components/icons";
 import { OrDivider, SocialButtons } from "@/components/social-buttons";
 import { authApi, startSocial } from "@/lib/client-api";
 
@@ -119,117 +120,117 @@ export function SignupForm({
     }
   }
 
-  const policyLink = (kind: string) => (
-    <Link href={`/policies/${kind}`} target="_blank" className="ml-1 text-[13px] text-ink-2">
-      보기
+  /** 약관 이름을 누르면 새 창으로 전문 (시안: 밑줄 링크) */
+  const policyLink = (kind: string, fallback: string) => (
+    <Link href={`/policies/${kind}`} target="_blank">
+      {policyTitles[kind] ?? fallback}
     </Link>
   );
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
-      {formError ? <Notice tone="danger">{formError}</Notice> : null}
-      <Field
-        label="이메일"
-        type="email"
-        autoComplete="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value.trim())}
-        error={errors.email}
-        required
-      />
-      <div className="flex flex-col gap-1.5">
+    <>
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-[18px]">
+        {formError ? <Notice tone="danger">{formError}</Notice> : null}
         <Field
-          label="비밀번호"
-          type={showPassword ? "text" : "password"}
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          hint="8자 이상. 흔한 비밀번호 · 이메일이나 닉네임이 들어간 비밀번호는 쓸 수 없습니다."
-          error={errors.password}
+          label="이메일"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value.trim())}
+          error={errors.email}
           required
         />
-        <label className="flex min-h-11 items-center gap-2 self-start text-[13px] text-ink-2">
-          <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
-          비밀번호 보기
-        </label>
-      </div>
-      <Field
-        label="닉네임"
-        autoComplete="nickname"
-        value={nickname}
-        onChange={(e) => setNickname(e.target.value)}
-        onBlur={async () => {
-          if (nickname) setErrors((prev) => ({ ...prev, nickname: null }));
-          if (nickname) {
-            const message = await checkNicknameRemote(nickname);
-            setErrors((prev) => ({ ...prev, nickname: message }));
-          }
-        }}
-        hint="강의 Q&A 에 보이는 이름입니다. 2 ~ 16자, 한글 · 영문 · 숫자 · 밑줄. 30일에 한 번 바꿀 수 있습니다."
-        error={errors.nickname}
-        required
-      />
-
-      <fieldset className="m-0 flex flex-col border-0 border-t border-line-strong p-0 pt-2">
-        <legend className="sr-only">약관 동의</legend>
-        <Checkbox checked={allChecked} onChange={(e) => setAll(e.target.checked)} className="font-semibold">
-          모두 동의합니다
-        </Checkbox>
-        <div className="border-t border-line pl-1">
-          <Checkbox
-            checked={consents.terms}
-            onChange={(e) => setConsents({ ...consents, terms: e.target.checked })}
-          >
-            [필수] {policyTitles.terms ?? "이용약관"}
-            {policyLink("terms")}
+        <Field
+          label="닉네임"
+          autoComplete="nickname"
+          placeholder="사용할 닉네임"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          onBlur={async () => {
+            if (nickname) setErrors((prev) => ({ ...prev, nickname: null }));
+            if (nickname) {
+              const message = await checkNicknameRemote(nickname);
+              setErrors((prev) => ({ ...prev, nickname: message }));
+            }
+          }}
+          hint="강의 Q&A 에 보이는 이름입니다. 2 ~ 16자, 한글 · 영문 · 숫자 · 밑줄. 30일에 한 번 바꿀 수 있습니다."
+          error={errors.nickname}
+          required
+        />
+        <div className="flex flex-col">
+          <Field
+            label="비밀번호"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            hint="8자 이상. 흔한 비밀번호 · 이메일이나 닉네임이 들어간 비밀번호는 쓸 수 없습니다."
+            error={errors.password}
+            required
+          />
+          <Checkbox checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)}>
+            비밀번호 보기
           </Checkbox>
-          <Checkbox
-            checked={consents.privacy}
-            onChange={(e) => setConsents({ ...consents, privacy: e.target.checked })}
-          >
-            [필수] {policyTitles.privacy ?? "개인정보 수집 · 이용 동의"}
-            {policyLink("privacy")}
+        </div>
+
+        <fieldset className="consent-group m-0 mt-1 border-x-0 border-b-0 p-0 pt-2">
+          <legend className="sr-only">약관 동의</legend>
+          <Checkbox checked={allChecked} onChange={(e) => setAll(e.target.checked)} className="font-semibold">
+            모두 동의합니다
           </Checkbox>
           <Checkbox
             checked={consents.age14}
             onChange={(e) => setConsents({ ...consents, age14: e.target.checked })}
           >
-            [필수] 만 14세 이상입니다
+            만 14세 이상입니다. (필수)
+          </Checkbox>
+          <Checkbox
+            checked={consents.terms}
+            onChange={(e) => setConsents({ ...consents, terms: e.target.checked })}
+          >
+            {policyLink("terms", "이용약관")}에 동의합니다. (필수)
+          </Checkbox>
+          <Checkbox
+            checked={consents.privacy}
+            onChange={(e) => setConsents({ ...consents, privacy: e.target.checked })}
+          >
+            {policyLink("privacy", "개인정보 수집 · 이용")}에 동의합니다. (필수)
           </Checkbox>
           <Checkbox
             checked={consents.marketing}
             onChange={(e) => setConsents({ ...consents, marketing: e.target.checked })}
           >
-            [선택] {policyTitles.marketing ?? "마케팅 정보 수신 동의"}
-            {policyLink("marketing")}
+            새 강의 · 혜택 소식 받기 ({policyLink("marketing", "마케팅 정보 수신")}, 선택)
           </Checkbox>
-        </div>
-        {errors.consents ? (
-          <p role="alert" className="m-0 text-[13px] font-medium text-danger">
-            <span aria-hidden="true">! </span>
-            {errors.consents}
-          </p>
-        ) : null}
-      </fieldset>
+          {errors.consents ? (
+            <p role="alert" className="field-hint m-0 font-medium text-danger">
+              <span aria-hidden="true">! </span>
+              {errors.consents}
+            </p>
+          ) : null}
+        </fieldset>
 
-      <Button type="submit" size="lg" disabled={busy} className="w-full">
-        {busy ? "처리 중…" : "이메일로 가입하기"}
-      </Button>
+        <Button type="submit" size="lg" disabled={busy} className="full">
+          {busy ? "처리 중…" : "이메일로 가입하기"}
+          {busy ? null : <SvcIcon name="arrow" />}
+        </Button>
+      </form>
 
       {providers.length > 0 ? (
         <>
-          <OrDivider />
-          <SocialButtons providers={providers} verb="가입하기" onSelect={onSocial} disabled={busy} />
-          <p className="m-0 text-[13px] leading-[1.6] text-ink-2">
+          <OrDivider label="또는 소셜 계정으로" />
+          <SocialButtons providers={providers} onSelect={onSocial} disabled={busy} />
+          <p className="field-hint">
             구글 · 카카오로 가입할 때도 위의 닉네임과 동의 항목을 씁니다. 이메일 · 비밀번호는 비워 두어도
             됩니다.
           </p>
         </>
       ) : null}
 
-      <p className="m-0 text-[15px] text-ink-2">
-        이미 가입했나요? <Link href="/login">로그인</Link>
+      <p className="auth-bottom">
+        이미 계정이 있으신가요? <Link href="/login">로그인</Link>
       </p>
-    </form>
+    </>
   );
 }

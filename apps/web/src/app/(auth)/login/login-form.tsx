@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { Button, Field, Notice } from "@aionit/ui";
+import { Button, Field } from "@aionit/ui";
+import { SvcIcon } from "@/components/icons";
 import { OrDivider, SocialButtons } from "@/components/social-buttons";
 import { authApi, startSocial } from "@/lib/client-api";
 
@@ -48,37 +49,49 @@ export function LoginForm({ next, providers }: { next: string; providers: ("goog
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Field
-        label="이메일"
-        type="email"
-        autoComplete="username"
-        value={email}
-        onChange={(e) => setEmail(e.target.value.trim())}
-        required
-      />
-      <Field
-        label="비밀번호"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <Button type="submit" size="lg" disabled={busy || !email || !password} className="w-full">
-        {busy ? "확인 중…" : "로그인"}
-      </Button>
-      <div className="flex flex-wrap justify-between gap-3 text-[15px]">
-        <Link href="/forgot-password">비밀번호를 잊었나요?</Link>
-        <Link href="/signup">회원가입</Link>
-      </div>
+    <>
+      {error ? (
+        <div className="key-warning" role="alert">
+          {error}
+        </div>
+      ) : null}
       {providers.length > 0 ? (
         <>
+          <SocialButtons providers={providers} onSelect={onSocial} disabled={busy} />
           <OrDivider />
-          <SocialButtons providers={providers} verb="로그인" onSelect={onSocial} disabled={busy} />
         </>
       ) : null}
-    </form>
+      <form onSubmit={onSubmit} className="flex flex-col gap-[18px]">
+        <Field
+          label="이메일"
+          type="email"
+          autoComplete="username"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value.trim())}
+          required
+        />
+        <Field
+          label="비밀번호"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <div className="row justify-end">
+          <Link className="small-link" href="/forgot-password">
+            비밀번호 찾기
+          </Link>
+        </div>
+        <Button type="submit" size="lg" disabled={busy || !email || !password} className="full">
+          {busy ? "확인 중…" : "로그인"}
+          {busy ? null : <SvcIcon name="arrow" />}
+        </Button>
+      </form>
+      <p className="auth-bottom">
+        아직 계정이 없으신가요? <Link href="/signup">회원가입</Link>
+      </p>
+    </>
   );
 }

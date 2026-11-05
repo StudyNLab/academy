@@ -37,7 +37,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
       </PageTitle>
       <InquiryThread messages={messages} memberLabel="나" />
       {inquiry.status === "closed" ? (
-        <p className="mt-8 border-t border-line-strong pt-6 text-[14px] text-ink-2">
+        <p className="surface padded mt-5 text-[14px] text-muted">
           끝난 문의입니다. 더 궁금한 점은 <Link href="/my/inquiries/new">새 문의</Link>로 남겨 주세요.
         </p>
       ) : (

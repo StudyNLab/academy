@@ -28,7 +28,7 @@ export function TwoFactorForm({ next }: { next: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6">
+    <form onSubmit={onSubmit} className="flex flex-col gap-[18px]">
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {useBackup ? (
         <Field
@@ -52,13 +52,13 @@ export function TwoFactorForm({ next }: { next: string }) {
           required
         />
       )}
-      <Button type="submit" size="lg" disabled={busy || !code} className="w-full">
+      <Button type="submit" size="lg" disabled={busy || !code} className="full">
         {busy ? "확인 중…" : "확인"}
       </Button>
-      <div className="flex flex-wrap justify-between gap-3 text-[15px]">
+      <div className="flex flex-wrap justify-between gap-3">
         <button
           type="button"
-          className="min-h-11 border-0 bg-transparent p-0 text-link underline"
+          className="small-link min-h-11 border-0 bg-transparent p-0"
           onClick={() => {
             setUseBackup((v) => !v);
             setCode("");
@@ -67,7 +67,9 @@ export function TwoFactorForm({ next }: { next: string }) {
         >
           {useBackup ? "인증 앱 코드 쓰기" : "인증 앱을 쓸 수 없나요? 복구 코드 쓰기"}
         </button>
-        <Link href="/login">처음부터 다시 로그인</Link>
+        <Link className="small-link inline-flex min-h-11 items-center" href="/login">
+          처음부터 다시 로그인
+        </Link>
       </div>
     </form>
   );

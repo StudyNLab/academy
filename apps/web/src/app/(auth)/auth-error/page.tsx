@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Notice } from "@aionit/ui";
-import { PageTitle } from "@/components/page-title";
 
 export const metadata: Metadata = { title: "로그인 오류" };
 
@@ -13,14 +11,14 @@ export default async function AuthErrorPage({ searchParams }: { searchParams: Se
   const code = typeof params.error === "string" ? params.error.slice(0, 60) : "unknown";
   return (
     <>
-      <PageTitle label="Error" title="로그인을 마치지 못했습니다" />
-      <div className="flex flex-col gap-6">
-        <Notice tone="danger">
-          잠시 뒤 다시 시도해 주세요. 계속되면 1:1 문의로 알려 주세요.{" "}
-          <span className="font-mono text-[12px]">(코드: {code})</span>
-        </Notice>
-        <Link href="/login">로그인으로 돌아가기</Link>
+      <h1>로그인을 마치지 못했습니다</h1>
+      <p className="auth-desc">잠시 뒤 다시 시도해 주세요. 계속되면 1:1 문의로 알려 주세요.</p>
+      <div className="key-warning" role="alert">
+        로그인 중 문제가 생겼습니다. <span className="font-mono text-[12px]">(코드: {code})</span>
       </div>
+      <Link className="btn primary full" href="/login">
+        로그인으로 돌아가기
+      </Link>
     </>
   );
 }

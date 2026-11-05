@@ -15,7 +15,7 @@ const date = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyl
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-5 border-t border-line-strong py-7">
+    <section className="surface padded mb-5 flex flex-col gap-5">
       <h2 className="m-0 text-[21px] font-semibold tracking-[-0.02em]">{title}</h2>
       {children}
     </section>

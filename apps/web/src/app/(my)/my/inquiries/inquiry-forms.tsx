@@ -86,7 +86,7 @@ export function InquiryReply({ id, canClose }: { id: string; canClose: boolean }
         e.preventDefault();
         void send({ action: "message", body });
       }}
-      className="flex flex-col gap-4 border-t border-line-strong pt-6"
+      className="surface padded flex flex-col gap-4"
     >
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <TextArea

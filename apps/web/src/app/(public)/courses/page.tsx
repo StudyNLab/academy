@@ -4,7 +4,7 @@ import { COURSE_FIELDS } from "@aionit/db";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { CatalogCard } from "@/components/catalog-card";
 import { SvcIcon } from "@/components/icons";
-import { courseDetail, FIELD_LABEL, listCatalog } from "@/server/catalog";
+import { FIELD_LABEL, firstLook, listCatalog } from "@/server/catalog";
 import type { CatalogQuery } from "@/server/catalog-filter";
 import { CATALOG_SORTS, filterCatalog, parseCatalogQuery } from "@/server/catalog-filter";
 import { courseOffers } from "@/server/commerce";
@@ -43,14 +43,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
       )
     : courses.map(() => null);
   // "어디서부터 시작할지" 띠: 목록 첫 강의의 무료 미리보기
-  const first = all[0];
-  const firstDetail = first ? await courseDetail(db, first.slug) : null;
-  const previewKey = firstDetail?.chapters.find((c) => c.preview)?.key;
-  const startHref = first
-    ? previewKey
-      ? `/courses/${first.slug}/preview/${previewKey}`
-      : `/courses/${first.slug}`
-    : null;
+  const start = await firstLook(db);
 
   return (
     <div className="wrap page-main">
@@ -152,14 +145,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         </p>
       )}
 
-      {startHref ? (
+      {start ? (
         <div className="wide-callout">
           <div>
             <h2>어디서부터 시작할지 고민되나요?</h2>
             <p>무료로 열어 둔 챕터를 먼저 읽어 보고 정하세요.</p>
           </div>
-          <Link className="btn secondary" href={startHref}>
-            {previewKey ? "무료 교재 읽어 보기" : "강의 살펴보기"}
+          <Link className="btn secondary" href={start.href}>
+            {start.preview ? "무료 교재 읽어 보기" : "강의 살펴보기"}
             <SvcIcon name="arrow" />
           </Link>
         </div>
