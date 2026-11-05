@@ -53,14 +53,23 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=4 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/web/server.js"]
 
-# ---- worker: 작업 처리 + 마이그레이션 실행 (worker 와 그 의존 패키지만 설치) ----
-# 영상 변환용 ffmpeg 는 Debian 공식 저장소에서 (docs/기술설계.md 5.2)
+# ---- worker: 작업 처리 + 마이그레이션 실행 ----
+# 실행에 필요한 것만 (M10 이미지 줄이기, docs/개발기록/M10.md): worker 와 그 의존 패키지의 dependencies 만 설치(--prod,
+# eslint · typescript · vitest 같은 개발 도구와 그것을 끌고 오는 설정 패키지 @aionit/config 는 빼고), 코드도 worker · packages 만.
+# pnpm 이 /root/.cache/pnpm 에 남기는 내부 캐시(약 245MB)는 빌드 캐시로 빼서 이미지에 넣지 않는다. 영상 변환용 ffmpeg 는 Debian 공식 저장소에서
+# (docs/기술설계.md 5.2, 외부 정적 빌드는 공급망 때문에 쓰지 않는다).
+# 개발 도구를 빼면 tsconfig 의 extends(@aionit/config)가 풀리지 않으므로 tsx 에 기본 tsconfig 를 바로 알려 준다.
 FROM base AS worker
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY --from=manifests / ./
 RUN --mount=type=cache,id=aionit-pnpm,target=/pnpm/store,sharing=locked \
-    pnpm install --frozen-lockfile --filter "@aionit/worker..." --store-dir /pnpm/store && chown -R node:node /repo
-COPY --chown=node:node . .
-ENV NODE_ENV=production
+    --mount=type=cache,id=aionit-pnpm-meta,target=/root/.cache/pnpm,sharing=locked \
+    pnpm install --frozen-lockfile --prod --filter "@aionit/worker..." --filter "!@aionit/config" \
+      --store-dir /pnpm/store && chown -R node:node /repo
+COPY --chown=node:node packages ./packages
+COPY --chown=node:node apps/worker ./apps/worker
+# --prod 로 설치하면 pnpm 이 실행 전에 "잠금 파일과 다르다" 며 다시 설치하려 한다 ➔ 끈다 (설치는 위에서 끝났다)
+ENV NODE_ENV=production TSX_TSCONFIG_PATH=/repo/packages/config/tsconfig.base.json \
+    npm_config_verify_deps_before_run=false pnpm_config_verify_deps_before_run=false
 USER node
 CMD ["pnpm", "--filter", "@aionit/worker", "start"]

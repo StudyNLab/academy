@@ -144,7 +144,9 @@ vm $DATA "cat > ~/aionit/backup.sh && chmod +x ~/aionit/backup.sh" < infra/data-
 
 step "5/6 배포 전 DB 백업 + 마이그레이션"
 vm $DATA "~/aionit/backup.sh pre-deploy-$TAG"
-vm $APP "cd ~/aionit && APP_TAG=$TAG docker compose run --rm --no-deps worker pnpm --filter @aionit/db migrate"
+# 마이그레이션은 DB 소유자 계정으로 (M10 앱 계정 분리). 앱 VM ~/aionit/.env.migrate 의 MIGRATION_DATABASE_URL 을 이번
+# 실행에만 넘긴다 (web · worker 의 .env 에는 소유자 비밀번호를 두지 않는다). 파일이 없으면 지금처럼 DATABASE_URL 로 한다.
+vm $APP "cd ~/aionit && if [ -f .env.migrate ]; then set -a; . ./.env.migrate; set +a; fi; APP_TAG=$TAG docker compose run --rm --no-deps -e MIGRATION_DATABASE_URL worker pnpm --filter @aionit/db migrate"
 
 step "6/6 전환 + 상태 확인"
 [ "$NEXT_PREV" = "$OLD_PREV" ] || set_previous_tag "$NEXT_PREV"

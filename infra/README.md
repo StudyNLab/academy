@@ -12,7 +12,7 @@
 - 개발 VM 은 여전히 academy-int 에 붙지 않는다 (DB · 파일 저장소에 닿지 않음). 보관소(5055)는 앱 VM 브리지 주소에서만 받는다 (`infra/dev-vm/README.md` 의 '이미지 보관소').
 - data VM 의 PostgreSQL(5432) · Garage(3900 S3 API · 3902 웹 주소)는 내부망 주소에만 열려 있다. 개발 VM 에서는 닿지 않는다 (확인함).
 - Garage 웹 주소(3902, `garage.toml` 의 `[s3_web]`, root_domain `.web.garage`)는 **영상 버킷 `aionit-media` 만** 웹 공개 설정(`garage bucket website --allow aionit-media`)이다. app VM Caddy 가 `/media/*` 요청마다 web 에 재생 토큰을 확인한 뒤 Host `aionit-media.web.garage` 로 프록시한다. 다른 버킷은 웹 공개하지 않는다.
-- 비밀값: app VM `~/aionit/.env`, data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
+- 비밀값: app VM `~/aionit/.env` · `.env.migrate`(마이그레이션용 소유자 계정) · `.env.app-db`(앱 계정, 전환 전), data VM `~/aionit/.env` · `~/aionit/garage-key.txt` · `/srv/data/garage/garage.toml` (모두 600, Git 제외).
 - app VM `.env` 의 이름 (값은 VM 에만): `CADDY_TAG` `APP_TAG` `NODE_ENV` `DATABASE_URL` `BETTER_AUTH_SECRET`(VM 에서 `openssl rand` 로 만듦) `BETTER_AUTH_URL`(=https://localhost:18443) `SMTP_URL`(=smtp://mailpit:1025) `MAIL_FROM` `MAILPIT_TAG`, 앱 등록 뒤 `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `KAKAO_CLIENT_ID` `KAKAO_CLIENT_SECRET`, 파일 저장소 `S3_ENDPOINT`(=http://172.30.0.20:3900) `S3_REGION` `S3_BUCKET`(=aionit) `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY`(data VM `garage-key.txt` 의 aionit-app 키), 영상 버킷 `S3_MEDIA_BUCKET`(=aionit-media, M4). 토스페이먼츠 결제위젯 연동 키 `TOSS_CLIENT_KEY` `TOSS_SECRET_KEY`(M5: 토스 문서용 공개 테스트 키 `test_gck_docs_…` / `test_gsk_docs_…`, 실오픈 때 운영자 상점 키). 구독 자동결제 API 개별 연동 키 `TOSS_BILLING_CLIENT_KEY` `TOSS_BILLING_SECRET_KEY`(M6, 운영자 본인 테스트 키. 없으면 구독 신청 · worker 자동결제가 꺼진다). `TOSS_FAKE` 는 개발 서버 전용이라 서버에 두지 않는다. 감시 푸시 `MONITOR_WORKER_PUSH_URL` · `MONITOR_WORKER_PUSH_TOKEN`(M10, 토큰은 `~/aionit-monitor/.env` 의 `WORKER_PUSH_TOKEN` 과 같음). 바닥글 사업자 정보 `BUSINESS_NAME` `BUSINESS_OWNER` `BUSINESS_REG_NO` `BUSINESS_MAIL_ORDER_NO` `BUSINESS_ADDRESS` `BUSINESS_CONTACT`(M10, 비면 "[운영자 입력]").
 
 ## 사이트 보기 (도메인 전)
@@ -77,6 +77,29 @@ bash infra/scripts/deploy.sh
 - 배포 스크립트를 고치면 `bash infra/scripts/test-deploy.sh` 로 시험한다. ssh · git 을 가짜로 바꿔 VM 세 대를 노트북 임시 폴더로 흉내 내므로 서버에 닿지 않는다 (1분쯤).
 - DB 는 마이그레이션 되돌리기를 하지 않는다. 문제가 생기면 `pre-deploy-<태그>` 백업으로 복구하거나 고치는 마이그레이션을 새로 만든다.
 - data VM 의 compose 는 배포 때 바꾸지 않는다. 바꿀 때는 data VM 에서 직접 `docker compose up -d` (DB 재시작이 따르므로 신중하게).
+
+## DB 계정 (M10)
+
+| 계정 | 쓰는 곳 | 권한 |
+|---|---|---|
+| `aionit` (소유자) | 마이그레이션 (`deploy.sh` 가 app VM `~/aionit/.env.migrate` 의 `MIGRATION_DATABASE_URL` 을 그 실행에만 넘김), 백업 · 복구 (data VM 안) | 모두 |
+| `aionit_app` | web · worker (app VM `.env` 의 `DATABASE_URL`) | 읽기 · 넣기 · 고치기 · 지우기. **기록 · 결제 테이블은 고치기 · 지우기 없음**, 비우기 · 표 만들기 · 바꾸기 없음. 보관 기간 정리는 함수 `aionit_purge_protected_records()` 로만 (마이그레이션 0012) |
+
+- `aionit_app` 비밀번호: data VM 에서 만들어(`openssl rand -hex 24`) `ALTER ROLE … LOGIN PASSWORD` 로 넣었다 (2026-11-05). 값은 app VM `~/aionit/.env.app-db`(600)에만 — 전환 때 `.env` 로 옮긴다
+- 전환 전 확인 (2026-11-05): 운영 DB 에 임시 web 컨테이너를 앱 계정으로 띄워 `/` · `/courses` · `/policies/*` · `/api/health` 200, worker 이미지로 앱 계정 접속 ➔ 보관 정리 함수 · pg-boss 시작 됨, 기록 지우기 · 비우기 · 표 만들기 거부
+
+**전환** (이 순서 그대로. `deploy.sh` 가 `.env.migrate` 를 읽는 판이 배포된 뒤):
+
+```bash
+# app VM
+cd ~/aionit && cp -p .env .env.bak-approle
+sed -i "s#^DATABASE_URL=.*#$(cat .env.app-db)#" .env
+docker compose up -d web worker          # 새 DATABASE_URL 로 다시 만든다
+curl -sk https://localhost/api/health    # {"status":"ok"}
+docker compose logs --since 2m worker web | grep -iE "error|denied"   # 없어야 한다
+```
+
+되돌리기: `cp -p .env.bak-approle .env && docker compose up -d web worker`. 마이그레이션은 `.env.migrate` 가 있는 한 소유자 계정으로 돈다 (지우면 `DATABASE_URL` 로 돌아가 앱 계정으로는 실패한다).
 
 ## 백업
 
