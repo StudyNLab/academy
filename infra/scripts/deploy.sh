@@ -25,7 +25,7 @@ vm() { local port=$1; shift; ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$port
 # 이미지 보관소(registry): 개발 VM 에 둔다. 개발 VM 은 127.0.0.1:5055 로 올리고, 앱 VM 은 브리지 망(사내망)으로
 # 개발 VM 주소:5055 에서 바로 받아 간다. 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
 # 보관소는 자체 인증서(TLS)로 열고, 앱 VM 주소에서만 받게 막아 두었다 (infra/dev-vm/README.md 의 '이미지 보관소').
-DEV_BR=10.100.3.168            # 개발 VM 브리지 주소
+DEV_BR=10.20.30.63            # 개발 VM 브리지 주소
 REG_PORT=5055
 REG_IMAGE=registry:2.8.3
 REG=127.0.0.1:$REG_PORT        # 개발 VM 안에서 쓰는 주소

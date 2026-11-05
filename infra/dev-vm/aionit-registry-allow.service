@@ -11,7 +11,7 @@ PartOf=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-Environment=BR_IF=enp0s8 APP_BR=10.100.3.169 REG_PORT=5055
+Environment=BR_IF=enp0s8 APP_BR=10.20.30.61 REG_PORT=5055
 ExecStart=/bin/sh -c 'r="-i $BR_IF -p tcp -m conntrack --ctorigdstport $REG_PORT ! -s $APP_BR -j DROP"; iptables -C DOCKER-USER $r 2>/dev/null || iptables -I DOCKER-USER $r'
 ExecStop=/bin/sh -c 'iptables -D DOCKER-USER -i $BR_IF -p tcp -m conntrack --ctorigdstport $REG_PORT ! -s $APP_BR -j DROP 2>/dev/null || true'
 
