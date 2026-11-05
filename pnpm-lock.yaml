@@ -397,12 +397,18 @@ importers:
 
   packages/db:
     dependencies:
+      dotenv:
+        specifier: 18.0.9
+        version: 18.0.9
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(kysely@0.29.8)(pg@8.23.1)(postgres@3.4.9)
       postgres:
         specifier: 3.4.9
         version: 3.4.9
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
     devDependencies:
       '@aionit/config':
         specifier: workspace:*
@@ -410,18 +416,12 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
-      dotenv:
-        specifier: 18.0.9
-        version: 18.0.9
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
       eslint:
         specifier: 10.14.0
         version: 10.14.0(jiti@2.7.0)
-      tsx:
-        specifier: 4.23.15
-        version: 4.23.15
       typescript:
         specifier: 6.0.3
         version: 6.0.3
