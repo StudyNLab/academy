@@ -6,3 +6,4 @@
 *.zip binary
 *.mp4 binary
 *.woff2 binary
+*.cmd text eol=crlf
