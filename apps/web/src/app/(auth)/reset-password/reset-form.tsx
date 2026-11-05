@@ -33,7 +33,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6">
+    <form onSubmit={onSubmit} className="flex flex-col gap-[18px]">
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <Field
         label="새 비밀번호"
@@ -53,10 +53,10 @@ export function ResetPasswordForm({ token }: { token: string }) {
         onChange={(e) => setConfirm(e.target.value)}
         required
       />
-      <Button type="submit" size="lg" disabled={busy || !password} className="w-full">
+      <Button type="submit" size="lg" disabled={busy || !password} className="full">
         {busy ? "바꾸는 중…" : "비밀번호 바꾸기"}
       </Button>
-      <p className="m-0 text-[13px] leading-[1.6] text-ink-2">바꾸면 다른 기기의 로그인은 모두 끝납니다.</p>
+      <p className="field-hint m-0">바꾸면 다른 기기의 로그인은 모두 끝납니다.</p>
     </form>
   );
 }

@@ -35,15 +35,15 @@ export default async function NotificationsPage() {
       </PageTitle>
       {unread > 0 ? <MarkAllRead count={unread} /> : null}
       {rows.length === 0 ? (
-        <p className="m-0 border-t border-line-strong pt-6 text-ink-2">새 알림이 없습니다.</p>
+        <p className="surface padded m-0 text-muted">새 알림이 없습니다.</p>
       ) : (
-        <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0">
+        <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0">
           {rows.map((n) => (
-            <li key={n.id} className="border-b border-line">
+            <li key={n.id} className="border-b border-line last:border-b-0">
               {/* 열기 주소가 읽음 처리 후 그 화면으로 보낸다 */}
               <a
                 href={`/api/v1/notifications/${n.id}`}
-                className="flex flex-col gap-1 py-4 text-ink no-underline hover:bg-sunken"
+                className="flex flex-col gap-1 px-7 py-5 text-ink no-underline hover:bg-soft"
               >
                 <span className="flex items-baseline gap-2">
                   {n.readAt ? null : (

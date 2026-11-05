@@ -35,7 +35,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Sea
           </Notice>
         </div>
       ) : null}
-      <section className="flex flex-col gap-5 border-t border-line-strong py-7">
+      <section className="surface padded mb-5 flex flex-col gap-5">
         <h2 className="m-0 text-[21px] font-semibold tracking-[-0.02em]">2단계 인증 (OTP)</h2>
         <TwoFactorSettings
           enabled={viewer.twoFactorEnabled}
@@ -46,7 +46,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Sea
         />
       </section>
       {hasPassword ? (
-        <section className="flex flex-col gap-5 border-t border-line-strong py-7">
+        <section className="surface padded mb-5 flex flex-col gap-5">
           <h2 className="m-0 text-[21px] font-semibold tracking-[-0.02em]">비밀번호 바꾸기</h2>
           <PasswordChangeForm />
         </section>

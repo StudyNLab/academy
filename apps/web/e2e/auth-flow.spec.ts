@@ -25,6 +25,38 @@ async function linkFromMail(to: string, subject: string): Promise<string> {
   throw new Error(`${to} 에게 '${subject}' 메일이 오지 않았습니다`);
 }
 
+/** 좁은 화면은 머리글에 회원 메뉴(닉네임 ▾) · 로그인 링크가 없다 (시안). 메뉴 대화상자 안에서 확인한다 */
+async function openMobileMenu(page: Page) {
+  await page.getByRole("button", { name: /메뉴 열기/ }).click();
+  return page.getByRole("dialog");
+}
+
+async function expectSignedIn(page: Page, nickname: string, mobile: boolean) {
+  // 로그인하면 화면을 새로 연다 (머리글을 로그인 상태로). 그 이동이 끝난 뒤에 확인한다
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+  await page.waitForLoadState("load");
+  if (!mobile) return expect(page.getByRole("button", { name: nickname })).toBeVisible();
+  const menu = await openMobileMenu(page);
+  await expect(menu.getByRole("button", { name: "로그아웃" })).toBeVisible();
+  await page.keyboard.press("Escape");
+}
+
+async function logout(page: Page, nickname: string, mobile: boolean) {
+  if (mobile) {
+    await (await openMobileMenu(page)).getByRole("button", { name: "로그아웃" }).click();
+    await page.waitForLoadState("load");
+    await expect(
+      (await openMobileMenu(page)).getByRole("link", { name: "로그인", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    return;
+  }
+  await page.getByRole("button", { name: nickname }).click();
+  await page.getByRole("menuitem", { name: "로그아웃" }).click();
+  // "로그인 · 보안" 메뉴 글과 헷갈리지 않게 정확히 "로그인"
+  await expect(page.getByRole("link", { name: "로그인", exact: true }).first()).toBeVisible();
+}
+
 async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("이메일").fill(email);
@@ -38,6 +70,7 @@ test("가입 ➔ 메일 인증 ➔ 로그인 ➔ 로그아웃 ➔ 비밀번호 �
   const nickname = `시험${stamp}`.slice(0, 16);
   const password = "Calm-Forest-Engine-31";
   const newPassword = "Bright-Stone-Window-64";
+  const mobile = info.project.name === "mobile";
 
   await resetRateLimits();
   // 가입
@@ -61,12 +94,10 @@ test("가입 ➔ 메일 인증 ➔ 로그인 ➔ 로그아웃 ➔ 비밀번호 �
   await expect(page.getByText("이메일 확인이 끝났습니다")).toBeVisible();
 
   await login(page, email, password);
-  await expect(page.getByRole("button", { name: nickname })).toBeVisible();
+  await expectSignedIn(page, nickname, mobile);
 
   // 로그아웃
-  await page.getByRole("button", { name: nickname }).click();
-  await page.getByRole("menuitem", { name: "로그아웃" }).click();
-  await expect(page.getByRole("link", { name: "로그인" }).first()).toBeVisible();
+  await logout(page, nickname, mobile);
 
   // 비밀번호 재설정
   await page.goto("/forgot-password");
@@ -82,7 +113,7 @@ test("가입 ➔ 메일 인증 ➔ 로그인 ➔ 로그아웃 ➔ 비밀번호 �
   await login(page, email, password);
   await expect(page.getByText("이메일 또는 비밀번호가 맞지 않습니다.")).toBeVisible();
   await login(page, email, newPassword);
-  await expect(page.getByRole("button", { name: nickname })).toBeVisible();
+  await expectSignedIn(page, nickname, mobile);
 
   // 가로 스크롤이 생기지 않는다
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PageTitle } from "@/components/page-title";
 import { safeNext } from "@/lib/next-url";
 import { TwoFactorForm } from "./two-factor-form";
 
@@ -14,13 +13,12 @@ export default async function TwoFactorPage({ searchParams }: { searchParams: Se
   const stepUp = params.stepup === "1";
   return (
     <>
-      <PageTitle label="Two-factor" title="2단계 인증">
-        <p className="m-0">
-          {stepUp
-            ? "관리 화면에 들어가기 전에 인증 앱의 6자리 코드를 한 번 더 확인합니다."
-            : "인증 앱(Google Authenticator 등)에 보이는 6자리 코드를 입력해 주세요."}
-        </p>
-      </PageTitle>
+      <h1>2단계 인증</h1>
+      <p className="auth-desc">
+        {stepUp
+          ? "관리 화면에 들어가기 전에 인증 앱의 6자리 코드를 한 번 더 확인합니다."
+          : "인증 앱(Google Authenticator 등)에 보이는 6자리 코드를 입력해 주세요."}
+      </p>
       <TwoFactorForm next={next} />
     </>
   );

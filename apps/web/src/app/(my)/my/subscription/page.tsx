@@ -43,7 +43,7 @@ export default async function SubscriptionPage({
     return (
       <>
         <PageTitle label="Subscription" title="구독 관리" />
-        <div className="flex flex-col gap-4 border-t border-line-strong pt-6">
+        <div className="surface padded flex flex-col gap-4">
           <p className="m-0 text-[17px]">
             {sub
               ? "카드 등록을 마치지 않은 신청이 있습니다. 다시 신청해 주세요."
@@ -93,7 +93,7 @@ export default async function SubscriptionPage({
         </Notice>
       ) : null}
 
-      <dl className="m-0 mt-4 grid grid-cols-[110px_1fr] gap-y-3 border-t border-line-strong pt-5 text-[15px]">
+      <dl className="surface padded m-0 mt-4 grid grid-cols-[110px_1fr] gap-y-3 text-[15px]">
         <dt className="text-ink-2">요금제</dt>
         <dd className="m-0">
           {sub.planName} <StatusDot tone={tone}>{label}</StatusDot>
@@ -115,7 +115,7 @@ export default async function SubscriptionPage({
         </dd>
       </dl>
 
-      <div className="mt-8 flex flex-col gap-4 border-t border-line-strong pt-6">
+      <div className="surface padded mt-5 flex flex-col gap-4">
         {sub.status === "cancel_scheduled" ? (
           <>
             <p className="m-0 text-[16px]">

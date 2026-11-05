@@ -190,7 +190,8 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await asker.reload();
   await expect(qnaMail).not.toBeChecked();
   await asker.goto("/my/inquiries");
-  await asker.getByRole("link", { name: "문의하기" }).click();
+  // 바닥글에도 "문의하기" 링크가 있다 (#33) ➔ 본문의 단추
+  await asker.getByRole("main").getByRole("link", { name: "문의하기" }).click();
   await asker.getByLabel("문의 종류").selectOption("결제 · 환불");
   await asker.getByLabel("제목").fill("환불 문의");
   await asker.getByLabel("내용").fill("결제 내역에 환불 버튼이 없습니다.");
@@ -251,7 +252,8 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await expect(qna(mate).getByText("비밀글입니다")).toBeVisible();
   await expect(qna(mate).getByText(question)).toHaveCount(0);
   await mate.goto("/");
-  await mate.getByRole("link", { name: "공지", exact: true }).click();
+  // 공지는 바닥글 링크 (#33 머리글 개편 뒤)
+  await mate.getByRole("contentinfo").getByRole("link", { name: "공지사항" }).click();
   await mate.getByRole("link", { name: `[e2e] 점검 안내 ${stamp}` }).click();
   await expect(mate.getByText("학습 진도는 그대로입니다.")).toBeVisible();
   await mate.goto("/faq");

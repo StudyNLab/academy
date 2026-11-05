@@ -20,7 +20,7 @@ export default async function WithdrawPage() {
       <PageTitle label="Withdraw" title="회원 탈퇴">
         <p className="m-0">탈퇴하면 되돌릴 수 없습니다. 아래 내용을 확인해 주세요.</p>
       </PageTitle>
-      <ul className="m-0 mb-8 flex flex-col gap-3 border-t border-line-strong pt-6 pl-5 text-[15px] leading-[1.75]">
+      <ul className="surface padded m-0 mb-8 flex flex-col gap-3 pl-12 text-[15px] leading-[1.75]">
         <li>이메일 · 닉네임 등 개인정보는 바로 지웁니다. 같은 이메일로 다시 가입하면 새 회원이 됩니다.</li>
         <li>가진 수강권 · 구독은 모두 끝나며 되살릴 수 없습니다. 환불이 필요하면 탈퇴 전에 요청해 주세요.</li>
         <li>

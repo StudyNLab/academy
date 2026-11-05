@@ -45,7 +45,7 @@ export default async function RefundPage({ params }: { params: Promise<{ itemId:
           ? "환불되면 구독이 바로 끝나고 자동결제가 멈춥니다. 이번 회차 끝까지 이용하려면 구독 관리에서 해지 예약을 하세요."
           : null}
       </PageTitle>
-      <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-2.5 border-t-2 border-line-strong pt-5 text-[15px]">
+      <dl className="surface padded m-0 grid grid-cols-[120px_1fr] gap-y-2.5 text-[15px]">
         <dt className="text-ink-2">결제일</dt>
         <dd className="m-0">{order.paidAt ? formatDay(order.paidAt) : "-"}</dd>
         <dt className="text-ink-2">결제 금액</dt>

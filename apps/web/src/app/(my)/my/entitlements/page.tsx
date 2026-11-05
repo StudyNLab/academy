@@ -41,12 +41,12 @@ export default async function EntitlementsPage() {
   return (
     <>
       <PageTitle label="Entitlements" title="수강권" />
-      <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0">
+      <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0">
         {visible.map(({ entitlement: e, course }) => {
           const active = e.startsAt <= now && (!e.endsAt || now < e.endsAt);
           const extension = course ? offers.get(course.id)?.extension : null;
           return (
-            <li key={e.id} className="flex flex-col gap-2 border-b border-line py-5">
+            <li key={e.id} className="flex flex-col gap-2 border-b border-line px-7 py-6 last:border-b-0">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 {course ? (
                   <Link

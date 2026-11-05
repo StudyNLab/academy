@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Notice } from "@aionit/ui";
-import { PageTitle } from "@/components/page-title";
 import { safeNext } from "@/lib/next-url";
 import { socialProviders } from "@/server/providers";
 import { getViewer } from "@/server/session";
@@ -51,18 +50,18 @@ function notice(params: Record<string, string | string[] | undefined>) {
   return null;
 }
 
-// A-03 로그인: 이메일 · 구글 · 카카오
+// A-03 로그인 (시안 #/login): 구글 · 카카오 ➔ 이메일. 시안의 "로그인 유지" 상자는 아직 기능이 없어 두지 않았다
 export default async function LoginPage({ searchParams }: { searchParams: Search }) {
   const params = await searchParams;
   const next = safeNext(typeof params.next === "string" ? params.next : null);
   if (await getViewer()) redirect(next);
+  const message = notice(params);
   return (
     <>
-      <PageTitle label="Log in" title="로그인" />
-      <div className="flex flex-col gap-6">
-        {notice(params)}
-        <LoginForm next={next} providers={socialProviders()} />
-      </div>
+      <h1>다시 만나 반가워요.</h1>
+      <p className="auth-desc">지난 배움에서 이어서 시작하세요.</p>
+      {message ? <div className="mb-5">{message}</div> : null}
+      <LoginForm next={next} providers={socialProviders()} />
     </>
   );
 }

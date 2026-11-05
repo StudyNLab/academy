@@ -67,7 +67,8 @@
       .course-hero,
       .breadcrumb,
       .detail-nav,
-      .detail-layout
+      .detail-layout,
+      .auth-story
     )
     a {
     color: inherit;
@@ -82,7 +83,8 @@
       .course-hero,
       .breadcrumb,
       .detail-nav,
-      .detail-layout
+      .detail-layout,
+      .auth-story
     )
     a:hover {
     color: var(--brand);
@@ -91,7 +93,7 @@
   .site-footer {
     margin-top: 96px;
   }
-  body:has(.is-home, .page-main, .detail-layout) .site-footer {
+  body:has(.is-home, .page-main, .detail-layout, .auth-layout) .site-footer {
     margin-top: 0;
   }
   /* 시안의 select 요소 규칙. 사이트 전체 select 를 바꾸지 않게 시안 부품(.select-label) 안에만 쓴다 */
@@ -100,6 +102,20 @@
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 6px;
+  }
+  /* 알림(Notice)의 완료 · 오류 — 시안에는 안내(.notice) · 주의(.notice.warn)만 있어 토큰으로 만든 것 */
+  .notice.done {
+    border-color: var(--done);
+  }
+  .notice.danger {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+  }
+  /* 시안 .notice strong 은 제목 한 줄. 본문 안의 굵은 글은 줄을 바꾸지 않는다 */
+  .notice > div strong {
+    display: inline;
+    margin-bottom: 0;
+    font-size: inherit;
   }
   /* 위험한 행동 버튼 (시안에 없어 토큰으로 만든 것) */
   .btn.danger {
