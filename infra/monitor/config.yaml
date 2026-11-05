@@ -94,11 +94,9 @@ external-endpoints:
         failure-threshold: 1
         success-threshold: 1
 
-  # worker 가 매시 정각 작업 때 보낸다 (M10 ② 코드, 푸시 주소 app_worker). 2시간 동안 오지 않으면 실패.
-  # ② 를 배포하기 전에는 worker 가 보내지 않으므로 꺼 둔다 ➔ 배포 뒤 enabled 를 지운다
+  # worker 가 켜질 때와 매시 정각 작업 때 보낸다 (apps/worker/src/monitor.ts, 푸시 주소 app_worker). 2시간 동안 오지 않으면 실패
   - name: worker
     group: app
-    enabled: false
     token: "${WORKER_PUSH_TOKEN}"
     heartbeat:
       interval: 2h
