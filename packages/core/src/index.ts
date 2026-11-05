@@ -13,3 +13,4 @@ export * from "./commerce/subscription";
 export * from "./support/qna";
 export * from "./support/secrets";
 export * from "./instructor/instructor";
+export * from "./settlement/settlement";

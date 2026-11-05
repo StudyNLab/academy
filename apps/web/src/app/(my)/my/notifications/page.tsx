@@ -18,6 +18,7 @@ const KIND_LABEL = {
   expiry: "수강 기간",
   content_review: "교재 검수",
   instructor_contract: "강사",
+  settlement: "정산",
 } as const;
 
 // 사이트 알림 (최근 50개). 누르면 읽음으로 바뀌고 그 화면으로 간다. 메일 알림은 내 정보 > 알림 설정

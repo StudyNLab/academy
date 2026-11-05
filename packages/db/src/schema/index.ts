@@ -6,3 +6,4 @@ export * from "./learning";
 export * from "./commerce";
 export * from "./support";
 export * from "./instructor";
+export * from "./settlement";

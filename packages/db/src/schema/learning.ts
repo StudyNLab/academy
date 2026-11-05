@@ -169,6 +169,11 @@ export const learningTimeDaily = pgTable(
     /** 상한 · 제외 규칙을 적용한 뒤 */
     effectiveSec: integer().notNull(),
     ruleVersion: text().notNull(),
+    /**
+     * 그날 무엇으로 봤나 (M9, core learningAccess): subscription 만 구독 배분에 쓴다. course 는 단건 · 발급 수강권 (D3).
+     * 집계할 때 남겨 두어 탈퇴해 user_id 가 비어도 정산 근거가 남는다. 비어 있으면(M9 전 집계) 정산할 때 다시 판단한다
+     */
+    access: text({ enum: ["subscription", "course", "none"] }),
     createdAt: createdAt(),
   },
   (t) => [

@@ -22,7 +22,7 @@ export function setupTestAuth(extraEnv: Partial<Env> = {}) {
 
 export type TestAuth = ReturnType<typeof setupTestAuth>;
 
-/** 정책 문서(마이그레이션이 넣은 것)만 남기고 모두 비운다 */
+/** 정책 문서 · 기본 배분 정책(마이그레이션이 넣은 것)만 남기고 모두 비운다 */
 export async function resetDb(db: TestAuth["db"]) {
   await db.transaction(async (tx) => {
     await tx.execute(sql`set local aionit.retention_purge = 'on'`);
@@ -35,9 +35,13 @@ export async function resetDb(db: TestAuth["db"]) {
           attachment_downloads, products, product_items, prices, subscriber_discount_policies, orders,
           order_items, payments, refunds, payment_webhooks, subscriptions, subscription_cycles,
           subscription_notices, questions, answers, reports, inquiries, inquiry_messages, notices, faqs,
-          notifications, notification_prefs, instructor_contracts, payout_profiles cascade`,
+          notifications, notification_prefs, instructor_contracts, payout_profiles, settlement_periods,
+          settlements, settlement_lines, settlement_objections, settlement_adjustments, payouts cascade`,
     );
-    await tx.execute(sql`delete from revenue_policies where scope <> 'default'`);
+    // 마이그레이션이 넣은 기본 정책 v1 만 남긴다
+    await tx.execute(
+      sql`delete from revenue_policies where scope <> 'default' or effective_from <> '2026-11-01T00:00:00+09:00'`,
+    );
   });
 }
 

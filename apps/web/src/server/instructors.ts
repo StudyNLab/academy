@@ -4,6 +4,7 @@
 import {
   canRequestReview,
   chapterFunnel,
+  checkNewPolicy,
   contractState,
   coursePercent,
   isDeliverableEmail,
@@ -17,8 +18,10 @@ import {
   normalizeRrn,
   progressDistribution,
   recentMonths,
+  resolvePolicy,
 } from "@aionit/core";
 import { openPii, sealPii } from "@aionit/core/media";
+import { loadPolicies } from "@aionit/payments";
 import type { Db, TaxType } from "@aionit/db";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, or, schema, sql } from "@aionit/db";
 import type { CourseInput, MailDeps } from "./courses";
@@ -583,6 +586,25 @@ export async function setInstructorRate(
   if (!Number.isInteger(input.singleRateBp) || input.singleRateBp < 0 || input.singleRateBp > 10000)
     throw new CourseError("BAD_RATE", "비율은 0 ~ 100% 로 적어 주세요.");
   const effectiveFrom = kstStart(input.effectiveOn);
+  // 강사에게 불리한 변경(비율 내림)은 30일 뒤부터 (M9, 강사 이용약관 3)
+  const current = resolvePolicy(await loadPolicies(db), { instructorId }, effectiveFrom);
+  const check = checkNewPolicy(
+    {
+      effectiveFrom,
+      current: current && {
+        singleRateBp: current.singleRateBp,
+        poolRateBp: current.poolRateBp,
+        pgFeeRateBp: current.pgFeeRateBp,
+      },
+      next: { singleRateBp: input.singleRateBp },
+    },
+    now,
+  );
+  if (check.block === "NEEDS_NOTICE")
+    throw new CourseError(
+      "NEEDS_NOTICE",
+      "비율을 내리는 변경은 30일 뒤부터 시행할 수 있습니다 (강사 이용약관 3: 불리한 변경은 30일 전에 알림).",
+    );
   const [same] = await db
     .select({ id: schema.revenuePolicies.id })
     .from(schema.revenuePolicies)

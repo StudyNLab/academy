@@ -1,4 +1,4 @@
-// 강사 계약 · 정산 정보 · 배분 정책 (docs/데이터모델.md 3.2 · 3.10). 정산 계산(settlements …)은 M9.
+// 강사 계약 · 정산 정보 · 배분 정책 (docs/데이터모델.md 3.2 · 3.10). 정산(settlements …)은 ./settlement.
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -99,7 +99,7 @@ export type RevenueScope = (typeof REVENUE_SCOPES)[number];
 /**
  * 배분 정책 버전 (사이트구조 9장). 고치지 않고 새 버전을 시행일과 함께 덧붙인다 (DB 트리거).
  * 비율은 만분율 정수 (6000 = 60%). 강사 · 과정 범위에서 비어 있는 값은 기본 정책을 따른다.
- * 정책 고르기(가장 좁은 범위, 매출 시각에 시행 중인 것)와 정산 계산은 M9.
+ * 정책 고르기(가장 좁은 범위, 매출 시각에 시행 중인 것)는 packages/core resolvePolicy.
  */
 export const revenuePolicies = pgTable(
   "revenue_policies",
@@ -112,6 +112,8 @@ export const revenuePolicies = pgTable(
     singleRateBp: integer(),
     /** 구독 매출의 강사 풀 비율 */
     subscriptionPoolRateBp: integer(),
+    /** 결제에 PG 수수료가 기록되지 않았을 때 쓰는 추정 수수료율 (M9) */
+    pgFeeRateBp: integer(),
     /** 유효 학습 시간 규칙 (packages/core LEARNING_RULES_V1 형식) */
     learningRules: jsonb(),
     effectiveFrom: tz().notNull(),
@@ -126,11 +128,11 @@ export const revenuePolicies = pgTable(
     check("revenue_policies_scope_check", sql`(${t.scope} = 'default') = (${t.scopeId} is null)`),
     check(
       "revenue_policies_default_check",
-      sql`${t.scope} <> 'default' or (${t.singleRateBp} is not null and ${t.subscriptionPoolRateBp} is not null and ${t.learningRules} is not null)`,
+      sql`${t.scope} <> 'default' or (${t.singleRateBp} is not null and ${t.subscriptionPoolRateBp} is not null and ${t.pgFeeRateBp} is not null and ${t.learningRules} is not null)`,
     ),
     check(
       "revenue_policies_rate_check",
-      sql`(${t.singleRateBp} is null or ${t.singleRateBp} between 0 and 10000) and (${t.subscriptionPoolRateBp} is null or ${t.subscriptionPoolRateBp} between 0 and 10000)`,
+      sql`(${t.singleRateBp} is null or ${t.singleRateBp} between 0 and 10000) and (${t.subscriptionPoolRateBp} is null or ${t.subscriptionPoolRateBp} between 0 and 10000) and (${t.pgFeeRateBp} is null or ${t.pgFeeRateBp} between 0 and 10000)`,
     ),
   ],
 );
