@@ -83,9 +83,9 @@ bash infra/scripts/deploy.sh
 |---|---|
 | DB | PostgreSQL 전체 (`pg_dump -Fc`) + sha256 (파일 이름만 적는다) |
 | 파일 | Garage 버킷 **`aionit`(교재 · 그림 · 첨부 · 영상 원본) · `aionit-media`(영상 변환 결과)** — rclone 으로 바뀐 것만 |
-| 설정 | data VM: `.env` · compose · `garage.toml` · Garage 키 파일 · 백업 키 · crontab · **DB 역할(`pg_dumpall --globals-only`)** ➔ 암호화 묶음. app VM 설정은 아직 (아래 "켜지 않은 것") |
+| 설정 | data VM: `.env` · compose · `garage.toml` · Garage 키 파일 · 백업 키 · crontab · **DB 역할(`pg_dumpall --globals-only`)** ➔ 암호화 묶음. **app VM**: `.env` · compose · Caddyfile · `.previous_tag` · Caddy 데이터(인증서) ➔ data VM 이 강제 명령 키로 받아 감 (이미 암호화된 채) |
 | 언제 | 매일 03:30 KST (data VM cron, DB · 파일 · 설정), 배포 직전 (DB 만, `pre-deploy-<태그>`) |
-| 어디 | 호스트 `G:\AIONIT-backup\` (공유 폴더, data VM `/mnt/aionit-backup`): `db\` · `files\aionit\` · `files\aionit-media\` · `files\changed\<날짜>\<버킷>\` · `config\data-<날짜>.cms`. DB 는 VM 안 `/srv/data/backup/db/` 에도 7일 |
+| 어디 | 호스트 `G:\AIONIT-backup\` (공유 폴더, data VM `/mnt/aionit-backup`): `db\` · `files\aionit\` · `files\aionit-media\` · `files\changed\<날짜>\<버킷>\` · `config\data-<날짜>.cms` · `config\app-<날짜>.cms`. DB 는 VM 안 `/srv/data/backup/db/` 에도 7일 |
 | 보관 | DB 매일 35일 · **매주(일요일) 5주 · 매월(1일) 6개월** · 배포 전 90일. 바뀐 · 지운 파일 35일. 설정 35일 |
 | 기록 | data VM `~/aionit/backup.log`. 매일 백업이 끝나면 감시에 결과를 알린다 (`~/aionit/monitor.env`) |
 
@@ -94,12 +94,17 @@ bash infra/scripts/deploy.sh
 - **설정 암호화**: `openssl cms`(AES-256) + 백업 공개 인증서 `~/aionit/backup-recipient.pem`(RSA 4096, 2036-11 까지, SHA-256 지문 `2D:A6:68:43:…:CB:22`). **개인키는 VM · G: 에 두지 않는다** (운영자 보관). 풀기: `openssl cms -decrypt -binary -inform DER -inkey <개인키> -in data-<날짜>.cms | tar xzf - -C <폴더>`.
 - 배포 스크립트가 배포 때마다 `infra/data-vm/backup.sh` 를 data VM 에 덮어쓴다. 서버의 백업 스크립트를 바꾸려면 저장소 파일을 고친다.
 
-### 켜지 않은 것
+### app VM 설정 받기 (2026-11-05 운영자 허락)
 
-| 무엇 | 왜 | 켜는 법 |
-|---|---|---|
-| app VM 설정 백업 (`.env` · Caddy 인증서) | app VM 에 data VM 전용 키를 등록하는 일이 권한 확인 대기 (2026-11-05) | data VM 에서 `ssh-keygen -t ed25519 -N "" -f ~/.ssh/aionit_config_pull`, app VM `~/.ssh/authorized_keys` 에 `command="/home/user1/aionit/config-backup.sh",from="172.30.0.20",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding <공개키>`. app VM 에는 `config-backup.sh`(700) · `backup-recipient.pem` 을 이미 넣어 둠. 그러면 `backup.sh` 가 `configpp-<날짜>.cms` 도 받는다 |
-| NAS(F:) 두 번째 사본 | 운영자 결정 대기 | |
+- data VM `~/.ssh/aionit_config_pull` (ed25519) 의 공개키를 app VM `~/.ssh/authorized_keys` 에 **강제 명령**으로 등록: `command="/home/user1/aionit/config-backup.sh",from="172.30.0.20",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding`. 그 키로는 `config-backup.sh` 만 돈다 (다른 명령을 보내도 같은 결과, 포트 포워딩 "administratively prohibited" 확인). 예전 파일 `authorized_keys.bak-m10`
+- app VM `config-backup.sh`(700)가 묶음을 `backup-recipient.pem` 으로 암호화해 내보내므로 data VM 은 평문을 보지 않는다
+- 끄려면: app VM `authorized_keys` 의 `aionit-data config pull` 줄을 지운다 (백업 스크립트는 받기 실패 경고만 남긴다)
+
+### 아직 없는 것
+
+| 무엇 | 왜 |
+|---|---|
+| NAS(F:) 두 번째 사본 | 운영자 결정 대기 |
 
 ## 복구
 
@@ -119,7 +124,7 @@ bash infra/scripts/deploy.sh
 5. 확인: 원본(또는 백업 시점)과 테이블별 행 수, 트리거 수, 버킷별 개수, 영상 웹 주소 200
 6. 실제 복구라면: `crontab.txt` 로 매일 백업 다시 걸기, 공유 폴더 mount 단위, app VM 에서 `/api/health`
 
-- app VM 은 상태가 없다 (DB · 파일은 data VM). 새 app VM 은 Docker 설치 ➔ `.env` (app 설정 백업, 아직 없으면 `infra/README.md` 맨 위 이름 목록대로 다시 만듦) ➔ `deploy.sh --force` 로 되살린다.
+- app VM 은 상태가 없다 (DB · 파일은 data VM). 새 app VM 은 Docker 설치 ➔ `config\app-<날짜>.cms` 를 풀어 `~/aionit/` 에 `.env` · compose · Caddyfile, Caddy 인증서는 `docker volume create aionit-app_caddy-data` 뒤 `caddy-data.tgz` 를 풀어 넣기 ➔ `deploy.sh --force` 로 되살린다.
 - 개발 VM(이미지 보관소 · 빌드 캐시)은 백업하지 않는다. 다시 만들 수 있다 (`infra/dev-vm/README.md`).
 
 ## 상태 확인
