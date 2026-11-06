@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SvcIcon } from "@/components/icons";
 import { ResultPage } from "@/components/result-page";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+
+export const metadata: Metadata = { title: "권한 없음" };
 
 // P-11 권한 없음 (forbidden() 이 부른다, 시안 #/error?type=403)
 export default function Forbidden() {

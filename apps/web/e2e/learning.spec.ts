@@ -96,6 +96,7 @@ test("운영자가 수강권을 발급하면 수강생이 학습하고, 체크 �
   await learner.waitForURL((url) => url.pathname === "/");
   await learner.goto(`/learn/${slug}/ch01`);
   await expect(learner.getByRole("heading", { name: "이 강의의 수강권이 없습니다" })).toBeVisible();
+  await expect(learner).toHaveTitle("학습 | AIONIT"); // 수강권이 없으면 장 제목을 탭에 보이지 않는다
   await learner.goto("/learn");
   await expect(learner.getByText("아직 수강 중인 강의가 없습니다.")).toBeVisible();
 
@@ -128,6 +129,7 @@ test("운영자가 수강권을 발급하면 수강생이 학습하고, 체크 �
   await shoot(learner, "classroom");
   await learner.getByRole("link", { name: "학습 시작" }).click();
   await expect(learner).toHaveURL(new RegExp(`/learn/${slug}/ch01$`));
+  await expect(learner).toHaveTitle("챕터 1 | AIONIT"); // 수강권이 있으면 장 제목;
   await expect(learner.getByRole("navigation", { name: "목차" }).first()).toBeVisible();
   await expect(learner.locator('iframe[data-video-key="ch01_main"]')).toHaveAttribute("src", /enablejsapi=1/);
   // 워터마크 · 진도 막대
