@@ -2,18 +2,15 @@ import Link from "next/link";
 import type { CourseField } from "@aionit/db";
 import { subscriptionPlans } from "@aionit/payments";
 import { won } from "@/components/commerce/format";
-import { CourseArt, FIELD_EN, HeroArt, MethodSection } from "@/components/home";
+import { CourseArt, FIELD_EN, MethodSection } from "@/components/home";
+import { HomeSignature } from "@/components/home-signature";
 import { SvcIcon } from "@/components/icons";
 import { courseDetail, FIELD_LABEL, listCatalog } from "@/server/catalog";
 import { getDb } from "@/server/db";
 
-// P-01 홈 — 시안 AIONIT-Service 홈 (app.js home + screens.js 구독 안내 띠).
+// P-01 홈 — 상단(소개 · 3장면 순환 · 분야 띠)은 디자인 저장소 aionit-design 태그 v2-2026-11-06 (components/home-signature.tsx),
+// 그 아래 강의 · 방법 · 구독 띠 · 마무리는 시안 AIONIT-Service 홈 (app.js home + screens.js 구독 안내 띠).
 // 강의 · 미리보기 · 구독 요금은 실제 데이터. 시안의 예시 강의("준비 중" 목록) · 예시 요금은 쓰지 않는다.
-const fields: { key: CourseField; no: string; tagline: string }[] = [
-  { key: "infra", no: "01 /", tagline: "BUILD THE FOUNDATION" },
-  { key: "security", no: "02 /", tagline: "PROTECT WHAT MATTERS" },
-  { key: "ai", no: "03 /", tagline: "EXPAND WHAT'S POSSIBLE" },
-];
 
 const miniCover: Record<CourseField, string> = { infra: ">_", security: "{ }", ai: "AI" };
 
@@ -25,67 +22,13 @@ export default async function HomePage() {
   const detail = featured ? await courseDetail(db, featured.slug) : null;
   const previewKey = detail?.chapters.find((c) => c.preview)?.key ?? null;
   const previewHref = featured && previewKey ? `/courses/${featured.slug}/preview/${previewKey}` : null;
-  const aiCourse = catalog.find((c) => c.field === "ai");
   const monthly = plans.find((p) => p.product.billingInterval === "month");
 
   return (
     <div className="is-home">
-      <section className="launch-zone">
-        <div className="wrap">
-          <section className="hero">
-            <div>
-              <div className="hero-kicker">BUILD YOUR NEXT. / AIONIT</div>
-              <h1>
-                기술을 이해하고,
-                <br />
-                <em>가능성을 실행하다.</em>
-              </h1>
-              <p className="hero-desc">
-                인프라부터 보안, AI 에이전트까지.
-                <br />
-                코드를 실행하고, 시스템을 연결하고,
-                <br />
-                현업의 문제를 직접 해결하는 실력을 만듭니다.
-              </p>
-              <div className="hero-actions">
-                <Link
-                  className="btn primary"
-                  href={aiCourse ? `/courses/${aiCourse.slug}` : "/courses?field=ai"}
-                >
-                  AI Agent 만들기 <SvcIcon name="arrow" />
-                </Link>
-                <Link className="btn secondary" href={previewHref ?? "/courses"}>
-                  교재 미리보기 <SvcIcon name="book" />
-                </Link>
-              </div>
-              <div className="hero-foot">
-                <span className="line" />
-                <span>영상으로 이해하고 · 교재로 정리하고 · 실습으로 완성합니다</span>
-              </div>
-            </div>
-            <HeroArt />
-          </section>
-        </div>
-      </section>
+      <HomeSignature previewHref={previewHref ?? "/courses"} />
 
       <div className="wrap">
-        <div className="discipline-strip">
-          <div className="strip-intro">
-            기술은 연결되어 있습니다.
-            <br />
-            배움도 연결되어야 하니까.
-          </div>
-          {fields.map((f) => (
-            <Link key={f.key} className="discipline" data-topic={f.key} href={`/courses?field=${f.key}`}>
-              <span>{f.no}</span>
-              <div>
-                <h3>{FIELD_LABEL[f.key]}</h3>
-                <small>{f.tagline}</small>
-              </div>
-            </Link>
-          ))}
-        </div>
-
         <section className="section" id="courses">
           <div className="section-heading">
             <div>

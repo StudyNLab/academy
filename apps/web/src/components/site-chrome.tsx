@@ -1,6 +1,6 @@
 // 공통 머리글 · 바닥글 (docs/화면상세기획.md 0.2). 모양은 시안 AIONIT-Service 의 .site-header · .site-footer (app/site.css)
 import Link from "next/link";
-import { LogoMark, LogoWord } from "@aionit/ui";
+import { LogoWord } from "@aionit/ui";
 import { getDb } from "@/server/db";
 import { unreadCount } from "@/server/notifications";
 import { getViewer } from "@/server/session";
@@ -28,7 +28,6 @@ function staffLinks(viewer: Viewer | null): MenuLink[] {
 function Logo() {
   return (
     <Link href="/" className="logo" aria-label="AIONIT 홈">
-      <LogoMark />
       <LogoWord />
     </Link>
   );

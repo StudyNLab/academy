@@ -115,9 +115,6 @@ textarea {
   font-weight: 800;
   line-height: 1;
 }
-.logo-mark {
-  fill: currentColor;
-}
 .site-header {
   height: var(--header-h);
   display: flex;
@@ -2111,15 +2108,6 @@ textarea.field {
   gap: 12px;
   flex-shrink: 0;
 }
-.logo-mark {
-  width: 32px;
-  height: 34px;
-}
-.logo-word {
-  width: 126px;
-  height: 25px;
-  fill: currentColor;
-}
 .tag {
   border-radius: 4px;
 }
@@ -2315,14 +2303,6 @@ textarea.field {
 .video-watermark {
   color: #d4e4ff80;
 }
-.reader-header .logo-mark {
-  width: 25px;
-  height: 27px;
-}
-.reader-header .logo-word {
-  width: 97px;
-  height: 19px;
-}
 @media (min-width: 1100px) {
   .launch-zone .hero {
     min-height: 650px;
@@ -2332,9 +2312,6 @@ textarea.field {
   }
 }
 @media (max-width: 1100px) {
-  .logo-word {
-    width: 110px;
-  }
   .launch-zone .hero {
     gap: 15px;
     min-height: 600px;
@@ -2407,9 +2384,6 @@ textarea.field {
   }
 }
 @media (max-width: 760px) {
-  .site-header .logo-word {
-    height: 20px;
-  }
   .nav-actions .btn {
     font-size: 9px;
     padding: 8px 10px;
@@ -2507,9 +2481,6 @@ textarea.field {
   }
   .reader-header .logo {
     gap: 6px;
-  }
-  .reader-header .logo-word {
-    height: 16px;
   }
   .section-heading h2 {
     font-size: 25px;
@@ -2646,9 +2617,6 @@ textarea.field {
 }
 .code-block .kw {
   color: #bacce4;
-}
-.logo-mark path:last-child {
-  fill: #507cae;
 }
 .site-header {
   background: #ffffffed;
@@ -6001,13 +5969,6 @@ textarea.field {
     height: 68px;
     gap: 8px;
   }
-  .reader-header .logo-word {
-    width: 72px;
-  }
-  .reader-header .logo-mark {
-    width: 22px;
-    height: 24px;
-  }
   .reader-header-left {
     gap: 10px;
     min-width: 0px;
@@ -6231,12 +6192,6 @@ textarea.field {
   .reader-course-name {
     font-size: 12px;
     max-width: 100px;
-  }
-  .reader-header .logo-word {
-    width: 58px;
-  }
-  .reader-header .logo-mark {
-    width: 20px;
   }
   .reader-header-left {
     gap: 7px;
@@ -6537,9 +6492,6 @@ textarea.field {
   .site-header .logo {
     margin-right: 8px;
   }
-  .site-header .logo-word {
-    width: 100px;
-  }
   .nav-actions {
     gap: 10px;
   }
@@ -6606,13 +6558,6 @@ textarea.field {
   }
 }
 @media (max-width: 760px) {
-  .site-header .logo-word {
-    width: 90px;
-  }
-  .site-header .logo-mark {
-    width: 26px;
-    height: 28px;
-  }
   .site-header .logo {
     gap: 8px;
     margin-right: 0px;
@@ -6857,13 +6802,6 @@ textarea.field {
   }
 }
 @media (max-width: 360px) {
-  .site-header .logo-word {
-    width: 65px;
-  }
-  .site-header .logo-mark {
-    width: 22px;
-    height: 24px;
-  }
   .site-header .logo {
     gap: 6px;
   }
@@ -6990,6 +6928,36 @@ textarea.field {
     padding: 0px 4px;
   }
 }
+/* 로고 워드마크 (aionit-design v2-2026-11-06 brand/): 머리글 145×36 자리에 여백 포함 원본 비율 그대로 */
+.logo-word {
+  width: 130px;
+  height: 36px;
+  flex-shrink: 0;
+}
+.logo-word .logo-ink {
+  fill: var(--logo-ink);
+}
 .logo-word .logo-on {
   fill: var(--logo-on);
+}
+.footer-top .logo-word,
+.reader-header .logo-word {
+  width: 108px;
+  height: 30px;
+}
+@media (max-width: 760px) {
+  .reader-header .logo-word {
+    width: 87px;
+    height: 24px;
+  }
+}
+@media (max-width: 360px) {
+  .site-header .logo-word {
+    width: 108px;
+    height: 30px;
+  }
+  .reader-header .logo-word {
+    width: 72px;
+    height: 20px;
+  }
 }

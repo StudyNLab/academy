@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LogoMark, LogoWord } from "@aionit/ui";
+import { LogoWord } from "@aionit/ui";
 import { Reader } from "@/components/reader";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/client-api";
@@ -277,7 +277,6 @@ export function LearnScreen({
       <header className="reader-header">
         <div className="reader-header-left">
           <Link className="logo" href="/" aria-label="AIONIT 홈">
-            <LogoMark />
             <LogoWord />
           </Link>
           <span className="reader-divider" />
