@@ -5,6 +5,7 @@ import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { Button, Checkbox, Field, inputClass, Notice } from "@aionit/ui";
 import { api, apiDelete } from "@/lib/client-api";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const FIELDS = [
   { value: "ai", label: "AI" },
@@ -143,6 +144,16 @@ const empty: CourseFormValues = {
   inSubscription: true,
 };
 
+/** 화면이 살아나기 전에 넣은 값은 사라지므로 그때까지 입력을 끈다 (lib/use-hydrated) */
+function FormBody({ children }: { children: ReactNode }) {
+  const hydrated = useHydrated();
+  return (
+    <fieldset disabled={!hydrated} className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
+      {children}
+    </fieldset>
+  );
+}
+
 export function NewCourseForm({ instructors }: { instructors: { id: string; name: string }[] }) {
   const router = useRouter();
   const [slug, setSlug] = useState("");
@@ -172,34 +183,36 @@ export function NewCourseForm({ instructors }: { instructors: { id: string; name
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Field
-        label="과정 ID"
-        value={slug}
-        onChange={(e) => setSlug(e.target.value.trim())}
-        hint="교재 패키지 course.json 의 course_id 와 같게. 영문 소문자 · 숫자 · - (예: ai-agent-basics). 정하면 바꿀 수 없습니다."
-        required
-      />
-      <CourseFields values={values} set={set} instructors={instructors} />
-      <div className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
+    <form onSubmit={onSubmit}>
+      <FormBody>
+        {error ? <Notice tone="danger">{error}</Notice> : null}
         <Field
-          label="강사가 목록에 없으면 새로 추가"
-          value={newInstructor}
-          onChange={(e) => setNewInstructor(e.target.value)}
-          className="min-w-[220px] flex-1"
+          label="과정 ID"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value.trim())}
+          hint="교재 패키지 course.json 의 course_id 와 같게. 영문 소문자 · 숫자 · - (예: ai-agent-basics). 정하면 바꿀 수 없습니다."
+          required
         />
-        <Button variant="outline" onClick={addInstructor} disabled={newInstructor.trim().length < 2}>
-          강사 추가
+        <CourseFields values={values} set={set} instructors={instructors} />
+        <div className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
+          <Field
+            label="강사가 목록에 없으면 새로 추가"
+            value={newInstructor}
+            onChange={(e) => setNewInstructor(e.target.value)}
+            className="min-w-[220px] flex-1"
+          />
+          <Button variant="outline" onClick={addInstructor} disabled={newInstructor.trim().length < 2}>
+            강사 추가
+          </Button>
+        </div>
+        <Button
+          type="submit"
+          disabled={busy || !slug || !values.title || !values.ownerInstructorId}
+          className="self-start"
+        >
+          과정 등록
         </Button>
-      </div>
-      <Button
-        type="submit"
-        disabled={busy || !slug || !values.title || !values.ownerInstructorId}
-        className="self-start"
-      >
-        과정 등록
-      </Button>
+      </FormBody>
     </form>
   );
 }
@@ -231,12 +244,14 @@ export function EditCourseForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <CourseFields values={values} set={set} instructors={instructors} />
-      <Button type="submit" variant="outline" disabled={busy} className="self-start">
-        저장
-      </Button>
+    <form onSubmit={onSubmit}>
+      <FormBody>
+        {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+        <CourseFields values={values} set={set} instructors={instructors} />
+        <Button type="submit" variant="outline" disabled={busy} className="self-start">
+          저장
+        </Button>
+      </FormBody>
     </form>
   );
 }
@@ -293,26 +308,28 @@ export function InstructorCourseForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      {courseId ? null : (
-        <Field
-          label="과정 ID"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.trim())}
-          hint="교재 패키지 course.json 의 course_id 와 같게. 영문 소문자 · 숫자 · - (예: zero-trust-basics). 정하면 바꿀 수 없습니다."
-          required
-        />
-      )}
-      <CourseFields values={values} set={set} instructors={null} />
-      <Button
-        type="submit"
-        variant={courseId ? "outline" : "primary"}
-        disabled={busy || !values.title || (!courseId && !slug)}
-        className="self-start"
-      >
-        {courseId ? "저장" : "과정 만들기"}
-      </Button>
+    <form onSubmit={onSubmit}>
+      <FormBody>
+        {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+        {courseId ? null : (
+          <Field
+            label="과정 ID"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.trim())}
+            hint="교재 패키지 course.json 의 course_id 와 같게. 영문 소문자 · 숫자 · - (예: zero-trust-basics). 정하면 바꿀 수 없습니다."
+            required
+          />
+        )}
+        <CourseFields values={values} set={set} instructors={null} />
+        <Button
+          type="submit"
+          variant={courseId ? "outline" : "primary"}
+          disabled={busy || !values.title || (!courseId && !slug)}
+          className="self-start"
+        >
+          {courseId ? "저장" : "과정 만들기"}
+        </Button>
+      </FormBody>
     </form>
   );
 }
