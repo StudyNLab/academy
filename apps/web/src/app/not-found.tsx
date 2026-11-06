@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SvcIcon } from "@/components/icons";
 import { ResultPage } from "@/components/result-page";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+
+export const metadata: Metadata = { title: "페이지를 찾을 수 없음" };
 
 // P-11 페이지 없음 (notFound() · 없는 주소, 시안 #/error?type=404)
 export default function NotFound() {

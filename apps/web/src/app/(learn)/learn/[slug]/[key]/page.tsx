@@ -6,14 +6,19 @@ import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { courseOffers } from "@/server/commerce";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
-import { learnChapter } from "@/server/learning";
+import { learnChapter, learnChapterTitle } from "@/server/learning";
 import { paymentsEnabled } from "@/server/payments";
 import { openQuestionCount } from "@/server/qna";
 import { getViewer } from "@/server/session";
 
 type Params = Promise<{ slug: string; key: string }>;
 
-export const metadata: Metadata = { title: "학습", robots: { index: false } };
+// 탭 제목은 장 제목. 수강권이 없는 사람(안내 화면 · 로그인으로 보냄)에게는 일반 제목만
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug, key } = await params;
+  const title = await learnChapterTitle(getDb(), await getViewer(), slug, key);
+  return { title: title ?? "학습", robots: { index: false } };
+}
 
 // L-02 학습 화면 (docs/화면상세기획.md 1장). 수강권이 없으면 미리보기 챕터는 미리보기로, 아니면 L-05
 export default async function LearnPage({ params }: { params: Params }) {

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Notice } from "@aionit/ui";
 import { SvcIcon } from "@/components/icons";
 import { ResultPage } from "@/components/result-page";
+
+export const metadata: Metadata = { title: "카드 등록 실패" };
 
 // 카드 등록 실패 · 취소 (토스가 code · message 를 붙여 돌려보낸다). 돈은 나가지 않았다
 export default async function SubscribeFail({

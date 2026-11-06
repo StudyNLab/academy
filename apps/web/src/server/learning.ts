@@ -118,6 +118,21 @@ export async function learnChapter(
   return { kind: "ok", ...(await buildChapter(db, viewer, found, chapters, chapterKey, access, origin)) };
 }
 
+/** 학습 화면 탭 제목용 장 제목. 볼 수 있는 사람에게만 돌려준다 (수강권이 없으면 null — 장 제목을 흘리지 않는다) */
+export async function learnChapterTitle(
+  db: Db,
+  viewer: Viewer | null,
+  slug: string,
+  chapterKey: string,
+): Promise<string | null> {
+  if (!viewer) return null;
+  const found = await publishedCourse(db, { slug });
+  if (!found) return null;
+  const chapter = (await chapterList(db, found.course.publishedVersionId!)).find((c) => c.key === chapterKey);
+  if (!chapter || !canLearn(await viewAccess(db, viewer, found.course))) return null;
+  return chapter.title;
+}
+
 async function buildChapter(
   db: Db,
   viewer: Viewer,
