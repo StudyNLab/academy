@@ -1,50 +1,8 @@
-// P-01 홈의 그림 · 고정 문구 부분. 시안 AIONIT-Service 의 app.js (heroArt · courseArt · diagramSVG · 학습 방식) 를 옮겼다.
+// P-01 홈의 그림 · 고정 문구 부분. 시안 AIONIT-Service 의 app.js (courseArt · diagramSVG · 학습 방식) 를 옮겼다.
+// 첫 화면 소개 · 순환 그림은 home-signature.tsx (aionit-design v2).
 // 그림은 꾸밈이라 화면 읽기 도구에는 한 줄 설명만 준다. 강의 · 요금 같은 데이터는 app/(public)/page.tsx 가 넣는다.
 import type { CourseField } from "@aionit/db";
 import { SvcIcon } from "./icons";
-
-/** 첫 화면 오른쪽: 에이전트 코어 그림 + 모델 · 도구 표 + 코드 카드 */
-export function HeroArt() {
-  return (
-    <div className="compute-art" role="img" aria-label="인프라 위에 도구와 AI 모델이 연결된 에이전트 코어">
-      <div className="compute-top">
-        <span>THE AIONIT STACK</span>
-        <span>01 — BUILD</span>
-      </div>
-      {/* eslint-disable-next-line @next/next/no-img-element -- 벡터 그림이라 이미지 최적화가 필요 없다 */}
-      <img className="core-illustration" src="/brand/agent-core.svg" alt="" />
-      <div className="system-chip model-chip">
-        <span className="chip-dot" /> MODEL <b>reason + act</b>
-      </div>
-      <div className="system-chip tools-chip">
-        <span className="tool-braces">{"{ }"}</span>
-        <span>TOOLS</span>
-        <b>connect the real world</b>
-      </div>
-      <div className="terminal-card">
-        <div className="terminal-head">
-          <span>agent.py</span>
-          <span>PYTHON</span>
-        </div>
-        <code>
-          <span className="terminal-comment"># 아이디어를 실행 가능한 코드로</span>
-          <br />
-          <span className="terminal-blue">agent</span> = build_agent(tools)
-          <br />
-          agent.<span className="terminal-cyan">run</span>(
-          <span className="terminal-string">&quot;What&apos;s next?&quot;</span>)
-        </code>
-        <div className="terminal-status">
-          <span>↳</span> Your next skill starts here.
-        </div>
-      </div>
-      <div className="compute-bottom">
-        <span>INFRA / SECURITY / AI</span>
-        <span>LEARN → BUILD → RUN</span>
-      </div>
-    </div>
-  );
-}
 
 function DiagramSvg() {
   return (
