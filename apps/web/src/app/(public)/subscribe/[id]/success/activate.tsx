@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { buttonClass, MonoLabel, Notice } from "@aionit/ui";
+import { Notice } from "@aionit/ui";
 import { lastDay } from "@/components/commerce/format";
+import { SvcIcon } from "@/components/icons";
+import { ResultPage } from "@/components/result-page";
 import { api } from "@/lib/client-api";
 
 type State =
@@ -42,43 +44,50 @@ export function ActivateSubscription({
 
   if (state.kind === "working")
     return (
-      <div className="flex flex-col gap-3" role="status">
-        <MonoLabel className="text-xs text-signal">Subscription</MonoLabel>
-        <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">
-          카드를 등록하고 결제하고 있습니다…
-        </h1>
-        <p className="m-0 text-ink-2">이 화면을 닫지 말고 잠시 기다려 주세요.</p>
-      </div>
+      <ResultPage
+        status
+        eyebrow="SUBSCRIPTION"
+        title="카드를 등록하고 결제하고 있습니다…"
+        desc="이 화면을 닫지 말고 잠시 기다려 주세요."
+      />
     );
   if (state.kind === "failed")
     return (
-      <div className="flex flex-col gap-5">
-        <MonoLabel className="text-xs text-danger">Subscription failed</MonoLabel>
-        <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">구독을 시작하지 못했습니다</h1>
-        <Notice tone="danger">{state.message}</Notice>
-        <Link href="/subscribe" className={buttonClass("primary", "md", "self-start")}>
-          다시 신청
-        </Link>
-      </div>
+      <ResultPage
+        eyebrow="SUBSCRIPTION RESULT"
+        title="구독을 시작하지 못했습니다"
+        mark="fail"
+        body={<Notice tone="danger">{state.message}</Notice>}
+        actions={
+          <Link href="/subscribe" className="btn primary">
+            다시 신청 <SvcIcon name="arrow" />
+          </Link>
+        }
+      />
     );
   return (
-    <div className="flex flex-col gap-5">
-      <MonoLabel className="text-xs text-done">Subscribed</MonoLabel>
-      <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">구독이 시작되었습니다</h1>
-      <p className="m-0 text-ink-2">
-        {state.periodEnd
-          ? `${lastDay(new Date(state.periodEnd))} 까지 이용하고, 그날 자동으로 다음 결제를 합니다. `
-          : ""}
-        영수증을 메일로 보냈습니다.
-      </p>
-      <div className="flex flex-wrap gap-4">
-        <Link href="/learn" className={buttonClass("primary", "lg")}>
-          내 강의실
-        </Link>
-        <Link href="/my/subscription" className={buttonClass("outline", "lg")}>
-          구독 관리
-        </Link>
-      </div>
-    </div>
+    <ResultPage
+      eyebrow="SUBSCRIPTION RESULT"
+      title="구독이 시작되었습니다"
+      desc="이제 내 강의실에서 배움을 시작하세요."
+      mark="done"
+      heading="포함 강의를 자유롭게 만나보세요."
+      body="영수증을 메일로 보냈습니다."
+      items={
+        state.periodEnd
+          ? [["이용 기간", `${lastDay(new Date(state.periodEnd))} 까지 · 그날 자동으로 다음 결제`]]
+          : []
+      }
+      actions={
+        <>
+          <Link href="/learn" className="btn primary">
+            내 강의실 <SvcIcon name="arrow" />
+          </Link>
+          <Link href="/my/subscription" className="btn secondary">
+            구독 관리
+          </Link>
+        </>
+      }
+    />
   );
 }

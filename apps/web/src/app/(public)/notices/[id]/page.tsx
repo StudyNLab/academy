@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDay } from "@/components/commerce/format";
-import { PageTitle } from "@/components/page-title";
+import { SvcIcon } from "@/components/icons";
 import { SimpleMarkdown } from "@/components/simple-markdown";
 import { getDb } from "@/server/db";
 import { noticeById } from "@/server/notices";
@@ -24,19 +24,32 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return { title: notice?.title ?? "공지" };
 }
 
-// P-07 공지 하나
+// P-07 공지 하나 (시안 #/notice)
 export default async function NoticePage({ params }: { params: Params }) {
   const notice = await load((await params).id);
   if (!notice) notFound();
   return (
-    <article className="mx-auto max-w-[760px] px-5 pt-16 md:px-0">
-      <PageTitle label="Notice" title={notice.title}>
-        <p className="m-0 text-[14px]">
-          {notice.published ? formatDay(notice.publishedAt!) : "게시 전 (운영자 미리보기)"} ·{" "}
-          <Link href="/notices">목록</Link>
-        </p>
-      </PageTitle>
-      <SimpleMarkdown source={notice.bodyMd} />
-    </article>
+    <div className="wrap page-main">
+      <div className="breadcrumb">
+        <Link href="/">홈</Link>
+        <span>/</span>
+        <Link href="/notices">공지</Link>
+      </div>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">NOTICE</span>
+          <h1>{notice.title}</h1>
+          <p>{notice.published ? formatDay(notice.publishedAt!) : "게시 전 (운영자 미리보기)"}</p>
+        </div>
+      </div>
+      <article className="surface padded editorial">
+        <SimpleMarkdown source={notice.bodyMd} />
+        <div className="form-actions">
+          <Link className="btn secondary" href="/notices">
+            공지 목록 <SvcIcon name="arrow" />
+          </Link>
+        </div>
+      </article>
+    </div>
   );
 }

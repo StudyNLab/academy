@@ -94,7 +94,7 @@ test("구독 신청 ➔ 카드 등록 ➔ 첫 결제 ➔ 학습 ➔ 해지 예�
   await login(me, userEmail, password);
   await me.waitForURL((url) => url.pathname === "/");
   await me.goto("/subscribe");
-  await expect(me.getByRole("heading", { name: "구독", exact: true })).toBeVisible();
+  await expect(me.getByRole("heading", { name: "배움을 멈추지 않는 방법." })).toBeVisible();
   await expect(me.getByRole("link", { name: title })).toBeVisible(); // 포함된 강의
   await me.getByRole("radio", { name: /월간 19,900원/ }).check();
   await expect(me.getByText(/오늘 19,900원이 결제되고, .* 에 같은 금액이 자동으로 결제됩니다/)).toBeVisible();

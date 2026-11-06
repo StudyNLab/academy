@@ -6,6 +6,7 @@ import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { Button, Field, inputClass, Notice } from "@aionit/ui";
 import { api, apiDelete } from "@/lib/client-api";
+import { useHydrated } from "@/lib/use-hydrated";
 
 type Message = { tone: "done" | "danger"; text: string } | null;
 
@@ -30,12 +31,14 @@ function useSubmit(path: string) {
   return { message, busy, send };
 }
 
+/** 화면이 살아나기 전에 넣은 값은 사라지므로 그때까지 입력을 끈다 (lib/use-hydrated) */
 function Frame({ message, children }: { message: Message; children: ReactNode }) {
+  const hydrated = useHydrated();
   return (
-    <div className="flex flex-col gap-4">
+    <fieldset disabled={!hydrated} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       {children}
-    </div>
+    </fieldset>
   );
 }
 
