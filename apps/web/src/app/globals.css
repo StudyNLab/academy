@@ -103,6 +103,31 @@
     border: 1px solid var(--line);
     border-radius: 6px;
   }
+  /* 구독 요금제 고르기: 시안은 링크(.plan-options a)지만 앱은 라디오 단추(label)라 같은 모양을 label 에 */
+  .plan-options label {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .plan-options label span {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .plan-options label.selected {
+    background: var(--tint);
+    border-color: var(--brand);
+    box-shadow: inset 0 0 0 1px var(--brand);
+  }
+  .plan-options label:focus-within {
+    outline: 3px solid #7890b1;
+    outline-offset: 2px;
+  }
   /* 알림(Notice)의 완료 · 오류 — 시안에는 안내(.notice) · 주의(.notice.warn)만 있어 토큰으로 만든 것 */
   .notice.done {
     border-color: var(--done);

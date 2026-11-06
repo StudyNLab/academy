@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { buttonClass, MonoLabel, Notice } from "@aionit/ui";
+import { Notice } from "@aionit/ui";
 import { lastDay, won } from "@/components/commerce/format";
+import { SvcIcon } from "@/components/icons";
+import { ResultPage } from "@/components/result-page";
 import { api } from "@/lib/client-api";
 
 interface Confirmed {
@@ -48,57 +50,59 @@ export function ConfirmPayment({
 
   if (state.kind === "working")
     return (
-      <div className="flex flex-col gap-3" role="status">
-        <MonoLabel className="text-xs text-signal">Payment</MonoLabel>
-        <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">결제를 확인하고 있습니다…</h1>
-        <p className="m-0 text-ink-2">이 화면을 닫지 말고 잠시 기다려 주세요.</p>
-      </div>
+      <ResultPage
+        status
+        eyebrow="PAYMENT"
+        title="결제를 확인하고 있습니다…"
+        desc="이 화면을 닫지 말고 잠시 기다려 주세요."
+      />
     );
 
   if (state.kind === "failed")
     return (
-      <div className="flex flex-col gap-5">
-        <MonoLabel className="text-xs text-danger">Payment failed</MonoLabel>
-        <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">결제를 마치지 못했습니다</h1>
-        <Notice tone="danger">{state.message}</Notice>
-        <div className="flex flex-wrap gap-4">
-          <Link href={`/checkout/${orderId}`} className={buttonClass("primary", "md")}>
-            다시 결제
-          </Link>
-          <Link href="/my/payments" className={buttonClass("outline", "md")}>
-            결제 내역
-          </Link>
-        </div>
-      </div>
+      <ResultPage
+        eyebrow="PAYMENT RESULT"
+        title="결제를 마치지 못했습니다"
+        desc="다시 시도하기 전에 아래 내용을 확인해 주세요."
+        mark="fail"
+        heading="결제가 승인되지 않았습니다"
+        body={<Notice tone="danger">{state.message}</Notice>}
+        actions={
+          <>
+            <Link href={`/checkout/${orderId}`} className="btn primary">
+              다시 결제 <SvcIcon name="arrow" />
+            </Link>
+            <Link href="/my/payments" className="btn secondary">
+              결제 내역
+            </Link>
+          </>
+        }
+      />
     );
 
   const { data } = state;
   return (
-    <div className="flex flex-col gap-5">
-      <MonoLabel className="text-xs text-done">Payment complete</MonoLabel>
-      <h1 className="m-0 text-[32px] font-semibold tracking-[-0.035em]">결제가 끝났습니다</h1>
-      <dl className="m-0 grid grid-cols-[96px_1fr] gap-y-2 border-t-2 border-line-strong pt-4 text-[15px]">
-        <dt className="text-ink-2">강의</dt>
-        <dd className="m-0">
-          {data.courseTitle}
-          {data.productType === "extension" ? " (연장)" : ""}
-        </dd>
-        <dt className="text-ink-2">결제 금액</dt>
-        <dd className="m-0 tabular-nums">{won(data.paidAmount)}</dd>
-        <dt className="text-ink-2">수강 기간</dt>
-        <dd className="m-0">{data.accessUntil ? `${lastDay(new Date(data.accessUntil))} 까지` : "무제한"}</dd>
-      </dl>
-      <p className="m-0 text-[14px] text-ink-2">
-        영수증을 메일로 보냈습니다. 결제 내역에서도 볼 수 있습니다.
-      </p>
-      <div className="flex flex-wrap gap-4">
-        <Link href={`/learn/${data.courseSlug}`} className={buttonClass("primary", "lg")}>
-          바로 학습하기
-        </Link>
-        <Link href="/my/payments" className={buttonClass("outline", "lg")}>
-          결제 내역
-        </Link>
-      </div>
-    </div>
+    <ResultPage
+      eyebrow="PAYMENT RESULT"
+      title="결제가 끝났습니다"
+      desc="이제 내 강의실에서 배움을 시작하세요."
+      mark="done"
+      heading={`${data.courseTitle}${data.productType === "extension" ? " (연장)" : ""}`}
+      body="영수증을 메일로 보냈습니다. 결제 내역에서도 볼 수 있습니다."
+      items={[
+        ["결제 금액", won(data.paidAmount)],
+        ["수강 기간", data.accessUntil ? `${lastDay(new Date(data.accessUntil))} 까지` : "무제한"],
+      ]}
+      actions={
+        <>
+          <Link href={`/learn/${data.courseSlug}`} className="btn primary">
+            바로 학습하기 <SvcIcon name="arrow" />
+          </Link>
+          <Link href="/my/payments" className="btn secondary">
+            결제 내역
+          </Link>
+        </>
+      }
+    />
   );
 }

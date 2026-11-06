@@ -838,8 +838,9 @@ describe("강사 대시보드 이번 달 예상 정산액 (I-01)", () => {
     expect((await estimateThisMonth(t.db, teacherB, now)).gross).toBe(0);
     // 조정도 예상에 들어간다 (화면에 "조정 · 이월" 칸으로).
     await adjust(t.db, { instructorId: teacherA.id, amount: 1_000, reason: "이의 신청 반영", ...actor() });
-    // 조정은 만든 시각(지금) 이후의 예상에 들어간다 (달이 바뀌어도 깨지지 않게 조정만 본다)
-    expect((await estimateThisMonth(t.db, teacherA, new Date())).adjustment).toBe(1_000);
+    // 조정은 만든 시각(지금) 이후의 예상에 들어간다 (달이 바뀌어도 깨지지 않게 조정만 본다).
+    // 조정 시각은 DB(개발 VM) 시계, "지금"은 이 PC 시계라 VM 이 조금 빠르면 방금 만든 조정이 미래가 된다 ➔ 1초 여유
+    expect((await estimateThisMonth(t.db, teacherA, new Date(Date.now() + 1_000))).adjustment).toBe(1_000);
   });
 });
 

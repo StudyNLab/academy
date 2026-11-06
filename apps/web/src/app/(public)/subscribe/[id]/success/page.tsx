@@ -13,12 +13,10 @@ export default async function SubscribeSuccess({
   const query = await searchParams;
   await requireViewer("/subscribe");
   return (
-    <div className="mx-auto max-w-[720px] px-5 pt-16 pb-16 md:px-0">
-      <ActivateSubscription
-        subscriptionId={id}
-        authKey={query.authKey ?? ""}
-        customerKey={query.customerKey ?? ""}
-      />
-    </div>
+    <ActivateSubscription
+      subscriptionId={id}
+      authKey={query.authKey ?? ""}
+      customerKey={query.customerKey ?? ""}
+    />
   );
 }

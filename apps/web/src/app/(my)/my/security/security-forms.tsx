@@ -177,33 +177,53 @@ export function TwoFactorSettings({
     return (
       <form onSubmit={confirm} className="flex flex-col gap-5">
         {error ? <Notice tone="danger">{error}</Notice> : null}
-        <ol className="m-0 flex flex-col gap-2 pl-5 text-[15px] leading-[1.7]">
-          <li>휴대폰의 인증 앱(Google Authenticator, Microsoft Authenticator 등)을 엽니다.</li>
-          <li>아래 QR 코드를 찍거나, 찍을 수 없으면 비밀 키를 직접 입력합니다.</li>
-          <li>앱에 나온 6자리 코드를 입력해 확인합니다.</li>
+        {/* 시안 #/twofactor 의 단계 목록 (.step-list) */}
+        <ol className="step-list m-0">
+          <li>
+            <span>1</span>
+            <div>
+              <strong>인증 앱 열기</strong>
+              <p>휴대폰의 인증 앱(Google Authenticator, Microsoft Authenticator 등)을 엽니다.</p>
+            </div>
+          </li>
+          <li>
+            <span>2</span>
+            <div>
+              <strong>인증 앱에 계정 추가</strong>
+              <p>아래 QR 코드를 찍거나, 찍을 수 없으면 비밀 키를 직접 입력합니다.</p>
+              <div className="qr-placeholder">
+                {/* eslint-disable-next-line @next/next/no-img-element -- 직접 만든 SVG (외부 이미지 아님) */}
+                <img
+                  src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+                  alt="인증 앱에 등록할 QR 코드"
+                  width={125}
+                  height={125}
+                />
+              </div>
+              <small>
+                비밀 키: <code className="font-mono text-[13px] break-all text-ink">{secret}</code>
+              </small>
+            </div>
+          </li>
+          <li>
+            <span>3</span>
+            <div className="flex flex-col gap-4">
+              <strong>앱에 표시된 코드 입력</strong>
+              <Field
+                label="인증 코드 (6자리)"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+              />
+              <Button type="submit" disabled={busy || !code} className="self-start">
+                확인하고 켜기
+              </Button>
+            </div>
+          </li>
         </ol>
-        {/* eslint-disable-next-line @next/next/no-img-element -- 직접 만든 SVG (외부 이미지 아님) */}
-        <img
-          src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
-          alt="인증 앱에 등록할 QR 코드"
-          width={200}
-          height={200}
-          className="bg-white"
-        />
-        <p className="m-0 text-[13px] text-ink-2">
-          비밀 키: <code className="font-mono text-[13px] break-all text-ink">{secret}</code>
-        </p>
-        <Field
-          label="인증 코드 (6자리)"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          required
-        />
-        <Button type="submit" disabled={busy || !code} className="self-start">
-          확인하고 켜기
-        </Button>
       </form>
     );
   }

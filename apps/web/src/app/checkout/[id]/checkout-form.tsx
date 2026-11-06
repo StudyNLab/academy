@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Checkbox, Notice } from "@aionit/ui";
 import { won } from "@/components/commerce/format";
@@ -25,6 +26,7 @@ export function CheckoutForm({
   customerKey,
   testMode,
   fake = false,
+  terms,
 }: {
   orderId: string;
   /** 주문 스냅샷 금액 (서버가 승인 때 다시 대조한다) */
@@ -34,6 +36,8 @@ export function CheckoutForm({
   testMode: boolean;
   /** 개발 서버 가짜 결제 (화면 흐름 테스트) */
   fake?: boolean;
+  /** 환불 규정 요약 (03 / 이용 조건 확인 칸, 동의 상자 위) */
+  terms: ReactNode;
 }) {
   const router = useRouter();
   const widgets = useRef<TossWidgets | null>(null);
@@ -109,29 +113,42 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-4 border-t-2 border-line-strong pt-5">
-      <p className="m-0 text-[14px] text-ink-2">
-        결제 수단 (토스페이먼츠){testMode ? " · 테스트 모드라 실제로 돈이 나가지 않습니다" : ""}
-      </p>
-      {fake ? (
-        <Notice tone="warn" title="개발용 가짜 결제">
-          개발 서버 화면 흐름 테스트용입니다. 토스를 거치지 않고 결제가 끝난 것으로 처리합니다.
-        </Notice>
-      ) : (
-        /* 결제위젯이 그리는 자리 (토스 화면, 밝은 바탕) */
-        <div className="rounded-ui bg-white">
-          <div id="toss-payment-methods" />
-          <div id="toss-agreement" />
-        </div>
-      )}
-      {!ready && !error ? <p className="m-0 text-[14px] text-ink-2">결제 수단을 불러오는 중…</p> : null}
-      {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
-        (필수) 주문 내용과 환불 규정을 확인했으며 결제에 동의합니다
-      </Checkbox>
-      <Button variant="primary" size="lg" disabled={!agreed || !ready || busy} onClick={() => void onPay()}>
+    <>
+      <section className="surface padded flex flex-col gap-4">
+        <div className="section-number">02 / 결제 수단</div>
+        <p className="m-0 text-[14px] text-muted">
+          토스페이먼츠{testMode ? " · 테스트 모드라 실제로 돈이 나가지 않습니다" : ""}
+        </p>
+        {fake ? (
+          <Notice tone="warn" title="개발용 가짜 결제">
+            개발 서버 화면 흐름 테스트용입니다. 토스를 거치지 않고 결제가 끝난 것으로 처리합니다.
+          </Notice>
+        ) : (
+          /* 결제위젯이 그리는 자리 (토스 화면, 밝은 바탕) */
+          <div className="rounded-ui bg-white">
+            <div id="toss-payment-methods" />
+            <div id="toss-agreement" />
+          </div>
+        )}
+        {!ready && !error ? <p className="m-0 text-[14px] text-muted">결제 수단을 불러오는 중…</p> : null}
+        {error ? <Notice tone="danger">{error}</Notice> : null}
+      </section>
+      <section className="surface padded flex flex-col gap-4">
+        <div className="section-number">03 / 이용 조건 확인</div>
+        {terms}
+        <Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
+          (필수) 주문 내용과 환불 규정을 확인했으며 결제에 동의합니다
+        </Checkbox>
+      </section>
+      <Button
+        variant="primary"
+        size="lg"
+        disabled={!agreed || !ready || busy}
+        onClick={() => void onPay()}
+        className="full checkout-submit"
+      >
         {busy ? "결제창을 여는 중…" : `${won(amount)} 결제하기`}
       </Button>
-    </div>
+    </>
   );
 }
