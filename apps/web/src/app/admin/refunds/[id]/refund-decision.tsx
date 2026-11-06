@@ -32,7 +32,7 @@ export function RefundDecision({
   }
 
   return (
-    <div className="mt-8 flex max-w-[560px] flex-col gap-4 border-t-2 border-line-strong pt-5">
+    <div className="mt-8 flex max-w-[560px] flex-col gap-4 surface padded">
       <h2 className="m-0 text-[19px] font-semibold">처리</h2>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <Field

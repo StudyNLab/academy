@@ -29,10 +29,10 @@ export default async function AdminCourses() {
   return (
     <>
       <PageTitle label="Courses" title="과정" />
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[14px]">
+      <div className="surface data-table-wrap">
+        <table className="data-table">
           <thead>
-            <tr className="border-y-2 border-line-strong text-left font-mono text-[12px] tracking-[0.04em]">
+            <tr>
               <th className="px-2 py-2.5">과정</th>
               <th className="px-2 py-2.5">분야</th>
               <th className="px-2 py-2.5">강사</th>
@@ -65,7 +65,7 @@ export default async function AdminCourses() {
           <p className="py-6 text-ink-2">등록한 과정이 없습니다. 아래에서 첫 과정을 만드세요.</p>
         ) : null}
       </div>
-      <section className="mt-12 max-w-[640px] border-t border-line-strong pt-6">
+      <section className="mt-8 max-w-[640px] surface padded">
         <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">새 과정 등록</h2>
         <NewCourseForm instructors={instructors} />
       </section>

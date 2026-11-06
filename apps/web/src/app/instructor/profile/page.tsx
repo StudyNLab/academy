@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "정산 정보 · 프로필" };
 
 function Section({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="mt-12 max-w-[720px] scroll-mt-24 border-t border-line-strong pt-6 first:mt-0">
+    <section id={id} className="mt-8 max-w-[720px] scroll-mt-24 surface padded first:mt-0">
       <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">{title}</h2>
       {children}
     </section>

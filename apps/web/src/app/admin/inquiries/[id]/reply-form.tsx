@@ -30,7 +30,7 @@ export function AdminInquiryReply({ id }: { id: string }) {
         e.preventDefault();
         void send({ action: "reply", body });
       }}
-      className="flex flex-col gap-4 border-t border-line-strong pt-6"
+      className="surface padded flex flex-col gap-4"
     >
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <TextArea label="답변" value={body} onChange={setBody} />

@@ -31,7 +31,7 @@ const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12 max-w-[720px] border-t border-line-strong pt-6">
+    <section className="mt-8 max-w-[720px] surface padded">
       <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">{title}</h2>
       {children}
     </section>

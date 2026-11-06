@@ -23,7 +23,7 @@ export default async function AdminInquiries({ searchParams }: { searchParams: P
           {all ? "기다리는 것만" : "전체 보기"}
         </Link>
       </PageTitle>
-      <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0 text-[15px]">
+      <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6 text-[15px]">
         {rows.map(({ inquiry, nickname }) => {
           const [label, tone] = INQUIRY_STATUS[inquiry.status];
           return (

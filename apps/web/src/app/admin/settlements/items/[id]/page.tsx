@@ -104,7 +104,7 @@ export default async function AdminSettlementItem({ params }: { params: Promise<
                 <p className="m-0 text-[13px] text-ink-2">{time.format(objection.createdAt)} 강사 신청</p>
                 <p className="m-0 whitespace-pre-wrap text-[15px]">{objection.body}</p>
                 {objection.answeredAt ? (
-                  <div className="border-l-2 border-line-strong pl-4 text-[15px]">
+                  <div className="border-l-2 border-brand pl-4 text-[15px]">
                     <p className="m-0 text-[13px] text-ink-2">{time.format(objection.answeredAt)} 답변</p>
                     <p className="m-0 whitespace-pre-wrap">{objection.answer}</p>
                     {adjustment ? (

@@ -58,7 +58,7 @@ export default async function AdminQna() {
 
       <section aria-label="신고된 글" className="mb-12">
         <h2 className="m-0 mb-4 text-[21px] font-semibold tracking-[-0.02em]">신고된 글 {reported.length}</h2>
-        <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0">
+        <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6">
           {reported.map((r) =>
             r.post ? (
               <li
@@ -95,7 +95,7 @@ export default async function AdminQna() {
           답변 없이 3일 지난 질문 {stale.length}
         </h2>
         <p className="m-0 mb-4 text-[14px] text-ink-2">강사에게 알리거나 운영자가 먼저 답해 주세요.</p>
-        <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0 text-[15px]">
+        <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6 text-[15px]">
           {stale.map((q) => (
             <li key={q.id} className="border-b border-line py-3">
               <Link href={questionUrl(q.slug, q.chapterKey, q.id)} className="text-ink">
@@ -114,7 +114,7 @@ export default async function AdminQna() {
 
       <section aria-label="숨긴 글">
         <h2 className="m-0 mb-4 text-[21px] font-semibold tracking-[-0.02em]">숨긴 글 {hidden.length}</h2>
-        <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0">
+        <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6">
           {hidden.map((h) => (
             <li
               key={`${h.targetType}:${h.targetId}`}

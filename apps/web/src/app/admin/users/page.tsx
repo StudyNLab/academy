@@ -45,10 +45,10 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
           검색
         </button>
       </form>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[14px]">
+      <div className="surface data-table-wrap">
+        <table className="data-table">
           <thead>
-            <tr className="border-y-2 border-line-strong text-left font-mono text-[12px] tracking-[0.04em]">
+            <tr>
               <th className="px-2 py-2.5">닉네임</th>
               <th className="px-2 py-2.5">이메일</th>
               <th className="px-2 py-2.5">상태</th>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AccountNav } from "@/components/account-nav";
 import { SvcIcon } from "@/components/icons";
+import { SideNav } from "@/components/side-nav";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { getViewer } from "@/server/session";
 
@@ -35,7 +35,7 @@ export default async function MyLayout({ children }: { children: ReactNode }) {
             </>
           ) : null}
           <p>나의 배움과 이용 관리</p>
-          <AccountNav items={items} />
+          <SideNav items={items} label="마이페이지" root="/my" chevron />
           <Link className="sidebar-foot" href="/learn">
             <SvcIcon name="back" /> 내 강의실로
           </Link>

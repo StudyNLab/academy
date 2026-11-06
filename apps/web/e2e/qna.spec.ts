@@ -193,10 +193,11 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   // 바닥글에도 "문의하기" 링크가 있다 (#33) ➔ 본문의 단추
   await asker.getByRole("main").getByRole("link", { name: "문의하기" }).click();
   await asker.getByLabel("문의 종류").selectOption("결제 · 환불");
-  await asker.getByLabel("제목").fill("환불 문의");
+  // 제목에 실행마다 다른 표식 (지난 실행이 남긴 문의와 섞이지 않게)
+  await asker.getByLabel("제목").fill(`환불 문의 ${stamp}`);
   await asker.getByLabel("내용").fill("결제 내역에 환불 버튼이 없습니다.");
   await asker.getByRole("button", { name: "문의 보내기" }).click();
-  await expect(asker.getByRole("heading", { name: "환불 문의" })).toBeVisible();
+  await expect(asker.getByRole("heading", { name: `환불 문의 ${stamp}` })).toBeVisible();
   await expect(asker.getByText("답변 기다림")).toBeVisible();
 
   // 5. 운영자: 2단계 인증 ➔ 대시보드 ➔ 문의 답변 ➔ 신고된 글 숨김 ➔ 공지 · FAQ
@@ -212,7 +213,7 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await page.getByRole("button", { name: "하던 일로 돌아가기" }).click();
   await expect(page.getByRole("heading", { name: "대시보드" })).toBeVisible();
   await page.getByRole("link", { name: "1:1 문의" }).first().click();
-  await page.getByRole("link", { name: /환불 문의/ }).click();
+  await page.getByRole("link", { name: new RegExp(`환불 문의 ${stamp}`) }).click();
   await page.getByLabel("답변").fill("7일이 지나 규정상 부분 환불입니다. 결제 내역에서 요청해 주세요.");
   await page.getByRole("button", { name: "답변 보내기" }).click();
   await expect(page.getByText("답변 완료")).toBeVisible();
@@ -261,7 +262,7 @@ test("질문 · 답변 · 비밀글 · 신고 · 알림 · 해결됨 ➔ 1:1 문
   await expect(mate.getByText(`결제일부터 7일 이내 · 이용 전이면 전액 환불됩니다. ${stamp}`)).toBeVisible();
 
   await asker.goto("/my/notifications");
-  await asker.getByRole("link", { name: /1:1 문의 답변: 환불 문의/ }).click();
+  await asker.getByRole("link", { name: new RegExp(`1:1 문의 답변: 환불 문의 ${stamp}`) }).click();
   await expect(asker.getByText("7일이 지나 규정상 부분 환불입니다.", { exact: false })).toBeVisible();
   await asker.getByRole("button", { name: "해결됐어요 (문의 닫기)" }).click();
   await expect(asker.getByText("끝난 문의입니다.", { exact: false })).toBeVisible();

@@ -93,7 +93,7 @@
   .site-footer {
     margin-top: 96px;
   }
-  body:has(.is-home, .page-main, .detail-layout, .auth-layout) .site-footer {
+  body:has(.is-home, .page-main, .detail-layout, .auth-layout, .staff-layout, .account-layout) .site-footer {
     margin-top: 0;
   }
   /* 시안의 select 요소 규칙. 사이트 전체 select 를 바꾸지 않게 시안 부품(.select-label) 안에만 쓴다 */

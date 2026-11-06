@@ -19,7 +19,7 @@ export default async function AdminNotices() {
       <PageTitle label="Notices" title="공지">
         사이트 바닥글의 공지 화면에 보입니다 · <Link href="/admin/faqs">자주 묻는 질문 관리 →</Link>
       </PageTitle>
-      <ul className="m-0 mb-12 flex list-none flex-col border-t border-line-strong p-0 text-[15px]">
+      <ul className="surface m-0 mb-12 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6 text-[15px]">
         {rows.map((n) => (
           <li key={n.id} className="border-b border-line py-3">
             <Link

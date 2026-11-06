@@ -32,9 +32,9 @@ export default async function AdminVideo({ params }: { params: Promise<{ id: str
       ) : (
         <p className="text-ink-2">변환이 끝나면 여기서 볼 수 있습니다.</p>
       )}
-      <table className="mt-8 w-full max-w-[640px] border-collapse text-[14px]">
+      <table className="data-table mt-8 max-w-[640px]">
         <thead>
-          <tr className="border-y-2 border-line-strong text-left font-mono text-[12px]">
+          <tr>
             <th className="px-2 py-2">화질</th>
             <th className="px-2 py-2">크기</th>
             <th className="px-2 py-2 text-right">평균 (영상 + 소리)</th>

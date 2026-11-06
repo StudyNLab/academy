@@ -25,7 +25,8 @@ export function createFakeToss() {
   const declined = new Set<string>();
   /** 빌링 결제의 멱등 키 ➔ paymentKey (같은 키는 한 번만 결제) */
   const chargedByKey = new Map<string, string>();
-  let seq = 0;
+  /** 키 번호. 지금 시각에서 시작한다: 0 부터 세면 개발 서버를 다시 켤 때 같은 키가 나와, 개발 DB 에 남은 지난 결제와 겹쳐 승인이 막힌다 */
+  let seq = Date.now();
   /** 다음 승인 요청을 응답 없이 실패시킨다 (네트워크 끊김 · 시간 초과) */
   let dropNextConfirmResponse = false;
 

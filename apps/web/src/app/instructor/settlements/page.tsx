@@ -39,7 +39,7 @@ export default async function InstructorSettlements() {
         <h2 className="m-0 mb-4 text-[21px] font-semibold tracking-[-0.02em]">
           {monthLabel(estimate.month)} 예상 정산액
         </h2>
-        <dl className="m-0 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+        <dl className="surface m-0 grid grid-cols-2 px-6 md:grid-cols-4">
           {[
             { label: "단건 매출", value: num(estimate.single) },
             { label: "구독 배분 (지금까지)", value: num(estimate.subscription) },

@@ -498,7 +498,12 @@ export function LearnScreen({
         <button type="button" onClick={() => setTocOpen(true)} className="min-h-12 text-ink">
           목차
         </button>
-        <button type="button" onClick={openQna} className="min-h-12 text-ink">
+        <button
+          type="button"
+          onClick={openQna}
+          aria-label={`Q&A, 이 챕터의 미해결 질문 ${qnaCount}개`}
+          className="min-h-12 text-ink"
+        >
           Q&amp;A {qnaCount}
         </button>
         {data.next ? (
