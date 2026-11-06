@@ -4,7 +4,7 @@ import { loadOrder } from "@/server/commerce";
 import { getDb } from "@/server/db";
 import { fakeToss } from "@/server/payments";
 
-// 개발 서버 가짜 결제창 (TOSS_FAKE=1 일 때만, 운영 빌드에서는 404): 사용자가 결제창에서 결제를 마친 것처럼 paymentKey 를 만든다.
+// 가짜 결제창 (TOSS_FAKE=1 일 때 개발 서버 · 화면 흐름 시험용 빌드에서만, 서버 이미지에서는 404): 사용자가 결제창에서 결제를 마친 것처럼 paymentKey 를 만든다.
 // 금액은 결제창에 넘어간 값 그대로 받는다 (화면 흐름 테스트에서 금액 위조도 시험할 수 있게). 승인은 진짜와 같이 /payments/confirm
 export const POST = route(async (request) => {
   const fake = fakeToss();

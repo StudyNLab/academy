@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   poweredByHeader: false,
+  // 화면 흐름 테스트용 실제 빌드 표시 (scripts/e2e-build.mjs 가 빌드할 때만 "1"). 실행할 때가 아니라 빌드할 때 코드에 박혀서
+  // 서버 이미지(Dockerfile, 이 값 없이 빌드)에서는 실행 환경변수로 켤 수 없다. 켜지는 것: 가짜 결제 (server/payments.ts)
+  env: { AIONIT_E2E_BUILD: process.env.AIONIT_E2E_BUILD === "1" ? "1" : "" },
   transpilePackages: ["@aionit/ui", "@aionit/core", "@aionit/db", "@aionit/mail", "@aionit/payments"],
   // 네이티브 모듈(argon2) · 작업 대기열은 묶지 않고 node_modules 에서 그대로 불러온다
   serverExternalPackages: ["@node-rs/argon2", "pg-boss"],
