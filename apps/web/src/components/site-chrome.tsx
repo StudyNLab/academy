@@ -1,4 +1,5 @@
-// 공통 머리글 · 바닥글 (docs/화면상세기획.md 0.2). 모양은 시안 AIONIT-Service 의 .site-header · .site-footer (app/site.css)
+// 공통 머리글 · 바닥글 (docs/화면상세기획.md 0.2). 머리글 모양은 aionit-design v2-2026-11-06 components/header.html,
+// 바닥글은 시안 AIONIT-Service 의 .site-footer (app/site.css)
 import Link from "next/link";
 import { LogoWord } from "@aionit/ui";
 import { getDb } from "@/server/db";
@@ -92,8 +93,8 @@ export async function SiteHeader() {
             </Link>
           )}
           <ThemeToggle className="icon-btn theme-btn" />
-          <Link href="/learn" className="btn primary small">
-            내 강의실 <SvcIcon name="arrow" />
+          <Link href="/learn" className="classroom">
+            내 강의실 <span aria-hidden="true">↗</span>
           </Link>
           <MobileMenu links={menu} signedIn={!!viewer} unread={unread > 0} />
         </div>
