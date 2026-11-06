@@ -58,11 +58,11 @@ export default async function InstructorHome() {
         ) : null}
       </div>
 
-      <dl className="m-0 mt-6 grid grid-cols-2 border-t border-line-strong md:grid-cols-5">
+      <div className="metric-grid mt-6">
         {tiles.map((tile) => (
-          <div key={tile.label} className="flex flex-col gap-1 border-b border-line py-5 pr-4">
-            <dt className="text-[13px] text-ink-2">{tile.label}</dt>
-            <dd className="m-0 text-[28px] font-semibold tabular-nums tracking-[-0.03em] md:text-[32px]">
+          <div key={tile.label} className="surface metric">
+            <span>{tile.label}</span>
+            <strong className="tabular-nums">
               {tile.href ? (
                 <Link href={tile.href} className="text-ink no-underline">
                   {tile.value}
@@ -70,17 +70,17 @@ export default async function InstructorHome() {
               ) : (
                 tile.value
               )}
-            </dd>
+            </strong>
           </div>
         ))}
-      </dl>
-      <p className="mt-3 text-[13px] text-ink-2">
+      </div>
+      <p className="mt-3 text-[13px] text-muted">
         매출은 결제액 합계에서 이번 달 끝난 환불을 뺀 값입니다. 예상 정산액은 지금까지의 판매 · 구독 배분으로
         계산한 강사 몫(원천징수 전)이고, 실제 금액은 다음 달 10일 공개되는{" "}
         <Link href="/instructor/settlements">정산 명세</Link>입니다.
       </p>
 
-      <section className="mt-12 border-t border-line-strong pt-6">
+      <section className="surface padded mt-8">
         <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">검수 상태</h2>
         {data.courses.length === 0 ? (
           <p className="text-ink-2">

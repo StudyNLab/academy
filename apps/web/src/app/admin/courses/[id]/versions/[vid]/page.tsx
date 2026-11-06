@@ -54,7 +54,7 @@ export default async function ReviewVersion({ params }: { params: Promise<{ id: 
 
       <VersionReport data={data} base="/admin" />
 
-      <section className="mt-10 border-t border-line-strong pt-6">
+      <section className="surface padded mt-8">
         <ReviewActions versionId={version.id} status={version.status} courseId={course.id} />
       </section>
     </>

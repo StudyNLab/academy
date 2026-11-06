@@ -28,7 +28,7 @@ export function RoleForm({ userId, roles, self }: { userId: string; roles: strin
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 border-t border-line-strong pt-5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4 surface padded">
       <h2 className="m-0 text-[19px] font-semibold">역할</h2>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
@@ -87,7 +87,7 @@ export function StatusForm({ userId, status, self }: { userId: string; status: s
 
   if (self) return null;
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 border-t border-line-strong pt-5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4 surface padded">
       <h2 className="m-0 text-[19px] font-semibold">이용 정지</h2>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <Field
@@ -151,7 +151,7 @@ export function GrantEntitlementForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 border-t border-line-strong pt-5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4 surface padded">
       <h3 className="m-0 text-[17px] font-semibold">수강권 발급</h3>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       <div className="grid gap-4 sm:grid-cols-[1fr_160px]">

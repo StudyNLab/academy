@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SvcIcon } from "@/components/icons";
 import { PageTitle } from "@/components/page-title";
 import { dashboardCounts } from "@/server/admin-queries";
 import { getDb } from "@/server/db";
@@ -26,12 +27,14 @@ export default async function AdminHome() {
   ];
   return (
     <>
-      <PageTitle label="Dashboard" title="대시보드" />
-      <dl className="m-0 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+      <PageTitle label="Operations" title="운영 대시보드">
+        <p className="m-0">확인이 필요한 업무부터 처리하세요. 숫자를 누르면 그 화면으로 갑니다.</p>
+      </PageTitle>
+      <div className="metric-grid">
         {tiles.map((tile) => (
-          <div key={tile.label} className="flex flex-col gap-1 border-b border-line py-5 pr-4">
-            <dt className="text-[13px] text-ink-2">{tile.label}</dt>
-            <dd className="m-0 text-[32px] font-semibold tabular-nums tracking-[-0.03em]">
+          <div key={tile.label} className="surface metric">
+            <span>{tile.label}</span>
+            <strong className="tabular-nums">
               {"href" in tile && tile.href ? (
                 <Link href={tile.href} className="text-ink no-underline">
                   {tile.value}
@@ -39,10 +42,19 @@ export default async function AdminHome() {
               ) : (
                 tile.value
               )}
-            </dd>
+            </strong>
           </div>
         ))}
-      </dl>
+      </div>
+      <div className="wide-callout">
+        <div>
+          <h2>업무를 안전하게 마무리하세요.</h2>
+          <p>돈과 권한을 바꾸는 작업에는 사유가 필요하고, 모두 기록에 남습니다.</p>
+        </div>
+        <Link className="btn secondary" href="/admin/reviews">
+          검수 업무로 <SvcIcon name="arrow" />
+        </Link>
+      </div>
     </>
   );
 }

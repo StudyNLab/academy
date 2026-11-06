@@ -38,7 +38,7 @@ export default async function AdminProducts() {
         {paymentsEnabled() ? "" : " (지금은 토스 키가 없어 결제가 꺼져 있습니다.)"}
       </PageTitle>
 
-      <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0">
+      <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6">
         {products.map(({ product, courseTitle, current, upcoming, history }) => (
           <li key={product.id} className="flex flex-col gap-3 border-b border-line py-5">
             <div className="flex flex-wrap items-baseline justify-between gap-3">

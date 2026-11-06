@@ -66,7 +66,7 @@ export default async function InstructorVersion({
       <VersionReport data={data} base="/instructor" />
 
       {requestable ? (
-        <section className="mt-10 border-t border-line-strong pt-6">
+        <section className="surface padded mt-8">
           <p className="mt-0 mb-6 text-[14px] text-ink-2">
             위 챕터를 눌러 수강생이 볼 화면 그대로 확인한 뒤 요청해 주세요. 영상 자리는{" "}
             <Link href={`/instructor/courses/${course.id}#slots`}>영상 연결</Link>에서 채울 수 있습니다 (연결

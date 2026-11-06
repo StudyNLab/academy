@@ -56,7 +56,7 @@ export default async function AdminRefundDetail({ params }: { params: Promise<{ 
       <PageTitle label="Refund" title={item.productName}>
         <StatusDot tone={tone}>{label}</StatusDot>
       </PageTitle>
-      <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-2.5 border-t border-line-strong pt-5 text-[15px]">
+      <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-2.5 surface padded text-[15px]">
         <dt className="text-ink-2">회원</dt>
         <dd className="m-0">
           {user ? <Link href={`/admin/users/${user.id}`}>{user.nickname ?? "(탈퇴한 회원)"}</Link> : "-"}

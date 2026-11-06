@@ -60,7 +60,7 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
   return (
     <>
       <PageTitle label="Member" title={user.nickname ?? "(탈퇴한 회원)"} />
-      <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-3 border-t border-line-strong pt-6 text-[15px]">
+      <dl className="m-0 grid grid-cols-[120px_1fr] gap-y-3 surface padded text-[15px]">
         <dt className="text-ink-2">이메일</dt>
         <dd className="m-0 break-all">
           {user.email.endsWith(".invalid") ? "(없음)" : user.email}{" "}
@@ -159,9 +159,9 @@ export default async function AdminUserDetail({ params }: { params: Promise<{ id
       </ul>
 
       <h2 className="mt-12 mb-3 text-[19px] font-semibold">최근 로그인 기록</h2>
-      <table className="w-full border-collapse text-[14px]">
+      <table className="data-table">
         <thead>
-          <tr className="border-y-2 border-line-strong text-left font-mono text-[12px]">
+          <tr>
             <th className="px-2 py-2">시각</th>
             <th className="px-2 py-2">방식</th>
             <th className="px-2 py-2">결과</th>

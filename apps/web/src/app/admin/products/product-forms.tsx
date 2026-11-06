@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { Button, Field, Notice } from "@aionit/ui";
 import { api } from "@/lib/client-api";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const select = "min-h-11 rounded-ui border border-line bg-surface px-3 text-[15px] font-normal";
 
@@ -31,6 +32,7 @@ function useSubmit() {
 
 export function NewProductForm({ courses }: { courses: { id: string; title: string }[] }) {
   const { error, busy, send } = useSubmit();
+  const hydrated = useHydrated();
   const [type, setType] = useState<"course" | "extension" | "subscription">("course");
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
@@ -53,86 +55,89 @@ export function NewProductForm({ courses }: { courses: { id: string; title: stri
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 border-t border-line-strong pt-5">
-      <h2 className="m-0 text-[19px] font-semibold">상품 만들기</h2>
-      {error ? <Notice tone="danger">{error}</Notice> : null}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 text-sm font-semibold">
-          종류
-          <select
-            value={type}
-            onChange={(e) => {
-              const next = e.target.value as "course" | "extension" | "subscription";
-              setType(next);
-              setDays(next === "extension" ? "90" : "365");
-            }}
-            className={select}
-          >
-            <option value="course">단건 강의</option>
-            <option value="extension">연장권</option>
-            <option value="subscription">구독 요금제</option>
-          </select>
-        </label>
-        {type === "subscription" ? (
+    <form onSubmit={onSubmit} className="surface padded">
+      {/* 화면이 살아나기 전에 고른 값은 사라지므로 그동안은 끈다 */}
+      <fieldset disabled={!hydrated} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
+        <h2 className="m-0 text-[19px] font-semibold">상품 만들기</h2>
+        {error ? <Notice tone="danger">{error}</Notice> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            결제 주기
+            종류
             <select
-              value={billingInterval}
-              onChange={(e) => setBillingInterval(e.target.value as "month" | "year")}
+              value={type}
+              onChange={(e) => {
+                const next = e.target.value as "course" | "extension" | "subscription";
+                setType(next);
+                setDays(next === "extension" ? "90" : "365");
+              }}
               className={select}
             >
-              <option value="month">월간</option>
-              <option value="year">연간</option>
+              <option value="course">단건 강의</option>
+              <option value="extension">연장권</option>
+              <option value="subscription">구독 요금제</option>
             </select>
           </label>
-        ) : (
-          <label className="flex flex-col gap-1.5 text-sm font-semibold">
-            과정
-            <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={select}>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      <Field
-        label="상품 이름"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="예: AI Agent 개발 · 초급 (1년)"
-        required
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        {type === "subscription" ? (
-          <p className="m-0 self-end text-[13px] text-ink-2">구독 포함 강의 전체 · 결제일마다 자동결제</p>
-        ) : (
-          <Field
-            label={type === "extension" ? "늘리는 날수" : "수강 기간 (일, 비우면 무제한)"}
-            inputMode="numeric"
-            value={days}
-            onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
-            required={type === "extension"}
-          />
-        )}
+          {type === "subscription" ? (
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
+              결제 주기
+              <select
+                value={billingInterval}
+                onChange={(e) => setBillingInterval(e.target.value as "month" | "year")}
+                className={select}
+              >
+                <option value="month">월간</option>
+                <option value="year">연간</option>
+              </select>
+            </label>
+          ) : (
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">
+              과정
+              <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={select}>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         <Field
-          label="가격 (원, 부가세 포함)"
-          inputMode="numeric"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+          label="상품 이름"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="예: AI Agent 개발 · 초급 (1년)"
           required
         />
-      </div>
-      <Button
-        type="submit"
-        variant="outline"
-        disabled={busy || (type !== "subscription" && !courseId) || !name.trim() || !amount}
-        className="self-start"
-      >
-        상품 만들기
-      </Button>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {type === "subscription" ? (
+            <p className="m-0 self-end text-[13px] text-ink-2">구독 포함 강의 전체 · 결제일마다 자동결제</p>
+          ) : (
+            <Field
+              label={type === "extension" ? "늘리는 날수" : "수강 기간 (일, 비우면 무제한)"}
+              inputMode="numeric"
+              value={days}
+              onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
+              required={type === "extension"}
+            />
+          )}
+          <Field
+            label="가격 (원, 부가세 포함)"
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            required
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={busy || (type !== "subscription" && !courseId) || !name.trim() || !amount}
+          className="self-start"
+        >
+          상품 만들기
+        </Button>
+      </fieldset>
     </form>
   );
 }
@@ -223,7 +228,7 @@ export function DiscountForm({
           setRate(""),
         );
       }}
-      className="flex flex-col gap-4 border-t border-line-strong pt-5"
+      className="flex flex-col gap-4 surface padded"
     >
       <h2 className="m-0 text-[19px] font-semibold">구독자 할인 (프리미엄 강의)</h2>
       <p className="m-0 text-[14px] text-ink-2">

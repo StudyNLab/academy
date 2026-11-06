@@ -98,7 +98,7 @@ export default async function InstructorStatement({ params }: { params: Promise<
                 <p className="m-0 text-[13px] text-ink-2">{time.format(o.createdAt)} 신청</p>
                 <p className="m-0 whitespace-pre-wrap text-[15px]">{o.body}</p>
                 {o.answeredAt ? (
-                  <div className="border-l-2 border-line-strong pl-4 text-[15px]">
+                  <div className="border-l-2 border-brand pl-4 text-[15px]">
                     <p className="m-0 text-[13px] text-ink-2">{time.format(o.answeredAt)} 운영자 답변</p>
                     <p className="m-0 whitespace-pre-wrap">{o.answer}</p>
                     {o.adjustment !== null ? (

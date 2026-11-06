@@ -46,7 +46,7 @@ export default async function AdminInquiry({ params }: { params: Promise<{ id: s
       </PageTitle>
       <InquiryThread messages={messages} memberLabel={memberLabel} />
       {inquiry.status === "closed" ? (
-        <p className="mt-8 border-t border-line-strong pt-6 text-[14px] text-ink-2">끝난 문의입니다.</p>
+        <p className="mt-8 surface padded text-[14px] text-muted">끝난 문의입니다.</p>
       ) : (
         <div className="mt-8">
           <AdminInquiryReply id={inquiry.id} />

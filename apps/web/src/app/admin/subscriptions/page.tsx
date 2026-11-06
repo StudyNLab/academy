@@ -36,7 +36,7 @@ export default async function AdminSubscriptions() {
         이용 중 {live.length}명 · 결제 실패 {rows.filter((r) => r.sub.status === "past_due").length}명.
         자동결제는 worker 가 매일 06:00 에 한다.
       </PageTitle>
-      <ul className="m-0 flex list-none flex-col border-t border-line-strong p-0 text-[15px]">
+      <ul className="surface m-0 flex list-none flex-col overflow-hidden p-0 [&>li]:px-6 text-[15px]">
         {rows.map(({ sub, nickname }) => {
           const [label, tone] = STATUS[sub.status];
           const next =

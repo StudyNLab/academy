@@ -5,7 +5,7 @@
    - Tailwind 유틸리티와 이름이 겹치는 시안 class 는 바꿨다: .outline → .tag-outline, dialog → .dialog,
      .text-link → .link-line. 요소 선택자(input · ul 등)와 .sr-only 는 Tailwind 기본값이 같은 일을 해서 뺐다
    - 시안의 body class(.is-course)는 :has() 로 바꿨다 (앱은 화면마다 body class 를 바꾸지 않는다)
-   - 화면이 늘면 시안 화면 여럿에서 쓰이는 규칙을 합쳐 다시 뽑는다 (지금: 홈 · 메뉴 · 강의 목록 · 강의 상세 · 계정 화면 10개 · 마이페이지 20개 · 학습방 6개)
+   - 화면이 늘면 시안 화면 여럿에서 쓰이는 규칙을 합쳐 다시 뽑는다 (지금: 홈 · 메뉴 · 강의 목록 · 강의 상세 · 계정 화면 10개 · 마이페이지 20개 · 학습방 6개 · 강사 9개 · 관리자 13개)
    - 다크: 머리글에서 고른 값([data-theme=dark]) + 고르지 않았을 때 운영체제 다크
    - globals.css 에서 @layer components 로 불러온다. 같은 요소에 Tailwind 유틸리티를 쓰면 유틸리티가 이긴다. */
 
@@ -2872,10 +2872,14 @@ textarea.field {
   color: var(--muted);
 }
 .page-main h2,
-.account-content h2 {
+.account-content h2,
+.staff-content h2 {
   line-height: 1.5;
   letter-spacing: -0.6px;
   margin-bottom: 16px;
+}
+.staff-content h3 {
+  margin: 16px 0px 10px;
 }
 .surface p {
   color: var(--muted);
@@ -2931,6 +2935,10 @@ textarea.field {
 }
 .form-actions .btn {
   margin: 0px;
+}
+.two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 .page-tabs {
   display: flex;
@@ -3666,6 +3674,261 @@ textarea.field {
 .mobile-nav-links svg {
   width: 16px;
 }
+.staff-layout {
+  display: grid;
+  grid-template-columns: 225px minmax(0px, 1fr);
+  min-height: 75vh;
+}
+.staff-sidebar {
+  border-right: 1px solid var(--line);
+  padding: 30px 18px;
+  background: var(--surface);
+  align-self: stretch;
+}
+.staff-role {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 8px 25px;
+}
+.staff-role > svg {
+  color: var(--brand);
+  width: 23px;
+  height: 23px;
+}
+.staff-role small {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: 5px;
+}
+.staff-sidebar nav {
+  display: grid;
+  gap: 4px;
+}
+.staff-sidebar nav a {
+  border-radius: 7px;
+  color: var(--muted);
+}
+.staff-sidebar nav a.active {
+  background: var(--tint);
+  color: var(--brand);
+  font-weight: 600;
+}
+.staff-sidebar > .field-hint {
+  padding: 15px 10px;
+}
+.staff-content {
+  padding: 30px 40px 50px;
+  min-width: 0px;
+}
+.staff-content > .surface {
+  margin-bottom: 24px;
+}
+.staff-content .page-heading h1 {
+  font-size: 29px;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0px, 1fr));
+  gap: 16px;
+  margin-bottom: 25px;
+}
+.metric {
+  display: grid;
+}
+.metric > span {
+  color: var(--muted);
+}
+.metric > strong {
+  font-size: 26px;
+  letter-spacing: -1px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.metric > small {
+  color: var(--muted);
+}
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.workspace-grid .surface {
+  align-self: start;
+}
+.compact-question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  padding: 18px 0px;
+  border-bottom: 1px solid var(--line);
+  width: 100%;
+  line-height: 1.7;
+}
+.compact-question:last-child {
+  border: 0px;
+}
+.compact-question span {
+  color: var(--muted);
+}
+.compact-question .tag {
+  align-self: start;
+}
+.chart-row {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+.chart-row > div {
+  height: 6px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.chart-row i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: 4px;
+}
+.chart-row small {
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+.timeline {
+  list-style: none;
+  padding: 0px;
+  display: grid;
+  gap: 24px;
+  margin: 25px 0px;
+}
+.timeline li {
+  border-left: 2px solid var(--line);
+  padding-left: 17px;
+  display: grid;
+  gap: 7px;
+}
+.timeline span {
+  color: var(--muted);
+}
+.table-tools {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin: 10px 0px 23px;
+  flex-wrap: wrap;
+}
+.table-tools > .field {
+  width: auto;
+}
+.search-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0%;
+  min-width: 180px;
+}
+.search-label > svg {
+  width: 17px;
+  height: 17px;
+  color: var(--muted);
+}
+.data-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: normal;
+}
+.data-table th {
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--soft);
+}
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid var(--line);
+}
+.data-table tbody tr:last-child td {
+  border: 0px;
+}
+.data-table td .tag,
+.data-table td .small-link {
+  white-space: nowrap;
+}
+.data-table td svg {
+  width: 12px;
+  height: 12px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0px, 1fr) 310px;
+  gap: 25px;
+  align-items: start;
+}
+.side-note p {
+  margin: 20px 0px;
+}
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+  padding: 35px 20px;
+  border: 1px dashed #8fa9c4;
+  background: var(--paper);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  margin: 20px 0px;
+}
+.upload-zone > svg {
+  width: 26px;
+  height: 26px;
+  color: var(--brand);
+}
+.upload-zone > span {
+  color: var(--muted);
+}
+.upload-zone > input {
+  max-width: 100%;
+}
+.diff-block {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 15px 0px;
+}
+.diff-block del,
+.diff-block ins {
+  display: block;
+  text-decoration: none;
+}
+.diff-block del {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.diff-block ins {
+  background: var(--tint);
+  color: var(--brand);
+}
+.template-foot {
+  color: var(--muted);
+  margin-top: 30px;
+}
+.staff-content > .wide-callout {
+  padding: 25px;
+}
 .site-footer .row {
   flex-wrap: wrap;
 }
@@ -3813,6 +4076,21 @@ textarea.field {
   .catalog-grid {
     grid-template-columns: repeat(2, minmax(0px, 1fr));
   }
+  .staff-layout {
+    grid-template-columns: 190px minmax(0px, 1fr);
+  }
+  .staff-content {
+    padding: 25px;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0px, 1fr));
+  }
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-grid {
+    grid-template-columns: minmax(0px, 1fr) 270px;
+  }
   .auth-layout {
     gap: 35px;
     grid-template-columns: 1fr 430px;
@@ -3840,8 +4118,14 @@ textarea.field {
     grid-template-columns: 155px minmax(0px, 1fr);
     gap: 25px;
   }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
   .classroom-course {
     grid-template-columns: 230px 1fr;
+  }
+  .staff-content .page-heading h1 {
+    font-size: 26px;
   }
 }
 @media (max-width: 760px) {
@@ -3902,6 +4186,9 @@ textarea.field {
   }
   .auth-card .field {
     font-size: 16px;
+  }
+  .two-columns {
+    grid-template-columns: 1fr;
   }
   .result-card {
     margin-top: 0px;
@@ -4012,6 +4299,50 @@ textarea.field {
   .empty-state > .btn {
     margin-bottom: 10px;
   }
+  .staff-sidebar {
+    border-right: 0px;
+    border-bottom: 1px solid var(--line);
+    padding: 16px 22px;
+  }
+  .staff-role {
+    padding: 0px 0px 15px;
+  }
+  .staff-sidebar nav {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 7px;
+  }
+  .staff-sidebar nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .staff-sidebar > .field-hint,
+  .staff-sidebar > .sidebar-foot {
+    display: none;
+  }
+  .staff-content {
+    padding: 23px 22px 50px;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0px, 1fr));
+    gap: 12px;
+  }
+  .workspace-grid {
+    gap: 20px;
+  }
+  .table-tools {
+    gap: 10px;
+  }
+  .data-table .small-link {
+    font-size: 10px;
+  }
+  .upload-zone {
+    padding: 26px 15px;
+  }
+  .is-admin .staff-sidebar nav {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
   .site-footer .row {
     gap: 12px;
   }
@@ -4032,11 +4363,24 @@ textarea.field {
   .page-tabs {
     gap: 18px;
   }
+  .staff-content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
   .result-card {
     padding: 26px 18px;
   }
 }
 @media (max-width: 760px) {
+  .staff-layout {
+    grid-template-columns: minmax(0px, 1fr);
+  }
+  .staff-sidebar {
+    min-width: 0px;
+  }
+  .staff-sidebar nav {
+    max-width: 100%;
+  }
   .site-header .nav-actions .btn {
     white-space: nowrap;
     flex-shrink: 0;
@@ -4044,6 +4388,11 @@ textarea.field {
   .nav-actions {
     flex-shrink: 0;
   }
+}
+.surface input[type="file"] {
+  max-width: 100%;
+  min-width: 0px;
+  width: 100%;
 }
 .btn.primary:hover,
 .launch-zone .btn.primary:hover {
@@ -4108,7 +4457,8 @@ textarea.field {
   font-size: 12px;
   letter-spacing: 0.12em;
 }
-.field {
+.field,
+.staff-content .field {
   font-size: 16px;
   min-height: 48px;
 }
@@ -4120,7 +4470,8 @@ textarea.field {
   font-size: 13px !important;
   line-height: 1.85;
 }
-.sample-note {
+.sample-note,
+.template-foot {
   font-size: 13px;
   line-height: 1.8;
 }
@@ -4162,11 +4513,18 @@ textarea.field {
   font-size: 13px !important;
 }
 .page-main h2,
-.account-content h2 {
+.account-content h2,
+.staff-content h2 {
   font-size: 24px;
+}
+.staff-content h3 {
+  font-size: 19px;
 }
 .padded {
   padding: 32px;
+}
+.two-columns {
+  gap: 24px;
 }
 .form-actions {
   gap: 15px;
@@ -4184,7 +4542,9 @@ textarea.field {
 .select-label select {
   font-size: 14px;
 }
-.inline-search .field {
+.inline-search .field,
+.search-label .field,
+.table-tools > .field {
   font-size: 15px;
 }
 .results-count {
@@ -4420,6 +4780,108 @@ textarea.field {
   font-size: 16px;
   padding: 16px 0px;
 }
+.staff-role strong {
+  font-size: 18px;
+}
+.staff-role small {
+  font-size: 10px;
+}
+.staff-sidebar nav a {
+  font-size: 15px;
+  padding: 13px;
+}
+.metric {
+  padding: 26px;
+  gap: 16px;
+}
+.metric > span {
+  font-size: 14px;
+}
+.metric > small {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.compact-question strong {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.compact-question span {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.compact-question .tag {
+  font-size: 13px;
+}
+.chart-row {
+  grid-template-columns: 185px minmax(0px, 1fr) 42px;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 15px 0px;
+}
+.chart-row small {
+  font-size: 12px;
+}
+.timeline strong {
+  font-size: 16px;
+}
+.timeline span {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.data-table {
+  font-size: 14px;
+  line-height: 1.85;
+  min-width: 650px;
+}
+.data-table th {
+  font-size: 13px;
+}
+.data-table th,
+.data-table td {
+  padding: 19px 21px;
+}
+.data-table td .tag {
+  font-size: 12px;
+}
+.data-table td .small-link {
+  font-size: 14px;
+}
+.data-table td:last-child {
+  min-width: 100px;
+}
+.staff-content .row > .btn {
+  font-size: 15px;
+  padding: 13px 18px;
+}
+.staff-content > .wide-callout h2 {
+  font-size: 23px;
+}
+.side-note h2 {
+  font-size: 21px;
+}
+.upload-zone > strong {
+  font-size: 17px;
+}
+.upload-zone > span {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.upload-zone > input,
+.surface input[type="file"] {
+  font-size: 14px;
+}
+.diff-block {
+  font-size: 15px;
+  line-height: 1.9;
+}
+.diff-block del,
+.diff-block ins {
+  padding: 20px;
+}
+.staff-content .table-tools > .btn,
+.staff-content .table-tools select {
+  font-size: 15px;
+}
 .site-footer .footer-links {
   gap: 18px 25px;
   flex-wrap: wrap;
@@ -4651,6 +5113,9 @@ textarea.field {
   .course-copy > p {
     font-size: 16px;
   }
+  .chart-row {
+    grid-template-columns: 160px minmax(0px, 1fr) 38px;
+  }
   .qa-scope {
     align-items: flex-start;
   }
@@ -4671,7 +5136,8 @@ textarea.field {
     min-height: 44px;
   }
   .padded,
-  .account-content .padded {
+  .account-content .padded,
+  .staff-content .padded {
     padding: 25px;
   }
   .page-heading p {
@@ -4679,7 +5145,8 @@ textarea.field {
     line-height: 1.85;
   }
   .page-main h2,
-  .account-content h2 {
+  .account-content h2,
+  .staff-content h2 {
     font-size: 23px;
   }
   .page-heading h1 {
@@ -4846,6 +5313,69 @@ textarea.field {
   }
   .empty-state p {
     font-size: 16px;
+  }
+  .staff-role strong {
+    font-size: 18px;
+  }
+  .staff-role small {
+    font-size: 10px;
+  }
+  .staff-sidebar nav a {
+    font-size: 14px;
+    padding: 11px 14px;
+  }
+  .staff-content .page-heading h1 {
+    font-size: 29px;
+  }
+  .metric {
+    padding: 22px;
+  }
+  .metric > span {
+    font-size: 14px;
+  }
+  .metric > small {
+    font-size: 12px;
+  }
+  .metric > strong {
+    font-size: 26px;
+    line-height: 1.3;
+  }
+  .chart-row {
+    grid-template-columns: 140px minmax(0px, 1fr) 38px;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .chart-row small {
+    font-size: 12px;
+  }
+  .data-table {
+    font-size: 14px;
+    min-width: 650px;
+  }
+  .data-table th {
+    font-size: 13px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 17px 19px;
+  }
+  .data-table td .small-link {
+    font-size: 14px;
+  }
+  .data-table td .tag {
+    font-size: 12px;
+  }
+  .staff-content .row > .btn,
+  .table-tools > .btn {
+    font-size: 15px;
+    min-height: 46px;
+  }
+  .upload-zone strong {
+    font-size: 17px;
+  }
+  .upload-zone span,
+  .upload-zone > input {
+    font-size: 14px;
   }
   .reader-header {
     height: 68px;
@@ -5036,7 +5566,8 @@ textarea.field {
     font-size: 25px;
   }
   .padded,
-  .account-content .padded {
+  .account-content .padded,
+  .staff-content .padded {
     padding: 22px;
   }
   .catalog-copy,
@@ -5049,6 +5580,19 @@ textarea.field {
   }
   .row.gap16 {
     flex-wrap: wrap;
+  }
+  .chart-row {
+    grid-template-columns: 115px minmax(0px, 1fr) 34px;
+    font-size: 11px;
+  }
+  .metric {
+    padding: 17px;
+  }
+  .metric > strong {
+    font-size: 24px;
+  }
+  .metric > small {
+    font-size: 12px;
   }
   .key-values > div {
     font-size: 14px;

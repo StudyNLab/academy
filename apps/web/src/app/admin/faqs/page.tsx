@@ -17,7 +17,7 @@ export default async function AdminFaqs() {
       <PageTitle label="FAQ" title="자주 묻는 질문">
         <Link href="/faq">사이트에서 보기</Link> · <Link href="/admin/notices">← 공지</Link>
       </PageTitle>
-      <div className="mb-12 border-t border-line-strong">
+      <div className="surface mb-12 px-6">
         {rows.map((faq) => (
           <details key={faq.id} className="border-b border-line">
             <summary className="flex min-h-12 cursor-pointer items-baseline gap-3 py-3 text-[15px]">

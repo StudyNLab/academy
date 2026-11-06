@@ -48,9 +48,9 @@ export default async function AdminLogs({ searchParams }: { searchParams: Promis
       </nav>
       <div className="overflow-x-auto">
         {tab === "audit" ? (
-          <table className="w-full border-collapse text-[14px]">
+          <table className="data-table">
             <thead>
-              <tr className="border-y-2 border-line-strong">
+              <tr>
                 <th className={th}>시각</th>
                 <th className={th}>누가</th>
                 <th className={th}>작업</th>
@@ -81,9 +81,9 @@ export default async function AdminLogs({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         ) : (
-          <table className="w-full border-collapse text-[14px]">
+          <table className="data-table">
             <thead>
-              <tr className="border-y-2 border-line-strong">
+              <tr>
                 <th className={th}>시각</th>
                 <th className={th}>회원</th>
                 <th className={th}>방식</th>

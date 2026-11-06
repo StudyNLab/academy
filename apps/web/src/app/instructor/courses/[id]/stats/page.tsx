@@ -20,7 +20,7 @@ function Bar({ value, max, label }: { value: number; max: number; label: string 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12 border-t border-line-strong pt-6">
+    <section className="surface padded mt-8">
       <h2 className="m-0 mb-5 text-[21px] font-semibold tracking-[-0.02em]">{title}</h2>
       {children}
     </section>
@@ -48,7 +48,7 @@ export default async function InstructorCourseStats({ params }: { params: Promis
         </p>
       </PageTitle>
 
-      <dl className="m-0 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+      <dl className="surface m-0 grid grid-cols-2 px-6 md:grid-cols-4">
         {[
           { label: "수강생 (공부를 시작했거나 수강권이 있는 사람)", value: stats.learners.total },
           { label: "지금 수강 중 (단건 · 발급 수강권)", value: stats.learners.active },
@@ -102,10 +102,10 @@ export default async function InstructorCourseStats({ params }: { params: Promis
       </Section>
 
       <Section title="월별 매출 (최근 6개월)">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[14px]">
+        <div className="surface data-table-wrap">
+          <table className="data-table">
             <thead>
-              <tr className="border-y-2 border-line-strong text-left font-mono text-[12px]">
+              <tr>
                 <th className="px-2 py-2">월</th>
                 <th className="px-2 py-2 text-right">판매</th>
                 <th className="px-2 py-2 text-right">결제액</th>

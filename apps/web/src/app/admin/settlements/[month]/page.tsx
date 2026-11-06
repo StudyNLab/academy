@@ -52,7 +52,7 @@ export default async function AdminSettlementMonth({ params }: { params: Promise
         ) : null}
       </div>
 
-      <dl className="m-0 mt-8 grid grid-cols-2 border-t border-line-strong md:grid-cols-4">
+      <dl className="surface m-0 mt-8 grid grid-cols-2 px-6 md:grid-cols-4">
         {[
           { label: "구독 기준액", value: won(period.subscriptionBase) },
           { label: "강사 배분 풀", value: won(period.subscriptionPool + period.poolCarryIn) },
