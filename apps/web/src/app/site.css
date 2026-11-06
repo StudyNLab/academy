@@ -6852,6 +6852,30 @@ textarea.field {
   width: 17px;
   height: 17px;
 }
+/* 홈(새 시안 화면)에서는 어두운 테마여도 머리글을 시안 그대로 밝게 — 홈 위쪽 그림이 테마와 상관없이 밝은 것과 같은 원칙.
+   머리글 안에서만 토큰을 밝은 값으로 되돌린다 (Tailwind 색도 토큰을 바로 쓴다: tokens.css @theme inline).
+   새 시안 전인 다른 화면의 어두운 머리글은 그대로. */
+html:has(.aionit-home) .site-header {
+  color-scheme: light;
+  --paper: #f8fafc;
+  --surface: #ffffff;
+  --soft: #edf2f7;
+  --ink: #1d3048;
+  --muted: #53677d;
+  --line: #d4dfeb;
+  --brand: #39648f;
+  --brand-hover: #2a5078;
+  --tint: #e8f0f8;
+  --on-primary: #ffffff;
+  --shadow: 0 16px 38px #2b507810, 0 2px 6px #2b507808;
+  --logo-ink: #1d3048;
+  --logo-on: #e23542;
+  --header-line: #1d304813;
+  --header-pill-line: #c9d3df;
+  --header-pill-bg: #ffffff80;
+  background: var(--aionit-surface);
+  color: var(--ink);
+}
 .mobile-menu {
   display: none;
 }
