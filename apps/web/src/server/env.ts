@@ -18,7 +18,7 @@ const schema = z.object({
   /** 토스 자동결제(구독)용 API 개별 연동 키 (M6). 없으면 구독 신청을 열지 않는다 */
   TOSS_BILLING_CLIENT_KEY: z.string().optional(),
   TOSS_BILLING_SECRET_KEY: z.string().optional(),
-  /** "1" 이면 개발 서버에서 가짜 결제 (화면 흐름 테스트용, 운영 빌드에서는 무시) */
+  /** "1" 이면 가짜 결제 (화면 흐름 테스트용. 개발 서버 · 시험용 빌드에서만, 서버 이미지에서는 무시: server/payments.ts) */
   TOSS_FAKE: z.string().optional(),
   /** 바닥글 사업자 정보 (P-10, 전자상거래법 표시 의무). 비어 있으면 "[운영자 입력]" 으로 보인다 */
   BUSINESS_NAME: z.string().optional(),

@@ -1,7 +1,8 @@
 // 화면 흐름 (M5): 운영자 상품 · 가격(AD-07) ➔ 강의 상세 구매 카드(P-03) ➔ 주문서(C-01) ➔ 결제 ➔ 결제 완료(C-03)
 // ➔ 학습 ➔ 결제 내역(M-04) ➔ 환불 요청 ➔ 운영자 환불 처리(AD-10) ➔ 수강권 끝 ➔ L-05 연장 · 구매 버튼, 모바일 폭.
-// 토스 테스트 모드도 카드 결제는 카드사 본인 인증(실제 카드)을 거쳐 자동화할 수 없어서, 개발 서버 가짜 결제(TOSS_FAKE=1)로 돈다:
-//   preview `web-3300` ➔ E2E_BASE_URL=http://localhost:3300 pnpm exec playwright test e2e/payment.spec.ts
+// 토스 테스트 모드도 카드 결제는 카드사 본인 인증(실제 카드)을 거쳐 자동화할 수 없어서, 가짜 결제(TOSS_FAKE=1)로 돈다:
+//   pnpm --filter @aionit/web test:e2e:build e2e/payment.spec.ts   (화면 흐름 시험용 실제 빌드, 가짜 결제가 켜짐)
+//   또는 preview `web-3300` ➔ E2E_BASE_URL=http://localhost:3300 pnpm exec playwright test e2e/payment.spec.ts
 // 실제 토스 테스트 결제는 테스트 서버에서 사람이 한 번 확인한다 (docs/개발기록/M5.md)
 import { expect, test } from "@playwright/test";
 import { createDb, eq, schema } from "@aionit/db";

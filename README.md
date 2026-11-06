@@ -24,5 +24,6 @@
 | 명령 | 내용 |
 |---|---|
 | `pnpm test` | 단위 + 통합 테스트. 통합 테스트는 개발 VM 의 시험 DB 를 쓴다 (터널 필요). 본 폴더는 `aionit_test`, 작업 창(worktree)은 창마다 따로 — [infra/dev-vm/README.md](infra/dev-vm/README.md) '시험 DB' |
-| `pnpm --filter @aionit/web test:e2e` | 화면 흐름 (Playwright, 이 PC 의 Chrome). web · worker · 터널이 떠 있어야 한다. 다른 주소면 `E2E_BASE_URL` |
+| `pnpm --filter @aionit/web test:e2e:build` | 화면 흐름 (Playwright, 이 PC 의 Chrome). **실제 빌드**로 빌드 ➔ :3800 에 띄움 ➔ worker ➔ 시험 ➔ 내림까지 한 번에. 터널만 떠 있으면 된다. 뒤에 playwright 인자 (`--project=desktop e2e/payment.spec.ts`) — [infra/dev-vm/README.md](infra/dev-vm/README.md) '화면 흐름 시험' |
+| `pnpm --filter @aionit/web test:e2e` | 화면 흐름을 이미 떠 있는 개발 서버로 (web · worker · 터널이 떠 있어야 한다. 다른 주소면 `E2E_BASE_URL`). 화면을 고치면서 한두 개 볼 때 |
 | `pnpm db:generate` · `pnpm db:migrate` | 마이그레이션 만들기 · 적용 |

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:build": "node scripts/e2e-build.mjs"
   },
   "dependencies": {
     "@aionit/content": "workspace:*",

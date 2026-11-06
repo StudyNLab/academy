@@ -1,6 +1,6 @@
 // 화면 흐름 (M6): 운영자 구독 요금제(AD-07) ➔ 구독 안내 · 신청(P-05 · C-04, 자동결제 동의 따로) ➔ 카드 등록 ➔ 첫 결제
 // ➔ 구독 포함 강의 학습 ➔ 구독 관리(M-03): 해지 예약(클릭 2번) · 해지 취소 ➔ 즉시 해지 · 환불 요청 ➔ 운영자 승인 ➔ 구독 끝.
-// 카드 등록은 개발 서버 가짜 결제(TOSS_FAKE=1, preview `web-3300`). 매일 자동결제 · 재시도는 통합 테스트(subscription-flow)
+// 카드 등록은 가짜 결제(TOSS_FAKE=1: `test:e2e:build` 또는 preview `web-3300`). 매일 자동결제 · 재시도는 통합 테스트(subscription-flow)
 import { expect, test } from "@playwright/test";
 import { and, createDb, eq, schema } from "@aionit/db";
 import { createS3StoreFromEnv } from "@aionit/storage";

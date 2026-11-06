@@ -13,11 +13,14 @@ import { enqueueMail } from "./queue";
 // 토스는 결제한 키 묶음으로만 취소된다 ➔ payments.key_set 으로 고른다
 
 /**
- * 개발 서버 화면 흐름 테스트용 가짜 결제 (TOSS_FAKE=1). 운영 빌드(NODE_ENV=production)에서는 켜지지 않는다.
+ * 화면 흐름 테스트용 가짜 결제 (TOSS_FAKE=1). 개발 서버, 또는 화면 흐름 테스트용 실제 빌드에서만 켜진다.
  * 토스 테스트 모드도 카드 결제는 카드사 본인 인증을 거쳐 자동화할 수 없어서 둔다.
+ * AIONIT_E2E_BUILD 는 빌드할 때 코드에 박힌다 (next.config.ts). 서버 이미지는 이 값 없이 빌드하므로
+ * 앱 VM 에서 환경변수를 넣어도 켜지지 않는다.
  */
 export function fakeMode(): boolean {
-  return getEnv().TOSS_FAKE === "1" && process.env.NODE_ENV !== "production";
+  const testBuild = process.env.NODE_ENV !== "production" || process.env.AIONIT_E2E_BUILD === "1";
+  return getEnv().TOSS_FAKE === "1" && testBuild;
 }
 
 export function paymentsEnabled(): boolean {
