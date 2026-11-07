@@ -66,6 +66,7 @@ bash infra/scripts/deploy.sh
 | `deploy.sh --force` | 서버에 이미 있는 버전도 처음부터 다시 배포 (서버 파일을 손으로 고쳤을 때 등). 되돌릴 버전은 그대로 |
 | `deploy.sh --rollback` | 되돌릴 버전(`~/aionit/.previous_tag`)으로 되돌리기 |
 | `deploy.sh --worktree` | 개발 중 시험용. 커밋 전 작업 트리를 `wt-…` 태그로 배포 |
+| `deploy.sh --cloud …` | 테스트 서버 대신 **운영 서버**(클라우드 한 대, `infra/cloud/README.md`)에. 다른 옵션과 함께 (`--cloud --rollback` 등). 노트북 `~/.ssh/config` 의 `aionit-cloud` 로 접속 |
 
 - 모르는 옵션(예: `--rolback` 오타)을 주면 아무것도 하지 않고 멈춘다.
 - 단계마다 걸린 시간과 전체 시간을 찍는다. 첫 배포(캐시 · 보관소가 빈 상태)는 느리고, 그다음부터 빨라진다.

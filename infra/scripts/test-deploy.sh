@@ -16,16 +16,22 @@ mkdir -p "$BIN"
 
 cat > "$BIN/ssh" <<'EOF'
 #!/usr/bin/env bash
-port=
+port= host= tunnel=
 while [ $# -gt 0 ]; do
   case $1 in
-    -o|-L|-R) shift 2 ;;
+    -o) shift 2 ;;
+    -L|-R) echo "$1 $2" >> "$FAKE_SB/tunnels.log"; shift 2 ;;
+    -N) tunnel=1; shift ;;
     -p) port=$2; shift 2 ;;
     -*) shift ;;
-    *) shift; break ;;
+    *) host=$1; shift; break ;;
   esac
 done
-case $port in 22061) vm=app ;; 22062) vm=data ;; 22063) vm=dev ;; *) echo "가짜 ssh: 모르는 포트 $port" >&2; exit 255 ;; esac
+case $port in 22061) vm=app ;; 22062) vm=data ;; 22063) vm=dev ;;
+  '') [ "$host" = aionit-cloud ] && vm=cloud || { echo "가짜 ssh: 모르는 곳 $host" >&2; exit 255; } ;;
+  *) echo "가짜 ssh: 모르는 포트 $port" >&2; exit 255 ;; esac
+# 터널만 여는 연결(-N)은 명령 없이 끝난다
+[ -z "$tunnel" ] || exit 0
 export HOME=$FAKE_SB/$vm FAKE_VM=$vm
 cd "$HOME"
 exec bash -c "$*"
@@ -110,9 +116,11 @@ export FAKE_SB=$SB PATH="$BIN:$PATH"
 # setup <지금 태그> <.previous_tag(없으면 '')> <앱·개발 VM · 보관소에 있는 태그들...>
 setup() {
   local now=$1 prev=$2 t; shift 2
-  rm -rf "$SB/app" "$SB/data" "$SB/dev" "$SB/repo" "$SB/log" "$SB/builder.log"
-  mkdir -p "$SB/app/aionit" "$SB/data/aionit" "$SB/dev" "$SB/repo/infra/app-vm" "$SB/repo/infra/data-vm"
-  cp "$REPO/infra/app-vm/compose.yaml" "$REPO/infra/app-vm/Caddyfile" "$SB/repo/infra/app-vm/"
+  rm -rf "$SB/app" "$SB/data" "$SB/dev" "$SB/cloud" "$SB/repo" "$SB/log" "$SB/builder.log" "$SB/tunnels.log"
+  mkdir -p "$SB/app/aionit" "$SB/data/aionit" "$SB/dev" "$SB/cloud/aionit" "$SB/repo/infra/app-vm" "$SB/repo/infra/data-vm" "$SB/repo/infra/cloud"
+  cp "$REPO/infra/app-vm/compose.yaml" "$REPO/infra/app-vm/Caddyfile" "$REPO/infra/app-vm/config-backup.sh" "$SB/repo/infra/app-vm/"
+  cp "$REPO/infra/cloud/compose.yaml" "$REPO/infra/cloud/Caddyfile" "$REPO/infra/cloud/backup.conf" "$SB/repo/infra/cloud/"
+  touch "$SB/cloud/.images"
   printf '#!/usr/bin/env bash\necho "가짜 백업 $1"\n' > "$SB/repo/infra/data-vm/backup.sh"
   printf 'CADDY_TAG=2\nAPP_TAG=%s\n' "$now" > "$SB/app/aionit/.env"
   [ -z "$prev" ] || echo "$prev" > "$SB/app/aionit/.previous_tag"
@@ -124,6 +132,24 @@ setup() {
     done
   done
 }
+
+# setup_cloud <운영 서버 지금 태그> <.previous_tag(없으면 '')> <운영 서버 · 개발 VM · 보관소에 있는 태그들...>
+# 테스트 서버는 0ace235 로 두고, 운영 서버 배포가 테스트 서버를 건드리지 않는지 함께 본다
+setup_cloud() {
+  local now=$1 prev=$2 t r; shift 2
+  setup 0ace235 '' 0ace235
+  printf 'CADDY_TAG=2\nAPP_TAG=%s\nSITE_HOST=aionit.test\nACME_EMAIL=ops@aionit.test\nADMIN_ALLOW_IPS=203.0.113.10/32\n' "$now" > "$SB/cloud/aionit/.env"
+  [ -z "$prev" ] || echo "$prev" > "$SB/cloud/aionit/.previous_tag"
+  for t; do
+    for r in aionit-web aionit-worker; do
+      echo "$r:$t" >> "$SB/cloud/.images"
+      grep -qxF "$r:$t" "$SB/dev/.images" || echo "$r:$t" >> "$SB/dev/.images"
+      grep -qxF "$r:$t" "$SB/dev/.registry" || echo "$r:$t" >> "$SB/dev/.registry"
+    done
+  done
+}
+cloud_prev() { cat "$SB/cloud/aionit/.previous_tag" 2>/dev/null || echo 없음; }
+cloud_tag() { grep ^APP_TAG= "$SB/cloud/aionit/.env" | cut -d= -f2; }
 
 FAILS=0
 check() {   # check <이름> <실제> <기대>
@@ -250,6 +276,38 @@ check "결과 코드" "$RC" 0
 check "APP_TAG" "$(tag_now)" d1d1e46
 check "빌드 캐시 모두 비움" "$(cat "$SB/builder.log")" "[dev] builder prune -af"
 check "알림" "$(echo "$OUT" | grep -c '빌드 캐시를 모두 비웠습니다')" 1
+
+echo; echo "■ 14. 운영 서버(--cloud) 새 태그 배포: 0ace235 에서 d1d1e46 으로 (되돌릴 버전 0888742)"
+setup_cloud 0ace235 0888742 0888742 0ace235
+run d1d1e46 --cloud
+report
+check "결과 코드" "$RC" 0
+check "운영 APP_TAG" "$(cloud_tag)" d1d1e46
+check "운영 .previous_tag" "$(cloud_prev)" 0ace235
+check "운영 서버 이미지" "$(tags_in "$SB/cloud/.images")" "0ace235 d1d1e46"
+check "보관소 터널 (노트북 ➔ 개발 VM)" "$(grep -c -- '-L 127.0.0.1:15055:127.0.0.1:5055' "$SB/tunnels.log")" 1
+check "보관소 터널 (운영 서버 ➔ 노트북)" "$(grep -c -- '-R 127.0.0.1:5055:127.0.0.1:15055' "$SB/tunnels.log")" 1
+check "운영 compose = infra/cloud" "$(cmp -s "$SB/cloud/aionit/compose.yaml" "$REPO/infra/cloud/compose.yaml" && echo 같음)" 같음
+check "운영 Caddyfile = infra/cloud" "$(cmp -s "$SB/cloud/aionit/Caddyfile" "$REPO/infra/cloud/Caddyfile" && echo 같음)" 같음
+check "백업 설정 · app 설정 묶기 복사" "$(ls "$SB/cloud/aionit/backup.conf" "$SB/cloud/aionit/config-backup.sh" | wc -l | tr -d ' ')" 2
+check "배포 전 백업 (운영 서버)" "$(echo "$OUT" | grep -c '가짜 백업 pre-deploy-d1d1e46')" 1
+check "테스트 서버 APP_TAG (그대로)" "$(tag_now)" 0ace235
+check "테스트 서버 이미지 (그대로)" "$(tags_in "$SB/app/.images")" "0ace235"
+
+echo; echo "■ 15. 운영 서버 상태 확인 실패 ➔ 자동 되돌림"
+setup_cloud 0ace235 0888742 0888742 0ace235
+FAKE_HEALTH=unhealthy run d1d1e46 --cloud
+check "결과 코드" "$RC" 1
+check "운영 APP_TAG (자동 되돌림)" "$(cloud_tag)" 0ace235
+check "운영 .previous_tag (원래대로)" "$(cloud_prev)" 0888742
+
+echo; echo "■ 16. 운영 서버 --rollback: 서버 d1d1e46, 되돌릴 버전 0ace235"
+setup_cloud d1d1e46 0ace235 0ace235 d1d1e46
+run x --cloud --rollback
+check "결과 코드" "$RC" 0
+check "운영 APP_TAG" "$(cloud_tag)" 0ace235
+check "운영 .previous_tag" "$(cloud_prev)" d1d1e46
+check "테스트 서버 APP_TAG (그대로)" "$(tag_now)" 0ace235
 
 echo
 if [ "$FAILS" -eq 0 ]; then echo "모두 통과"; else echo "실패 $FAILS 개"; exit 1; fi

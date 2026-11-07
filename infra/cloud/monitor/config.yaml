@@ -1,0 +1,112 @@
+# AIONIT 감시 항목 · 운영 서버(클라우드 한 대)용 (Gatus). 테스트 서버용은 infra/monitor/config.yaml.
+# 다른 점: DB · 파일 저장소를 컨테이너 이름으로 본다, Mailpit 이 없다, 바깥 주소(도메인)로 인증서 만료를 본다.
+# ~/aionit-monitor/.env 의 이름:
+#   MONITOR_MAIL_FROM  MONITOR_MAIL_TO      알림 메일 (보내는 · 받는 주소)
+#   MONITOR_SMTP_HOST  MONITOR_SMTP_PORT    메일 서버 (사이트 메일과 같은 발송 서비스, 예: SES 서울 SMTP · 587)
+#   MONITOR_SMTP_USER  MONITOR_SMTP_PASSWORD 메일 서버 로그인 (Mailpit 은 비움)
+#   BACKUP_PUSH_TOKEN  WORKER_PUSH_TOKEN    푸시 토큰 (openssl rand -hex 24). 같은 값을 ~/aionit/monitor.env · ~/aionit/.env 에
+#   SITE_HOST                               사이트 도메인 (~/aionit/.env 와 같은 값)
+# 알림: 3번 연속 실패하면 메일, 2번 연속 성공하면 "풀림" 메일
+storage:
+  type: sqlite
+  path: /data/data.db
+
+ui:
+  title: AIONIT 감시
+  header: AIONIT 운영 서버 감시
+
+alerting:
+  email:
+    from: "${MONITOR_MAIL_FROM}"
+    username: "${MONITOR_SMTP_USER}"
+    password: "${MONITOR_SMTP_PASSWORD}"
+    host: "${MONITOR_SMTP_HOST}"
+    port: ${MONITOR_SMTP_PORT}
+    to: "${MONITOR_MAIL_TO}"
+    default-alert:
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+  - name: 사이트 (web 상태 확인)
+    group: app
+    url: "http://web:3000/api/health"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
+      - "[RESPONSE_TIME] < 3000"
+    alerts:
+      - type: email
+
+  # 바깥에서 보는 것과 같은 길 (DNS · 인증서 · Caddy). 인증서가 30일 안에 끝나면 실패
+  - name: 사이트 (도메인 · 인증서)
+    group: app
+    url: "https://${SITE_HOST}/api/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 720h"
+    alerts:
+      - type: email
+
+  - name: Caddy (https)
+    group: app
+    url: "tcp://caddy:443"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: PostgreSQL
+    group: data
+    url: "tcp://postgres:5432"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: 파일 저장소 (Garage S3)
+    group: data
+    url: "tcp://garage:3900"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  - name: 영상 웹 주소 (Garage web)
+    group: data
+    url: "tcp://garage:3902"
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+external-endpoints:
+  # backup.sh 가 매일 03:30 백업 끝에 결과를 보낸다. 25시간 동안 오지 않아도 실패
+  # 푸시 주소: POST /api/v1/endpoints/backup_daily-backup/external?success=true (Bearer 토큰)
+  - name: daily-backup
+    group: backup
+    token: "${BACKUP_PUSH_TOKEN}"
+    heartbeat:
+      interval: 25h
+    alerts:
+      - type: email
+        failure-threshold: 1
+        success-threshold: 1
+
+  # worker 가 켜질 때와 매시 정각 작업 때 보낸다 (apps/worker/src/monitor.ts, 푸시 주소 app_worker). 2시간 동안 오지 않으면 실패
+  - name: worker
+    group: app
+    token: "${WORKER_PUSH_TOKEN}"
+    heartbeat:
+      interval: 2h
+    alerts:
+      - type: email
+        failure-threshold: 1
+        success-threshold: 1
