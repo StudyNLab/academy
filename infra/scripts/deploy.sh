@@ -1,26 +1,41 @@
 #!/usr/bin/env bash
-# AIONIT 테스트 서버 배포 (노트북 Git Bash 에서 실행)
+# AIONIT 서버 배포: 테스트 서버(기본) · 운영 서버(--cloud). 노트북 Git Bash 에서 실행
 #   infra/scripts/deploy.sh             커밋된 현재 HEAD 를 배포
 #   infra/scripts/deploy.sh --rollback  직전 버전으로 되돌리기
 #   infra/scripts/deploy.sh --worktree  (개발 중 시험용) 커밋하지 않은 작업 트리를 배포. 태그가 wt- 로 시작한다
 #   infra/scripts/deploy.sh --force     서버에 이미 있는 버전도 처음부터 다시 배포 (되돌릴 버전은 그대로 둔다)
+#   infra/scripts/deploy.sh --cloud …   테스트 서버 대신 운영 서버(클라우드 한 대, infra/cloud)에. 다른 옵션과 함께 쓴다
+#                                       SSH 이름은 aionit-cloud (노트북 ~/.ssh/config, 다른 이름이면 AIONIT_CLOUD_SSH=이름)
 # 흐름: 개발 VM 에서 이미지 빌드 ➔ 앱 VM 으로 옮김 ➔ DB 백업 ➔ 마이그레이션 ➔ 전환 ➔ 상태 확인 (실패 시 자동 되돌리기)
 # 서버의 ~/aionit/.previous_tag 가 '되돌릴 버전'이다. 같은 버전을 다시 배포해도 바뀌지 않는다.
 set -euo pipefail
 
-MODE=deploy FORCE=
+MODE=deploy FORCE= TARGET=test
 for arg in "$@"; do
   case $arg in
     --rollback) MODE=rollback ;;
     --worktree) MODE=worktree ;;
     --force) FORCE=1 ;;
-    *) echo "모르는 옵션: $arg (쓸 수 있는 것: --rollback · --worktree · --force)" >&2; exit 1 ;;
+    --cloud) TARGET=cloud ;;
+    *) echo "모르는 옵션: $arg (쓸 수 있는 것: --rollback · --worktree · --force · --cloud)" >&2; exit 1 ;;
   esac
 done
 
 JUMP=user1@10.100.4.52
-DEV=22063 APP=22061 DATA=22062
-vm() { local port=$1; shift; ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$port" user1@127.0.0.1 "$@"; }
+DEV=22063
+CLOUD_SSH=${AIONIT_CLOUD_SSH:-aionit-cloud}
+# 배포 대상: 테스트 서버는 VM 두 대(app · data, 호스트를 거쳐 SSH), 운영 서버는 한 대(app · data 가 같은 서버)
+if [ "$TARGET" = cloud ]; then
+  APP=cloud DATA=cloud CONF=infra/cloud
+else
+  APP=22061 DATA=22062 CONF=infra/app-vm
+fi
+# vm <개발 VM · 테스트 VM 의 SSH 포트, 또는 cloud> <명령>
+vm() {
+  local where=$1; shift
+  if [ "$where" = cloud ]; then ssh -o BatchMode=yes "$CLOUD_SSH" "$@"
+  else ssh -o BatchMode=yes -o ProxyJump="$JUMP" -p "$where" user1@127.0.0.1 "$@"; fi
+}
 
 # 이미지 보관소(registry): 개발 VM 에 둔다. 개발 VM 은 127.0.0.1:5055 로 올리고, 앱 VM 은 브리지 망(사내망)으로
 # 개발 VM 주소:5055 에서 바로 받아 간다. 그래서 이미지 전체가 아니라 바뀐 층(layer)만 옮겨진다.
@@ -31,6 +46,7 @@ REG_PORT=5055
 REG_IMAGE=registry:2.8.3
 REG=127.0.0.1:$REG_PORT        # 개발 VM 안에서 쓰는 주소
 REG_BR=$DEV_BR:$REG_PORT       # 앱 VM 에서 쓰는 주소
+REG_TUNNEL_PORT=15055          # 운영 서버로 옮길 때: 노트북에서 개발 VM 보관소로 잇는 포트
 REG_CERTS='$HOME/aionit-registry/certs'           # 개발 VM: registry.crt · registry.key
 APP_CA=/etc/docker/certs.d/$REG_BR/ca.crt         # 앱 VM: 개발 VM 의 registry.crt 사본
 
@@ -58,13 +74,17 @@ switch_to() {
   vm $APP "cd ~/aionit && sed -i 's/^APP_TAG=.*/APP_TAG=$tag/' .env && docker compose up -d --remove-orphans --quiet-pull"
 }
 
+# Caddy 를 거쳐 확인한다. 사이트 주소는 .env 의 SITE_HOST (운영 서버 도메인), 없으면 localhost (테스트 서버)
 healthy() {
-  vm $APP 'for i in $(seq 1 45); do
+  vm $APP 'h=$(grep ^SITE_HOST= ~/aionit/.env | cut -d= -f2); h=${h:-localhost}
+  for i in $(seq 1 45); do
     s=$(docker inspect -f "{{.State.Health.Status}}" aionit-app-web-1 2>/dev/null || true)
-    [ "$s" = healthy ] && curl -fsk https://localhost/api/health >/dev/null && exit 0
+    [ "$s" = healthy ] && curl -fsk --resolve "$h:443:127.0.0.1" "https://$h/api/health" >/dev/null && exit 0
     sleep 2
   done; exit 1'
 }
+
+[ "$TARGET" = cloud ] && echo "== 대상: 운영 서버 ($CLOUD_SSH)"
 
 if [ "$MODE" = rollback ]; then
   prev=$(previous_tag)
@@ -114,7 +134,7 @@ vm $DEV "cd ~/build/aionit && timeout 20m docker build -q --provenance=false -f 
   && timeout 20m docker build -q --provenance=false -f infra/docker/Dockerfile --target worker -t aionit-worker:$TAG . >/dev/null" \
   || { echo "이미지 빌드 실패 (또는 20분 넘김). 서버는 그대로입니다." >&2; exit 1; }
 
-step "3/6 이미지 옮기기 (개발 VM 보관소 ➔ 브리지 망 ➔ 앱 VM, 바뀐 층만)"
+step "3/6 이미지 옮기기 (개발 VM 보관소 ➔ 앱 서버, 바뀐 층만)"
 # 보관소가 두 주소(127.0.0.1 · 브리지)에 열려 있지 않으면 다시 만든다. 올려 둔 이미지는 aionit-registry 볼륨에 남는다.
 vm $DEV "docker port aionit-registry 5000/tcp 2>/dev/null | grep -qx '$REG_BR' || { docker rm -f aionit-registry >/dev/null 2>&1; \
   docker run -d --restart=always --name aionit-registry -p $REG:5000 -p $REG_BR:5000 \
@@ -124,23 +144,50 @@ vm $DEV "docker port aionit-registry 5000/tcp 2>/dev/null | grep -qx '$REG_BR' |
 vm $DEV "for i in \$(seq 1 15); do curl -fs --cacert $REG_CERTS/registry.crt https://$REG/v2/ >/dev/null && exit 0; sleep 1; done; exit 1"
 vm $DEV "for img in aionit-web aionit-worker; do docker tag \$img:$TAG $REG/\$img:$TAG && docker push -q $REG/\$img:$TAG >/dev/null \
   && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done"
-vm $APP "for i in \$(seq 1 10); do curl -fs --cacert $APP_CA https://$REG_BR/v2/ >/dev/null && exit 0; sleep 1; done
-  echo '앱 VM 에서 보관소($REG_BR)에 닿지 않습니다. 브리지 랜카드 · 개발 VM 방화벽(aionit-registry-allow) · 인증서($APP_CA)를 확인하세요. 서버는 그대로입니다.' >&2; exit 1"
-vm $APP "for img in aionit-web aionit-worker; do docker pull -q $REG_BR/\$img:$TAG >/dev/null && docker tag $REG_BR/\$img:$TAG \$img:$TAG \
-  && docker rmi $REG_BR/\$img:$TAG >/dev/null || exit 1; done"
+if [ "$TARGET" = cloud ]; then
+  # 운영 서버는 사내 브리지 망에 닿지 않는다. 배포하는 동안만 노트북이 SSH 두 개로 이어 준다:
+  #   운영 서버 127.0.0.1:5055 ➔ (ssh -R) 노트북 127.0.0.1:15055 ➔ (ssh -L) 개발 VM 보관소 127.0.0.1:5055
+  # 운영 서버의 Docker 는 127.0.0.0/8 보관소를 인증서 확인 없이 받는다 (Docker 기본값). 길 전체가 SSH 로 암호화돼 있다
+  ssh -o BatchMode=yes -o ProxyJump="$JUMP" -o ExitOnForwardFailure=yes -N \
+    -L "127.0.0.1:$REG_TUNNEL_PORT:127.0.0.1:$REG_PORT" -p "$DEV" user1@127.0.0.1 &
+  TUNNEL_PID=$!
+  trap 'kill $TUNNEL_PID 2>/dev/null || true' EXIT
+  tunnel_up() { curl -fsk "https://127.0.0.1:$REG_TUNNEL_PORT/v2/" >/dev/null; }
+  for i in $(seq 1 15); do tunnel_up && break; sleep 1; done
+  tunnel_up || { echo "노트북 ➔ 개발 VM 보관소 터널(127.0.0.1:$REG_TUNNEL_PORT)이 열리지 않습니다. 서버는 그대로입니다." >&2; exit 1; }
+  ssh -o BatchMode=yes -o ExitOnForwardFailure=yes -R "127.0.0.1:$REG_PORT:127.0.0.1:$REG_TUNNEL_PORT" "$CLOUD_SSH" \
+    "for img in aionit-web aionit-worker; do docker pull -q $REG/\$img:$TAG >/dev/null && docker tag $REG/\$img:$TAG \$img:$TAG \
+      && docker rmi $REG/\$img:$TAG >/dev/null || exit 1; done" \
+    || { echo "운영 서버가 이미지를 받지 못했습니다. 서버는 그대로입니다." >&2; exit 1; }
+  kill $TUNNEL_PID 2>/dev/null || true
+  trap - EXIT
+else
+  vm $APP "for i in \$(seq 1 10); do curl -fs --cacert $APP_CA https://$REG_BR/v2/ >/dev/null && exit 0; sleep 1; done
+    echo '앱 VM 에서 보관소($REG_BR)에 닿지 않습니다. 브리지 랜카드 · 개발 VM 방화벽(aionit-registry-allow) · 인증서($APP_CA)를 확인하세요. 서버는 그대로입니다.' >&2; exit 1"
+  vm $APP "for img in aionit-web aionit-worker; do docker pull -q $REG_BR/\$img:$TAG >/dev/null && docker tag $REG_BR/\$img:$TAG \$img:$TAG \
+    && docker rmi $REG_BR/\$img:$TAG >/dev/null || exit 1; done"
+fi
 
 step "4/6 서버 설정 반영"
-vm $APP "cat > ~/aionit/compose.yaml" < infra/app-vm/compose.yaml
+vm $APP "cat > ~/aionit/compose.yaml" < $CONF/compose.yaml
 # Caddyfile 이 바뀌었으면 Caddy 를 다시 띄운다 (compose 는 붙인 파일만 바뀐 것을 모른다)
-vm $APP "cat > ~/aionit/Caddyfile.new" < infra/app-vm/Caddyfile
+# 검사 때 Caddyfile 의 {$…} 자리(운영 서버: SITE_HOST · ACME_EMAIL · ADMIN_ALLOW_IPS)를 .env 에서 넘긴다. 테스트 서버는 자리가 없다
+vm $APP "cat > ~/aionit/Caddyfile.new" < $CONF/Caddyfile
 vm $APP 'cd ~/aionit && if cmp -s Caddyfile Caddyfile.new; then rm Caddyfile.new; else
   tag=$(grep ^CADDY_TAG= .env | cut -d= -f2)
-  docker run --rm -v "$PWD/Caddyfile.new:/etc/caddy/Caddyfile:ro" "caddy:$tag" caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 \
-    || { echo "Caddyfile 검사 실패: 바꾸지 않습니다" >&2; rm Caddyfile.new; exit 1; }
+  (umask 077; grep -E "^(SITE_HOST|ACME_EMAIL|ADMIN_ALLOW_IPS)=" .env > .caddy-check.env || true)
+  docker run --rm --env-file .caddy-check.env -v "$PWD/Caddyfile.new:/etc/caddy/Caddyfile:ro" "caddy:$tag" caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 \
+    || { echo "Caddyfile 검사 실패: 바꾸지 않습니다" >&2; rm -f Caddyfile.new .caddy-check.env; exit 1; }
+  rm -f .caddy-check.env
   mv Caddyfile.new Caddyfile && docker compose restart caddy >/dev/null 2>&1 || true
   echo "Caddy 설정 바뀜: 다시 띄움"; fi'
-# 데이터 서버의 compose.yaml 은 배포 때 바꾸지 않는다 (DB 재시작은 따로, 신중하게). 백업 스크립트만 맞춘다.
+# 테스트 서버: data VM 의 compose.yaml 은 배포 때 바꾸지 않는다 (DB 재시작은 따로, 신중하게). 백업 스크립트만 맞춘다.
+# 운영 서버: DB 도 위 compose.yaml 에 들어 있다. 백업 스크립트와 그 설정 · app 설정 묶기 스크립트를 맞춘다.
 vm $DATA "cat > ~/aionit/backup.sh && chmod +x ~/aionit/backup.sh" < infra/data-vm/backup.sh
+if [ "$TARGET" = cloud ]; then
+  vm $APP "cat > ~/aionit/backup.conf" < infra/cloud/backup.conf
+  vm $APP "cat > ~/aionit/config-backup.sh && chmod 700 ~/aionit/config-backup.sh" < infra/app-vm/config-backup.sh
+fi
 
 step "5/6 배포 전 DB 백업 + 마이그레이션"
 vm $DATA "~/aionit/backup.sh pre-deploy-$TAG"

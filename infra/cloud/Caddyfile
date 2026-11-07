@@ -1,0 +1,74 @@
+# AIONIT 운영 서버(클라우드 한 대) Caddy 설정. 테스트 서버용은 infra/app-vm/Caddyfile.
+# 다른 점: ① 도메인 + Let's Encrypt 인증서(자동) ② 관리자 화면 IP 제한이 켜져 있다 ③ 영상은 같은 서버의 garage 컨테이너에서.
+# 보안 헤더 · 요청 크기 상한 · /media 권한 확인은 infra/app-vm/Caddyfile 과 같게 둔다 (한쪽을 고치면 다른 쪽도).
+# {$…} 는 compose 가 .env 에서 넘긴다 (infra/cloud/compose.yaml 의 caddy environment):
+#   SITE_HOST        사이트 도메인 (예: aionit.kr). DNS A 레코드가 이 서버를 가리켜야 인증서가 나온다
+#   ACME_EMAIL       인증서 만료 · 문제 알림 받을 주소
+#   ADMIN_ALLOW_IPS  관리자 화면(/admin · /api/v1/admin)을 열 IP 대역, 빈칸으로 여럿 (예: 203.0.113.10/32 198.51.100.0/24)
+{
+	admin off
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+		-Via
+	}
+	# API 응답(JSON · 파일)은 페이지로 그려질 일이 없다: 무엇도 불러오거나 틀에 넣지 못하게 (M10 보안 점검).
+	# 화면의 CSP(nonce)는 web 의 proxy.ts 가 건다
+	@api path /api/*
+	header @api Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+}
+
+{$SITE_HOST} {
+	import security_headers
+	encode zstd gzip
+	# 요청 크기 상한 (M10 보안 점검): 앱은 Content-Length 로 먼저 거르지만, 길이를 밝히지 않은(chunked) 요청도 여기서 끊는다.
+	# 업로드(교재 패키지 200MB · 첨부 100MB · 영상 조각 16MB)는 운영자 · 강사 API 에만 있다. 나머지는 2MB
+	@staff_api path /api/v1/admin/* /api/v1/instructor/*
+	request_body @staff_api {
+		max_size 202MB
+	}
+	@other_requests not path /api/v1/admin/* /api/v1/instructor/*
+	request_body @other_requests {
+		max_size 2MB
+	}
+
+	# 관리자 화면 접속 IP 제한 (docs/기술설계.md 3.2). 이 서버는 앞에 다른 프록시가 없어 remote_ip 가 실제 접속 주소다
+	@admin_outside {
+		path /admin /admin/* /api/v1/admin /api/v1/admin/*
+		not remote_ip {$ADMIN_ALLOW_IPS}
+	}
+	handle @admin_outside {
+		respond 403
+	}
+
+	# 자체 서버 영상 (docs/기술설계.md 5.2 재생 3단계): 재생 목록 · 조각 · 자막 요청마다 web 에 토큰을 물어본 뒤(forward_auth)
+	# garage 컨테이너의 웹 주소(영상 버킷 aionit-media, 컨테이너 망 안에서만)에서 바로 내준다. 조각은 암호화돼 있고 키는 web 이 준다.
+	# route: 적은 차례대로 (Caddy 기본 순서로는 uri 가 forward_auth 보다 먼저 돌아 확인할 주소가 바뀐다)
+	handle /media/* {
+		route {
+			forward_auth web:3000 {
+				uri /api/v1/media/check
+			}
+			header Cache-Control "private, no-store"
+			uri strip_prefix /media
+			reverse_proxy garage:3902 {
+				header_up Host aionit-media.web.garage
+				header_down -Server
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# http ➔ https 넘김과 인증서 발급(HTTP 확인)은 Caddy 가 도메인 주소에 자동으로 해 준다

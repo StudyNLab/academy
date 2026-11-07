@@ -36,11 +36,15 @@ https://localhost {
 		max_size 2MB
 	}
 	# 관리자 화면 접속 IP 제한 (docs/기술설계.md 3.2). 외부 공개 때 사무실 · VPN 대역으로 바꾸고 주석을 푼다.
+	# (respond 를 handle 밖에 두면 Caddy 기본 순서상 아래 handle 이 먼저 응답해 막히지 않는다. 운영 서버용 infra/cloud/Caddyfile 은 켜져 있다)
+	# 보안 헤더 · 요청 크기 상한 · /media 권한 확인은 infra/cloud/Caddyfile 과 같게 둔다 (한쪽을 고치면 다른 쪽도)
 	# @admin_outside {
-	# 	path /admin* /api/v1/admin*
+	# 	path /admin /admin/* /api/v1/admin /api/v1/admin/*
 	# 	not remote_ip 10.100.0.0/16
 	# }
-	# respond @admin_outside 403
+	# handle @admin_outside {
+	# 	respond 403
+	# }
 
 	# 자체 서버 영상 (docs/기술설계.md 5.2 재생 3단계): 재생 목록 · 조각 · 자막 요청마다 web 에 토큰을 물어본 뒤(forward_auth)
 	# data VM Garage 의 웹 주소(영상 버킷 aionit-media, 내부망에만 열림)에서 바로 내준다. 조각은 암호화돼 있고 키는 web 이 준다.

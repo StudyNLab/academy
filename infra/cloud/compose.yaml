@@ -1,0 +1,97 @@
+# AIONIT 운영 서버 한 대 (클라우드, docs/클라우드_배포_검토.md · infra/cloud/README.md)
+# 테스트 서버의 app VM(infra/app-vm) 과 data VM(infra/data-vm) 을 한 서버에 합친 것. 메일 받는 곳(Mailpit)은 없다.
+# 이미지는 배포 스크립트(infra/scripts/deploy.sh --cloud)가 넣는다. 태그는 .env 의 APP_TAG.
+# 비밀값: ~/aionit/.env (web · worker), ~/aionit/.env.data (DB 소유자 비밀번호, postgres 에만), /srv/data/garage/garage.toml
+# 밖에 여는 포트는 80 · 443 뿐이다. DB · 파일 저장소는 컨테이너 망 안에서만 닿는다.
+# 프로젝트 이름을 테스트 서버 app VM 과 같게 둔다: 컨테이너 이름(aionit-app-web-1 …)과 감시가 붙는 망(aionit-app_default)이 같아진다.
+name: aionit-app
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:${CADDY_TAG}
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "80:80"
+      - "443:443"
+    # Caddyfile 의 {$…} 자리 (infra/cloud/Caddyfile)
+    environment:
+      SITE_HOST: ${SITE_HOST:?.env 에 SITE_HOST (사이트 도메인)}
+      ACME_EMAIL: ${ACME_EMAIL:?.env 에 ACME_EMAIL (인증서 알림 받을 주소)}
+      ADMIN_ALLOW_IPS: ${ADMIN_ALLOW_IPS:?.env 에 ADMIN_ALLOW_IPS (관리자 화면을 열 IP 대역)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+  web:
+    image: aionit-web:${APP_TAG}
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage:
+        condition: service_started
+
+  worker:
+    image: aionit-worker:${APP_TAG}
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+    # 내릴 때 영상 변환을 멈추고 작업을 대기열로 돌려놓을 시간
+    stop_grace_period: 30s
+    # 영상 변환(ffmpeg)이 메모리를 다 쓰면 DB 가 아니라 worker 만 멈추게 상한을 둔다 (변환 작업은 다시 시도된다).
+    # 서버 메모리를 키우면 .env 의 WORKER_MEM_LIMIT 를 함께 올린다
+    mem_limit: ${WORKER_MEM_LIMIT:-1g}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage:
+        condition: service_started
+
+  postgres:
+    image: postgres:${POSTGRES_TAG}
+    restart: unless-stopped
+    logging: *logging
+    # 소유자 비밀번호(POSTGRES_PASSWORD)는 .env.data 에만 둔다. web · worker 의 .env 에는 없다 (M10 앱 계정 분리)
+    env_file: .env.data
+    environment:
+      POSTGRES_USER: aionit
+      POSTGRES_DB: aionit
+      TZ: UTC
+    volumes:
+      - /srv/data/postgres:/var/lib/postgresql
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aionit"]
+      interval: 10s
+      retries: 5
+
+  garage:
+    image: dxflrs/garage:${GARAGE_TAG}
+    restart: unless-stopped
+    logging: *logging
+    # S3 API(3900) · 웹 주소(3902, 영상 버킷만 웹 공개)는 컨테이너 망 안에서만. 관리 API 는 서버 안에서만
+    ports:
+      - "127.0.0.1:3903:3903"
+    volumes:
+      - /srv/data/garage/garage.toml:/etc/garage.toml:ro
+      - /srv/data/garage/meta:/var/lib/garage/meta
+      - /srv/data/garage/data:/var/lib/garage/data
+
+volumes:
+  caddy-data:
+  caddy-config:

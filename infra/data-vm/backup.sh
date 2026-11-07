@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # AIONIT DB · 파일 · 설정 백업 (Academy-data VM 에서 실행). 매일 cron 으로, 배포 전에는 배포 스크립트가 부른다.
+# 운영 서버(클라우드 한 대, infra/cloud)에서도 같은 스크립트를 쓴다. 다른 값은 같은 폴더의 backup.conf 에 (아래 '서버마다 다른 값')
 #   ~/aionit/backup.sh              ➔ daily-YYYYMMDD-HHMM (DB · 파일 · 설정 모두)
 #   ~/aionit/backup.sh pre-deploy-x ➔ 이름을 붙여서 (DB 만)
 # 결과 (공유 폴더 /mnt/aionit-backup = 호스트 G:\AIONIT-backup):
@@ -12,8 +13,6 @@ set -euo pipefail
 
 LABEL="${1:-daily-$(date +%Y%m%d-%H%M)}"
 LOCAL_DIR=/srv/data/backup/db
-SHARE=/mnt/aionit-backup
-SHARE_DIR=$SHARE/db
 KEEP_LOCAL_DAYS=7
 KEEP_SHARE_DAILY_DAYS=35
 KEEP_WEEKLY_DAYS=35
@@ -22,6 +21,16 @@ KEEP_PREDEPLOY_DAYS=90
 WARNINGS=0
 
 cd "$(dirname "$0")"
+
+# 서버마다 다른 값. 기본은 테스트 서버 data VM. backup.conf 가 있으면 그 값으로 (운영 서버: infra/cloud/backup.conf)
+SHARE=/mnt/aionit-backup   # 백업을 쌓는 곳
+SHARE_IS_MOUNT=1           # 1: 공유 폴더라 붙어 있어야 한다 (없으면 VM 안에만 남기고 실패로 알림) · 0: 서버 디스크의 폴더
+RCLONE_NETWORK=host        # 파일 백업(rclone)이 Garage 에 닿는 망. garage-backup.env 의 주소와 맞춘다
+APP_CONFIG=ssh             # app 설정 받기 · ssh: app VM 에서 강제 명령 키로 · local: 같은 서버의 config-backup.sh
+# shellcheck disable=SC1091
+[ -f backup.conf ] && . ./backup.conf
+SHARE_DIR=$SHARE/db
+
 mkdir -p "$LOCAL_DIR"
 
 warn() {
@@ -52,7 +61,7 @@ echo "백업: $LOCAL_DIR/${LABEL}.dump ($(du -h "$LOCAL_DIR/${LABEL}.dump" | cut
 find "$LOCAL_DIR" -name '*.dump*' -mtime +"$KEEP_LOCAL_DAYS" -delete
 
 # 공유 폴더가 없으면 VM 안에만 남긴다. 배포 전 백업은 배포를 막지 않고, 매일 백업은 실패로 알린다
-if ! mountpoint -q "$SHARE"; then
+if [ "$SHARE_IS_MOUNT" = 1 ] && ! mountpoint -q "$SHARE"; then
   warn "공유 폴더 $SHARE 이 없어 VM 안에만 남겼습니다"
   push_monitor
   [[ "$LABEL" == daily-* ]] && exit 1
@@ -93,7 +102,7 @@ if [ -f garage-backup.env ]; then
   STAMP=$(date +%Y%m%d-%H%M)
   for bucket in aionit aionit-media; do
     mkdir -p "$SHARE/files/changed"
-    if docker run --rm --network host --env-file garage-backup.env \
+    if docker run --rm --network "$RCLONE_NETWORK" --env-file garage-backup.env \
       -v "$SHARE/files":/backup "$RCLONE_IMAGE" \
       sync "garage:$bucket" "/backup/$bucket" --backup-dir "/backup/changed/$STAMP/$bucket" \
       --checksum --stats-one-line --stats 0 -q; then
@@ -116,7 +125,7 @@ if [ -f backup-recipient.pem ]; then
   STAGE=$(mktemp -d)
   chmod 700 "$STAGE"
   cp -p .env compose.yaml backup.sh "$STAGE/"
-  for f in garage-key.txt garage-backup.env garage-backup-key.txt monitor.env; do
+  for f in garage-key.txt garage-backup.env garage-backup-key.txt monitor.env backup.conf .env.data .env.migrate; do
     [ -f "$f" ] && cp -p "$f" "$STAGE/"
   done
   sudo -n cat /srv/data/garage/garage.toml > "$STAGE/garage.toml" 2>/dev/null || cp /srv/data/garage/garage.toml "$STAGE/"
@@ -131,7 +140,16 @@ if [ -f backup-recipient.pem ]; then
 else
   warn "backup-recipient.pem 이 없어 data VM 설정 백업을 건너뜁니다"
 fi
-if [ -f "$HOME/.ssh/aionit_config_pull" ]; then
+if [ "$APP_CONFIG" = local ]; then
+  # 한 서버: app 쪽 묶음(.env · compose · Caddyfile · Caddy 인증서)을 같은 서버의 config-backup.sh 로 바로 만든다 (이미 암호화돼 나온다)
+  if ./config-backup.sh > "$CONFIG_DIR/app-${LABEL#daily-}.cms.part"; then
+    mv "$CONFIG_DIR/app-${LABEL#daily-}.cms.part" "$CONFIG_DIR/app-${LABEL#daily-}.cms"
+    echo "설정 백업: $CONFIG_DIR/app-${LABEL#daily-}.cms"
+  else
+    rm -f "$CONFIG_DIR/app-${LABEL#daily-}.cms.part"
+    warn "app 설정 백업 실패"
+  fi
+elif [ -f "$HOME/.ssh/aionit_config_pull" ]; then
   if ssh -T -i "$HOME/.ssh/aionit_config_pull" -o BatchMode=yes -o ConnectTimeout=10 \
     -o UserKnownHostsFile="$HOME/.ssh/known_hosts" user1@172.30.0.10 \
     > "$CONFIG_DIR/app-${LABEL#daily-}.cms.part"; then
